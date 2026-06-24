@@ -1,12 +1,28 @@
+/**
+ * 动态实名水印指令
+ *
+ * 用于在页面元素上铺满防删除的斜向半透明水印。
+ * 水印内容通过解析 localStorage 中的 JWT Token 获取（格式：真实姓名_身份证后四位）。
+ * 并使用 MutationObserver 监控 DOM 变化，防止恶意用户通过修改样式隐藏水印。
+ */
 import type { Directive, DirectiveBinding } from 'vue';
 import { jwtDecode } from 'jwt-decode';
 
+/**
+ * 解析后的 JWT Token 数据结构
+ */
 interface DecodedToken {
-  sub: string; // idCard
-  realName: string;
-  exp: number;
+  sub: string; // 身份证号码
+  realName: string; // 真实姓名
+  exp: number; // 过期时间
 }
 
+/**
+ * 核心水印绘制和挂载逻辑
+ *
+ * @param el 挂载水印的目标 DOM 元素
+ * @param _binding Vue 指令绑定对象
+ */
 const addWatermark = (el: HTMLElement, _binding: DirectiveBinding) => {
   const token = localStorage.getItem('wmdb_token');
 
@@ -56,6 +72,7 @@ const addWatermark = (el: HTMLElement, _binding: DirectiveBinding) => {
   el.style.zIndex = '9999';
 
   // Anti-tamper using MutationObserver
+  // 使用 MutationObserver 监听 DOM 属性修改，防篡改
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
@@ -75,9 +92,12 @@ const addWatermark = (el: HTMLElement, _binding: DirectiveBinding) => {
   (el as any).__wmdbObserver__ = observer;
 };
 
+/**
+ * 暴露给 Vue 的自定义指令对象
+ */
 export const watermark: Directive = {
   mounted(el, binding) {
-    // Create a wrapper to contain the watermark specifically, so we don't ruin the parent layout
+    // 创建一个专用的包装器来容纳水印，避免破坏父元素的布局
     const container = el as HTMLElement;
     container.style.position = container.style.position || 'relative';
 

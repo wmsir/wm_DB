@@ -10,19 +10,46 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+/**
+ * JWT 工具类
+ * <p>
+ * 负责基于 HMAC 算法签发、解析和校验 JWT Token。
+ * </p>
+ *
+ * @author Jules
+ * @date 2023-10-25
+ */
 @Component
 public class JwtUtils {
 
+    /**
+     * JWT 签名密钥
+     */
     @Value("${wmdb.jwt.secret}")
     private String secretString;
 
+    /**
+     * JWT 过期时间（毫秒）
+     */
     @Value("${wmdb.jwt.expiration}")
     private long expirationTime;
 
+    /**
+     * 获取用于签名的 Key
+     *
+     * @return SecretKey 实例
+     */
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secretString.getBytes(StandardCharsets.UTF_8));
     }
 
+    /**
+     * 生成 JWT Token
+     *
+     * @param idCard 身份证号码（作为 Subject）
+     * @param realName 真实姓名
+     * @return 签发的 JWT 字符串
+     */
     public String generateToken(String idCard, String realName) {
         return Jwts.builder()
                 .subject(idCard)
@@ -33,6 +60,12 @@ public class JwtUtils {
                 .compact();
     }
 
+    /**
+     * 提取 Token 中所有的 Claim
+     *
+     * @param token JWT 字符串
+     * @return Claims 对象
+     */
     public Claims extractAllClaims(String token) {
         return Jwts.parser()
                 .verifyWith(getSigningKey())
@@ -41,14 +74,32 @@ public class JwtUtils {
                 .getPayload();
     }
 
+    /**
+     * 提取 Token 中的身份证号码
+     *
+     * @param token JWT 字符串
+     * @return 身份证号码
+     */
     public String extractIdCard(String token) {
         return extractAllClaims(token).getSubject();
     }
 
+    /**
+     * 提取 Token 中的真实姓名
+     *
+     * @param token JWT 字符串
+     * @return 真实姓名
+     */
     public String extractRealName(String token) {
         return extractAllClaims(token).get("realName", String.class);
     }
 
+    /**
+     * 验证 Token 是否合法且未过期
+     *
+     * @param token JWT 字符串
+     * @return 是否有效
+     */
     public boolean isTokenValid(String token) {
         try {
             extractAllClaims(token);
