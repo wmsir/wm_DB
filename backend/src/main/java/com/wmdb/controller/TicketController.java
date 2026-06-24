@@ -4,10 +4,16 @@ import com.wmdb.model.SqlTicket;
 import com.wmdb.service.TicketService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.wmdb.model.SqlTicketDetail;
+import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.MinioClient;
+import io.minio.http.Method;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 工单控制器
@@ -23,6 +29,20 @@ import java.util.Map;
 public class TicketController {
 
     private final TicketService ticketService;
+
+    // Auto-inject MinioClient configured by Spring or manually instance it
+    // using properties for presigned URLs.
+    @Value("${wmdb.minio.endpoint}")
+    private String endpoint;
+
+    @Value("${wmdb.minio.access-key}")
+    private String accessKey;
+
+    @Value("${wmdb.minio.secret-key}")
+    private String secretKey;
+
+    @Value("${wmdb.minio.bucket}")
+    private String bucketName;
 
     /**
      * 构造函数注入 TicketService
@@ -62,9 +82,10 @@ public class TicketController {
     @GetMapping("/{id}/detail")
     public ResponseEntity<?> getTicketDetail(@PathVariable("id") Long id) {
         try {
-            Map<String, Object> detail = ticketService.getTicketDetail(id);
-            if (detail.get("ticket") == null) {
-                return ResponseEntity.notFound().build();
+            String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            Map<String, Object> detail = ticketService.getTicketDetail(id, currentIdCard);
+            if (detail == null || detail.get("ticket") == null) {
+                return ResponseEntity.status(403).body("Access denied or ticket not found");
             }
             return ResponseEntity.ok(detail);
         } catch (Exception e) {
@@ -73,16 +94,42 @@ public class TicketController {
     }
 
     /**
-     * 获取附件下载预签名链接（防盗链机制）
+     * 获取附件下载预签名链接（防盗链机制，自带越权防护）
      *
      * @param id 工单主键 ID
      * @return 临时防盗链 URL
      */
     @GetMapping("/{id}/download-url")
     public ResponseEntity<?> getDownloadUrl(@PathVariable("id") Long id) {
-        // Pre-signed URL logic should be here. Mocking for now.
-        // String url = minioClient.getPresignedObjectUrl(...);
-        String mockUrl = "http://localhost:9000/wmdb-attachments/mock-file.sql?X-Amz-Algorithm=AWS4-HMAC-SHA256&...";
-        return ResponseEntity.ok(Map.of("url", mockUrl));
+        try {
+            String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+            Map<String, Object> detailMap = ticketService.getTicketDetail(id, currentIdCard);
+            if (detailMap == null || detailMap.get("detail") == null) {
+                return ResponseEntity.status(403).body("Access denied or ticket not found");
+            }
+
+            SqlTicketDetail detail = (SqlTicketDetail) detailMap.get("detail");
+            String objectKey = detail.getAttachmentOssKey();
+            if (objectKey == null) {
+                return ResponseEntity.badRequest().body("No attachment found for this ticket.");
+            }
+
+            MinioClient minioClient = MinioClient.builder()
+                .endpoint(endpoint)
+                .credentials(accessKey, secretKey)
+                .build();
+
+            String url = minioClient.getPresignedObjectUrl(
+                GetPresignedObjectUrlArgs.builder()
+                    .method(Method.GET)
+                    .bucket(bucketName)
+                    .object(objectKey)
+                    .expiry(5, TimeUnit.MINUTES)
+                    .build());
+
+            return ResponseEntity.ok(Map.of("url", url));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to generate download URL: " + e.getMessage());
+        }
     }
 }

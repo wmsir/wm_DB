@@ -1,8 +1,6 @@
 package com.wmdb.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.wmdb.model.SysUser;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.wmdb.mapper.SysUserMapper;
 import com.wmdb.model.SysUser;
 import com.wmdb.security.JwtUtils;
@@ -45,16 +43,11 @@ public class AuthService {
         // Find user by ID card
         SysUser user = sysUserMapper.selectOne(new QueryWrapper<SysUser>().eq("id_card", idCard));
 
-        // Simple password check (in reality, use PasswordEncoder)
-        // Fallback mock logic allows demoing if no user is found in DB,
-        // to prevent immediate crash in an empty schema.
-        if (user != null && password.equals(user.getPasswordCipher())) {
-            return jwtUtils.generateToken(user.getIdCard(), user.getRealName());
-        } else if (idCard != null && !idCard.isEmpty() && password != null && !password.isEmpty() && user == null) {
-            // Fallback for architecture demo
-            return jwtUtils.generateToken(idCard, "Admin");
+        // Strictly verify credentials against DB
+        if (user == null || !password.equals(user.getPasswordCipher())) {
+            throw new RuntimeException("Invalid credentials");
         }
 
-        throw new RuntimeException("Invalid credentials");
+        return jwtUtils.generateToken(user.getIdCard(), user.getRealName());
     }
 }

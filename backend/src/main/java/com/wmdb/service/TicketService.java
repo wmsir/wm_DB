@@ -3,6 +3,7 @@ package com.wmdb.service;
 import com.wmdb.engine.DbEnginePlugin;
 import com.wmdb.model.DbInstance;
 import com.wmdb.model.SqlTicket;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.wmdb.mapper.DbInstanceMapper;
 import com.wmdb.mapper.SqlTicketDetailMapper;
 import com.wmdb.mapper.SqlTicketMapper;
@@ -11,8 +12,14 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import io.minio.GetObjectArgs;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -75,6 +82,7 @@ public class TicketService {
      * @return 创建成功的工单实例
      * @throws Exception 处理异常
      */
+    @Transactional(rollbackFor = Exception.class)
     public SqlTicket submitTicket(String idCard, Long instanceId, MultipartFile file) throws Exception {
         // 1. Process File
         StorageService.StorageResult storageResult = storageService.processSqlFile(file);
@@ -98,13 +106,9 @@ public class TicketService {
         detail.setSqlText(storageResult.getSqlText());
         detail.setAttachmentOssKey(storageResult.getAttachmentOssKey());
 
-        // Save to DB (fallback to mock logic if DB uninitialized or errors)
-        try {
-            sqlTicketMapper.insert(ticket);
-            sqlTicketDetailMapper.insert(detail);
-        } catch (Exception e) {
-            System.err.println("DB insert failed, this is expected if DB is uninitialized for demo: " + e.getMessage());
-        }
+        // Save to DB
+        sqlTicketMapper.insert(ticket);
+        sqlTicketDetailMapper.insert(detail);
 
         // 4. Start Flowable Process
         Map<String, Object> variables = new HashMap<>();
@@ -112,11 +116,10 @@ public class TicketService {
         variables.put("ticketId", ticketId);
         // Important: Never pass big SQL or DB password into flow variables
 
-        // Assuming we have a deployed process named 'sqlApprovalProcess'
-        // Since we are not actually deploying it in this skeleton, we comment it out
-        // ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("sqlApprovalProcess", ticket.getBusinessKey(), variables);
-        // ticket.setFlowInstanceId(processInstance.getId());
-        ticket.setFlowInstanceId("mock-flow-instance-id");
+        // Start the actual flowable process. This requires 'sqlApprovalProcess' to be deployed.
+        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey("sqlApprovalProcess", ticket.getBusinessKey(), variables);
+        ticket.setFlowInstanceId(processInstance.getId());
+        sqlTicketMapper.updateById(ticket);
 
         return ticket;
     }
@@ -142,7 +145,7 @@ public class TicketService {
      */
     private void executeTicket(Long ticketId) {
         SqlTicket ticket = sqlTicketMapper.selectById(ticketId);
-        SqlTicketDetail detail = sqlTicketDetailMapper.selectById(ticketId);
+        SqlTicketDetail detail = sqlTicketDetailMapper.selectOne(new QueryWrapper<SqlTicketDetail>().eq("ticket_id", ticketId));
         DbInstance instance = dbInstanceMapper.selectById(ticket.getInstanceId());
 
         if (ticket == null || detail == null || instance == null) {
@@ -150,45 +153,80 @@ public class TicketService {
         }
 
         try {
-            // Memory decrypt password (mocked here)
+            // Memory decrypt password (in reality use AES decrypt logic)
             String pwd = instance.getPasswordCipher();
 
-            // JDBC Execution with fetchSize
             try (Connection conn = DriverManager.getConnection(instance.getJdbcUrl(), instance.getUsername(), pwd);
                  Statement stmt = conn.createStatement()) {
 
                 // Protection mechanism for large execution sets
                 stmt.setFetchSize(1000);
 
-                // If it's a small script, execute directly
-                // If it's large (attachmentOssKey != null), we should stream it from MinIO.
-                // In this mock, we just execute the text.
-                // stmt.execute(detail.getSqlText());
+                if (detail.getAttachmentOssKey() == null) {
+                    // Small script, execute directly
+                    stmt.execute(detail.getSqlText());
+                } else {
+                    // Large script, stream from MinIO and execute
+                    try (InputStream stream = storageService.getMinioClient().getObject(
+                            GetObjectArgs.builder()
+                                .bucket(storageService.getBucketName())
+                                .object(detail.getAttachmentOssKey())
+                                .build());
+                         BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+
+                        StringBuilder sqlBuffer = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            if (line.trim().isEmpty() || line.trim().startsWith("--")) {
+                                continue;
+                            }
+                            sqlBuffer.append(line).append("\n");
+                            // Basic logic: if line ends with semicolon, execute the buffer
+                            if (line.trim().endsWith(";")) {
+                                stmt.execute(sqlBuffer.toString());
+                                sqlBuffer.setLength(0); // clear buffer
+                            }
+                        }
+                        // Execute any remaining SQL
+                        if (sqlBuffer.length() > 0 && !sqlBuffer.toString().trim().isEmpty()) {
+                            stmt.execute(sqlBuffer.toString());
+                        }
+                    }
+                }
 
                 ticket.setStatus("EXECUTED");
                 sqlTicketMapper.updateById(ticket);
             } catch (Exception e) {
-                System.out.println("Execution failed: " + e.getMessage());
+                System.err.println("JDBC Execution failed: " + e.getMessage());
                 ticket.setStatus("FAILED");
                 sqlTicketMapper.updateById(ticket);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Ticket execution process failed: " + e.getMessage());
             ticket.setStatus("FAILED");
             sqlTicketMapper.updateById(ticket);
         }
     }
 
     /**
-     * 获取工单聚合详情
+     * 获取工单聚合详情 (带权限校验)
      *
      * @param ticketId 工单 ID
+     * @param currentIdCard 当前登录用户的身份证号
      * @return 包含主表和明细表的 Map 数据
      */
-    public Map<String, Object> getTicketDetail(Long ticketId) {
+    public Map<String, Object> getTicketDetail(Long ticketId, String currentIdCard) {
+        SqlTicket ticket = sqlTicketMapper.selectById(ticketId);
+
+        // IDOR 防护：检查工单是否存在，并且申请人必须是当前操作用户
+        if (ticket == null || !ticket.getApplicantIdCard().equals(currentIdCard)) {
+            // 返回 null 交由 Controller 处理为 404 或 403
+            return null;
+        }
+
         Map<String, Object> result = new HashMap<>();
-        result.put("ticket", sqlTicketMapper.selectById(ticketId));
-        result.put("detail", sqlTicketDetailMapper.selectById(ticketId));
+        result.put("ticket", ticket);
+        result.put("detail", sqlTicketDetailMapper.selectOne(new QueryWrapper<SqlTicketDetail>().eq("ticket_id", ticketId)));
         return result;
     }
 }

@@ -1,3 +1,5 @@
+import axios from 'axios';
+
 /**
  * 获取工单超大附件的安全下载链接
  * <p>
@@ -10,11 +12,8 @@
  */
 export const downloadTicketAttachment = async (ticketId: string): Promise<string> => {
     try {
-        // 模拟架构演示的响应以防止 API 调用失败
-        // const response = await axios.get(`/api/v1/ticket/${ticketId}/download-url`);
-        // return response.data.url;
-
-        return Promise.resolve(`http://localhost:9000/wmdb-attachments/mock-file-${ticketId}.sql?X-Amz-Algorithm=AWS4-HMAC-SHA256&Expires=300`);
+        const response = await axios.get(`/api/v1/ticket/${ticketId}/download-url`);
+        return response.data.url;
     } catch (error) {
         throw new Error('无法获取预签名下载链接');
     }

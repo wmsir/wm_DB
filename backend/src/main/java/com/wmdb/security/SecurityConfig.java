@@ -45,7 +45,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/api/v1/auth/login", "/api/v1/workflow/callback").permitAll()
+                .requestMatchers("/api/v1/auth/login").permitAll()
+                // The callback should ideally be protected by HMAC or IP whitelisting.
+                // For this secure skeleton, we require standard authentication.
+                .requestMatchers("/api/v1/workflow/callback").authenticated()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

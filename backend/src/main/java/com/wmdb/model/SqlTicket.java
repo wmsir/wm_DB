@@ -21,7 +21,7 @@ public class SqlTicket {
     /**
      * 主键 ID
      */
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.INPUT)
     private Long id;
 
     /**

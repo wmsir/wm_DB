@@ -54,6 +54,22 @@ public class StorageService {
     }
 
     /**
+     * 获取 MinIO 客户端实例
+     * @return MinioClient
+     */
+    public MinioClient getMinioClient() {
+        return minioClient;
+    }
+
+    /**
+     * 获取 Bucket Name
+     * @return 存储桶名称
+     */
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    /**
      * 处理上传的 SQL 文件
      *
      * @param file 上传的文件对象
