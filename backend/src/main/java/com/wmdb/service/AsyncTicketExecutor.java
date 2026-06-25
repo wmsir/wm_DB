@@ -49,7 +49,7 @@ public class AsyncTicketExecutor {
     private final DataSource dataSource;
     private final DefaultDataSourceCreator dataSourceCreator;
 
-    @Value("${wmdb.db.aes-key:1234567890123456}")
+    @Value("${wmdb.db.aes-key}")
     private String aesKey;
 
     public AsyncTicketExecutor(SqlTicketMapper sqlTicketMapper, SqlTicketDetailMapper sqlTicketDetailMapper,

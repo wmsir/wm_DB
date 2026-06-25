@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  wmdb-mysql:
+    image: mysql:8.0
+    container_name: wmdb-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${WMDB_DB_PASSWORD:-password}
+      MYSQL_DATABASE: wmdb
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - wmdb-network
+
+  wmdb-redis:
+    image: redis:7.0-alpine
+    container_name: wmdb-redis
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "6379:6379"
+    networks:
+      - wmdb-network
+
+  wmdb-minio:
+    image: minio/minio
+    container_name: wmdb-minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+      TZ: Asia/Shanghai
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - wmdb-network
+
+  wmdb-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: wmdb-backend
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - WMDB_DB_URL=jdbc:mysql://wmdb-mysql:3306/wmdb?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+      - WMDB_DB_USERNAME=root
+      - WMDB_DB_PASSWORD=${WMDB_DB_PASSWORD:-password}
+      - MINIO_ENDPOINT=http://wmdb-minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_BUCKET=${MINIO_BUCKET:-wmdb-attachments}
+      - SPRING_REDIS_HOST=wmdb-redis
+      - WMDB_JWT_SECRET=${WMDB_JWT_SECRET}
+      - WMDB_RSA_PRIVATE_KEY=${WMDB_RSA_PRIVATE_KEY}
+      - WMDB_DB_AES_KEY=${WMDB_DB_AES_KEY}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - wmdb-mysql
+      - wmdb-redis
+      - wmdb-minio
+    networks:
+      - wmdb-network
+
+  wmdb-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: wmdb-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - wmdb-backend
+    networks:
+      - wmdb-network
+
+volumes:
+  mysql-data:
+  minio-data:
+
+networks:
+  wmdb-network:
+    driver: bridge
