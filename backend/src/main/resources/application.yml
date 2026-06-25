@@ -30,3 +30,5 @@ wmdb:
     bucket: ${MINIO_BUCKET:wmdb-attachments}
   rsa:
     private-key: ${WMDB_RSA_PRIVATE_KEY}
+  db:
+    aes-key: ${WMDB_DB_AES_KEY}
