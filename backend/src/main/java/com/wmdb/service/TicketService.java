@@ -13,16 +13,8 @@ import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import io.minio.GetObjectArgs;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +40,7 @@ public class TicketService {
     private final SqlTicketMapper sqlTicketMapper;
     private final SqlTicketDetailMapper sqlTicketDetailMapper;
     private final DbInstanceMapper dbInstanceMapper;
+    private final AsyncTicketExecutor asyncTicketExecutor;
 
     /**
      * 构造函数注入依赖
@@ -59,11 +52,12 @@ public class TicketService {
      * @param sqlTicketMapper 工单 Mapper
      * @param sqlTicketDetailMapper 详情 Mapper
      * @param dbInstanceMapper 实例 Mapper
+     * @param asyncTicketExecutor 异步执行器
      */
     public TicketService(StorageService storageService, DbEnginePlugin mysqlEnginePlugin,
                          RuntimeService runtimeService, TaskService taskService,
                          SqlTicketMapper sqlTicketMapper, SqlTicketDetailMapper sqlTicketDetailMapper,
-                         DbInstanceMapper dbInstanceMapper) {
+                         DbInstanceMapper dbInstanceMapper, AsyncTicketExecutor asyncTicketExecutor) {
         this.storageService = storageService;
         this.mysqlEnginePlugin = mysqlEnginePlugin;
         this.runtimeService = runtimeService;
@@ -71,6 +65,7 @@ public class TicketService {
         this.sqlTicketMapper = sqlTicketMapper;
         this.sqlTicketDetailMapper = sqlTicketDetailMapper;
         this.dbInstanceMapper = dbInstanceMapper;
+        this.asyncTicketExecutor = asyncTicketExecutor;
     }
 
     /**
@@ -134,77 +129,8 @@ public class TicketService {
         if (ticket != null && "AUDITING".equals(ticket.getStatus())) {
             ticket.setStatus("APPROVED");
             sqlTicketMapper.updateById(ticket);
-            executeTicket(ticketId);
-        }
-    }
-
-    /**
-     * 内部执行工单逻辑（包含安全防护和流式执行）
-     *
-     * @param ticketId 工单 ID
-     */
-    private void executeTicket(Long ticketId) {
-        SqlTicket ticket = sqlTicketMapper.selectById(ticketId);
-        SqlTicketDetail detail = sqlTicketDetailMapper.selectOne(new QueryWrapper<SqlTicketDetail>().eq("ticket_id", ticketId));
-        DbInstance instance = dbInstanceMapper.selectById(ticket.getInstanceId());
-
-        if (ticket == null || detail == null || instance == null) {
-            return;
-        }
-
-        try {
-            // Memory decrypt password (in reality use AES decrypt logic)
-            String pwd = instance.getPasswordCipher();
-
-            try (Connection conn = DriverManager.getConnection(instance.getJdbcUrl(), instance.getUsername(), pwd);
-                 Statement stmt = conn.createStatement()) {
-
-                // Protection mechanism for large execution sets
-                stmt.setFetchSize(1000);
-
-                if (detail.getAttachmentOssKey() == null) {
-                    // Small script, execute directly
-                    stmt.execute(detail.getSqlText());
-                } else {
-                    // Large script, stream from MinIO and execute
-                    try (InputStream stream = storageService.getMinioClient().getObject(
-                            GetObjectArgs.builder()
-                                .bucket(storageService.getBucketName())
-                                .object(detail.getAttachmentOssKey())
-                                .build());
-                         BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-
-                        StringBuilder sqlBuffer = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            if (line.trim().isEmpty() || line.trim().startsWith("--")) {
-                                continue;
-                            }
-                            sqlBuffer.append(line).append("\n");
-                            // Basic logic: if line ends with semicolon, execute the buffer
-                            if (line.trim().endsWith(";")) {
-                                stmt.execute(sqlBuffer.toString());
-                                sqlBuffer.setLength(0); // clear buffer
-                            }
-                        }
-                        // Execute any remaining SQL
-                        if (sqlBuffer.length() > 0 && !sqlBuffer.toString().trim().isEmpty()) {
-                            stmt.execute(sqlBuffer.toString());
-                        }
-                    }
-                }
-
-                ticket.setStatus("EXECUTED");
-                sqlTicketMapper.updateById(ticket);
-            } catch (Exception e) {
-                System.err.println("JDBC Execution failed: " + e.getMessage());
-                ticket.setStatus("FAILED");
-                sqlTicketMapper.updateById(ticket);
-            }
-        } catch (Exception e) {
-            System.err.println("Ticket execution process failed: " + e.getMessage());
-            ticket.setStatus("FAILED");
-            sqlTicketMapper.updateById(ticket);
+            // 委托给专门的异步组件执行，避免阻塞回调线程
+            asyncTicketExecutor.executeTicket(ticketId);
         }
     }
 

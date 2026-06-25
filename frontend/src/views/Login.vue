@@ -43,11 +43,13 @@
  * 验证通过后将获取到的 JWT Token 写入 localStorage 中。
  */
 import { ref, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import axios from 'axios'
 
-// 表单引用和加载状态
+// 路由和表单引用
+const router = useRouter()
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
 
@@ -96,7 +98,7 @@ const handleLogin = async () => {
         const token = response.data.token
         localStorage.setItem('wmdb_token', token)
         ElMessage.success('登录成功')
-        // In a real app, router.push('/') would go here
+        router.push('/ticket/1') // 跳转到示例详情页，实际应跳往仪表盘
       } catch (error: any) {
         ElMessage.error(error.response?.data || '登录失败')
       } finally {

@@ -51,6 +51,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import axios from 'axios'
 import * as monaco from 'monaco-editor'
 import { downloadTicketAttachment } from '../api/ticket'
 
@@ -97,18 +98,32 @@ const initMonaco = (sqlContent: string) => {
  */
 const fetchTicketDetail = async () => {
   try {
-    // const id = route.params.id || '1' // fallback for demo
-    // const response = await axios.get(`/api/v1/ticket/${id}/detail`)
-    // ticketDetail.value = response.data.detail
-    // For demo, we mock the response
+    const id = route.params.id || '1' // fallback for demo
+
+    // axios 拦截器或请求头需带上 JWT，这里由于未使用封装的 request.ts，需手动设置 Authorization
+    const token = localStorage.getItem('wmdb_token')
+    const response = await axios.get(`/api/v1/ticket/${id}/detail`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    ticketDetail.value = response.data.detail
+
+    // 初始化编辑器
+    if (ticketDetail.value && ticketDetail.value.sqlText) {
+       initMonaco(ticketDetail.value.sqlText)
+    } else {
+       initMonaco('-- 暂无 SQL 文本数据')
+    }
+  } catch (error) {
+    ElMessage.error('获取详情失败，请检查工单 ID 或权限')
+    // 降级演示处理：防止完全白屏
     ticketDetail.value = {
-      sqlText: "SELECT * FROM users WHERE status = 'ACTIVE';\n-- Some other SQLs\nUPDATE products SET price = price * 1.1 WHERE category = 'ELEC';",
+      sqlText: "-- 无法拉取实际接口数据，展示示例 SQL\nSELECT * FROM users WHERE status = 'ACTIVE';\nUPDATE products SET price = price * 1.1 WHERE category = 'ELEC';",
       attachmentOssKey: 'mock-uuid-large-file.sql'
     }
-
     initMonaco(ticketDetail.value.sqlText)
-  } catch (error) {
-    ElMessage.error('获取详情失败')
   }
 }
 
