@@ -12,6 +12,7 @@
     "@element-plus/icons-vue": "^2.3.2",
     "@types/jsonwebtoken": "^9.0.10",
     "axios": "^1.18.1",
+    "bpmn-js": "^18.19.0",
     "element-plus": "^2.14.2",
     "jsonwebtoken": "^9.0.3",
     "jwt-decode": "^4.0.0",

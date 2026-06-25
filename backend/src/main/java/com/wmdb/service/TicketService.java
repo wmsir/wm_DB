@@ -101,6 +101,12 @@ public class TicketService {
         detail.setSqlText(storageResult.getSqlText());
         detail.setAttachmentOssKey(storageResult.getAttachmentOssKey());
 
+        // 3.5 Calculate Impact Estimate
+        // In a real scenario, this involves analyzing the AST for table stats.
+        // Mocking impact estimation for architecture demonstration based on file size
+        int estimatedRows = file.getSize() > 1024 * 50 ? 50000 : 50;
+        detail.setAffectRowsEstimate(estimatedRows);
+
         // Save to DB
         sqlTicketMapper.insert(ticket);
         sqlTicketDetailMapper.insert(detail);
@@ -109,6 +115,7 @@ public class TicketService {
         Map<String, Object> variables = new HashMap<>();
         variables.put("applicant", idCard);
         variables.put("ticketId", ticketId);
+        variables.put("affectRowsEstimate", estimatedRows);
         // Important: Never pass big SQL or DB password into flow variables
 
         // Start the actual flowable process. This requires 'sqlApprovalProcess' to be deployed.

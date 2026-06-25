@@ -2,7 +2,7 @@ package com.wmdb.controller;
 
 import com.wmdb.service.AuthService;
 import lombok.Data;
-import org.springframework.http.ResponseEntity;
+import com.wmdb.common.Result;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,15 +42,11 @@ public class AuthController {
      * @return 包含 Token 的响应实体
      */
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        try {
-            String token = authService.login(loginRequest.getIdCard(), loginRequest.getPassword());
-            Map<String, String> response = new HashMap<>();
-            response.put("token", token);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            return ResponseEntity.status(401).body("Authentication failed: " + e.getMessage());
-        }
+    public Result<Map<String, String>> login(@RequestBody LoginRequest loginRequest) {
+        String token = authService.login(loginRequest.getIdCard(), loginRequest.getPassword());
+        Map<String, String> response = new HashMap<>();
+        response.put("token", token);
+        return Result.success(response);
     }
 
     /**

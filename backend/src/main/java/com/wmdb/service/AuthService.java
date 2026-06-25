@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.wmdb.mapper.SysUserMapper;
 import com.wmdb.model.SysUser;
 import com.wmdb.security.JwtUtils;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 /**
@@ -20,16 +21,19 @@ public class AuthService {
 
     private final JwtUtils jwtUtils;
     private final SysUserMapper sysUserMapper;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * 构造函数注入依赖
      *
      * @param jwtUtils JWT 工具类
      * @param sysUserMapper 用户 Mapper
+     * @param passwordEncoder 密码加密器
      */
-    public AuthService(JwtUtils jwtUtils, SysUserMapper sysUserMapper) {
+    public AuthService(JwtUtils jwtUtils, SysUserMapper sysUserMapper, PasswordEncoder passwordEncoder) {
         this.jwtUtils = jwtUtils;
         this.sysUserMapper = sysUserMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -43,8 +47,8 @@ public class AuthService {
         // Find user by ID card
         SysUser user = sysUserMapper.selectOne(new QueryWrapper<SysUser>().eq("id_card", idCard));
 
-        // Strictly verify credentials against DB
-        if (user == null || !password.equals(user.getPasswordCipher())) {
+        // Strictly verify credentials against DB using BCrypt
+        if (user == null || !passwordEncoder.matches(password, user.getPasswordCipher())) {
             throw new RuntimeException("Invalid credentials");
         }
 
