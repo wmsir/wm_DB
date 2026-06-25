@@ -8,6 +8,9 @@ import com.wmdb.mapper.DbInstanceMapper;
 import com.wmdb.mapper.SqlTicketDetailMapper;
 import com.wmdb.mapper.SqlTicketMapper;
 import com.wmdb.model.SqlTicketDetail;
+import com.wmdb.engine.MysqlEngineImpl;
+import com.wmdb.engine.DmEngineImpl;
+import com.wmdb.engine.OracleEngineImpl;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
@@ -33,7 +36,9 @@ import java.util.UUID;
 public class TicketService {
 
     private final StorageService storageService;
-    private final DbEnginePlugin mysqlEnginePlugin;
+    private final MysqlEngineImpl mysqlEnginePlugin;
+    private final DmEngineImpl dmEnginePlugin;
+    private final OracleEngineImpl oracleEnginePlugin;
     private final RuntimeService runtimeService;
     private final TaskService taskService;
 
@@ -47,6 +52,8 @@ public class TicketService {
      *
      * @param storageService 文件存储服务
      * @param mysqlEnginePlugin MySQL AST 引擎插件
+     * @param dmEnginePlugin 达梦 AST 引擎插件
+     * @param oracleEnginePlugin Oracle AST 引擎插件
      * @param runtimeService Flowable 运行时服务
      * @param taskService Flowable 任务服务
      * @param sqlTicketMapper 工单 Mapper
@@ -54,18 +61,33 @@ public class TicketService {
      * @param dbInstanceMapper 实例 Mapper
      * @param asyncTicketExecutor 异步执行器
      */
-    public TicketService(StorageService storageService, DbEnginePlugin mysqlEnginePlugin,
+    public TicketService(StorageService storageService, MysqlEngineImpl mysqlEnginePlugin,
+                         DmEngineImpl dmEnginePlugin, OracleEngineImpl oracleEnginePlugin,
                          RuntimeService runtimeService, TaskService taskService,
                          SqlTicketMapper sqlTicketMapper, SqlTicketDetailMapper sqlTicketDetailMapper,
                          DbInstanceMapper dbInstanceMapper, AsyncTicketExecutor asyncTicketExecutor) {
         this.storageService = storageService;
         this.mysqlEnginePlugin = mysqlEnginePlugin;
+        this.dmEnginePlugin = dmEnginePlugin;
+        this.oracleEnginePlugin = oracleEnginePlugin;
         this.runtimeService = runtimeService;
         this.taskService = taskService;
         this.sqlTicketMapper = sqlTicketMapper;
         this.sqlTicketDetailMapper = sqlTicketDetailMapper;
         this.dbInstanceMapper = dbInstanceMapper;
         this.asyncTicketExecutor = asyncTicketExecutor;
+    }
+
+    /**
+     * 根据数据库类型动态选择校验插件
+     */
+    private DbEnginePlugin getEnginePlugin(String dbType) {
+        if ("dameng".equalsIgnoreCase(dbType)) {
+            return dmEnginePlugin;
+        } else if ("oracle".equalsIgnoreCase(dbType)) {
+            return oracleEnginePlugin;
+        }
+        return mysqlEnginePlugin; // fallback
     }
 
     /**
@@ -82,9 +104,16 @@ public class TicketService {
         // 1. Process File
         StorageService.StorageResult storageResult = storageService.processSqlFile(file);
 
-        // 2. Pre-Check AST
+        // Fetch db instance to determine plugin
+        DbInstance instance = dbInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw new RuntimeException("Target DB instance not found");
+        }
+
+        // 2. Pre-Check AST using selected engine plugin
         // Important: use astCheckText which has no appended strings to prevent Druid ParserException
-        mysqlEnginePlugin.preCheck(storageResult.getAstCheckText());
+        DbEnginePlugin enginePlugin = getEnginePlugin(instance.getDbType());
+        enginePlugin.preCheck(storageResult.getAstCheckText());
 
         // 3. Create Ticket
         Long ticketId = System.currentTimeMillis();
