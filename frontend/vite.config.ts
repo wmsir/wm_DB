@@ -10,4 +10,12 @@ export default defineConfig({
       languageWorkers: ['editorWorkerService', 'css', 'html', 'json', 'typescript']
     })
   ],
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      }
+    }
+  }
 })
