@@ -46,11 +46,13 @@ import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import axios from 'axios'
+import request from '../utils/request'
 import JSEncrypt from 'jsencrypt'
+import { useUserStore } from '../store/user'
 
-// Dummy Public Key matching backend for architecture scaffold
-const PUBLIC_KEY = `MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3/z/f5+hW4+L8+M2G2M2Z2m2r
+// PUBLIC_KEY should be fetched dynamically from backend via API or injected via env vars.
+// For architectural scaffold demonstration we define a variable to hold the dynamic value.
+const PUBLIC_KEY = import.meta.env.VITE_RSA_PUBLIC_KEY || `MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3/z/f5+hW4+L8+M2G2M2Z2m2r
 2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m
 2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m
 2Z2m2wIDAQAB`;
@@ -59,6 +61,7 @@ const PUBLIC_KEY = `MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3/z/f5+hW4+L8+M2G2M2Z
 const router = useRouter()
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
+const userStore = useUserStore()
 
 // 登录表单数据
 const loginForm = reactive({
@@ -110,13 +113,15 @@ const handleLogin = async () => {
             password: encryptedPassword
         }
 
-        const response = await axios.post('/api/v1/auth/login', payload)
-        const token = response.data.data.token
-        localStorage.setItem('wmdb_token', token)
+        const response: any = await request.post('/v1/auth/login', payload)
+        const token = response.data.token
+
+        userStore.setToken(token)
+
         ElMessage.success('登录成功')
         router.push('/ticket/1') // 跳转到示例详情页，实际应跳往仪表盘
       } catch (error: any) {
-        ElMessage.error(error.response?.data || '登录失败')
+        // Axios interceptor handles generic errors, but we can do local fallbacks if needed
       } finally {
         loading.value = false
       }

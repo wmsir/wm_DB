@@ -1,4 +1,4 @@
-import axios from 'axios';
+import request from '../utils/request';
 
 /**
  * 获取工单超大附件的安全下载链接
@@ -12,7 +12,7 @@ import axios from 'axios';
  */
 export const downloadTicketAttachment = async (ticketId: string): Promise<string> => {
     try {
-        const response = await axios.get(`/api/v1/ticket/${ticketId}/download-url`);
+        const response: any = await request.get(`/v1/ticket/${ticketId}/download-url`);
         return response.data.url;
     } catch (error) {
         throw new Error('无法获取预签名下载链接');

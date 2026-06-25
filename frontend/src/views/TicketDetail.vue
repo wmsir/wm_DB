@@ -51,7 +51,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import request from '../utils/request'
 import * as monaco from 'monaco-editor'
 import { downloadTicketAttachment } from '../api/ticket'
 
@@ -80,13 +80,52 @@ const activities = ref([
  *
  * @param sqlContent 需要渲染的 SQL 文本内容
  */
+/**
+ * 注册 Monaco Editor 自定义 SQL 代码提示 (Snippets & IntelliSense)
+ */
+const registerMonacoSnippets = () => {
+  monaco.languages.registerCompletionItemProvider('sql', {
+    provideCompletionItems: (_model, _position) => {
+      const suggestions = [
+        {
+          label: 'SELECT',
+          kind: monaco.languages.CompletionItemKind.Keyword,
+          insertText: 'SELECT * FROM ',
+          detail: 'Select Statement'
+        },
+        {
+          label: 'UPDATE',
+          kind: monaco.languages.CompletionItemKind.Keyword,
+          insertText: 'UPDATE ${1:table_name} SET ${2:column} = ${3:value} WHERE ${4:condition};',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          detail: 'Update Statement'
+        },
+        {
+          label: 'DELETE',
+          kind: monaco.languages.CompletionItemKind.Keyword,
+          insertText: 'DELETE FROM ${1:table_name} WHERE ${2:condition};',
+          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+          detail: 'Delete Statement'
+        }
+      ]
+      return { suggestions: suggestions as any }
+    }
+  })
+}
+
+/**
+ * 初始化 Monaco Editor 并设置为 SQL 只读视图
+ *
+ * @param sqlContent 需要渲染的 SQL 文本内容
+ */
 const initMonaco = (sqlContent: string) => {
   if (editorContainer.value) {
+    registerMonacoSnippets()
     editor = monaco.editor.create(editorContainer.value, {
       value: sqlContent,
       language: 'sql',
       theme: 'vs-dark',
-      readOnly: true,
+      readOnly: false, // 允许编辑以体验代码提示功能，实际审批环节应为 true
       minimap: { enabled: false },
       automaticLayout: true
     })
@@ -100,13 +139,8 @@ const fetchTicketDetail = async () => {
   try {
     const id = route.params.id || '1' // fallback for demo
 
-    // axios 拦截器或请求头需带上 JWT，这里由于未使用封装的 request.ts，需手动设置 Authorization
-    const token = localStorage.getItem('wmdb_token')
-    const response = await axios.get(`/api/v1/ticket/${id}/detail`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
+    // 使用封装的 request.ts，自动携带 JWT 并处理异常
+    const response: any = await request.get(`/v1/ticket/${id}/detail`)
 
     ticketDetail.value = response.data.detail
 
