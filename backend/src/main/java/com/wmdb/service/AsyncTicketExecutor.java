@@ -11,20 +11,24 @@ import com.wmdb.model.SqlTicket;
 import com.wmdb.model.SqlTicketDetail;
 import io.minio.GetObjectArgs;
 import org.springframework.beans.factory.annotation.Value;
+import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
+import com.baomidou.dynamic.datasource.creator.DataSourceProperty;
+import com.baomidou.dynamic.datasource.creator.DefaultDataSourceCreator;
+import com.baomidou.dynamic.datasource.toolkit.DynamicDataSourceContextHolder;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+import javax.sql.DataSource;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.util.UUID;
 import org.slf4j.MDC;
-import java.sql.DriverManager;
-import java.sql.Statement;
 
 /**
  * 异步工单执行器
@@ -42,18 +46,23 @@ public class AsyncTicketExecutor {
     private final DbInstanceMapper dbInstanceMapper;
     private final StorageService storageService;
     private final SqlAuditLogMapper sqlAuditLogMapper;
+    private final DataSource dataSource;
+    private final DefaultDataSourceCreator dataSourceCreator;
 
     @Value("${wmdb.db.aes-key:1234567890123456}")
     private String aesKey;
 
     public AsyncTicketExecutor(SqlTicketMapper sqlTicketMapper, SqlTicketDetailMapper sqlTicketDetailMapper,
                                DbInstanceMapper dbInstanceMapper, StorageService storageService,
-                               SqlAuditLogMapper sqlAuditLogMapper) {
+                               SqlAuditLogMapper sqlAuditLogMapper, DataSource dataSource,
+                               DefaultDataSourceCreator dataSourceCreator) {
         this.sqlTicketMapper = sqlTicketMapper;
         this.sqlTicketDetailMapper = sqlTicketDetailMapper;
         this.dbInstanceMapper = dbInstanceMapper;
         this.storageService = storageService;
         this.sqlAuditLogMapper = sqlAuditLogMapper;
+        this.dataSource = dataSource;
+        this.dataSourceCreator = dataSourceCreator;
     }
 
     /**
@@ -113,7 +122,29 @@ public class AsyncTicketExecutor {
                 pwd = instance.getPasswordCipher();
             }
 
-            try (Connection conn = DriverManager.getConnection(instance.getJdbcUrl(), instance.getUsername(), pwd);
+            // Dynamic Datasource Integration
+            String dsKey = "ds_" + instance.getId();
+            DataSourceProperty dsp = new DataSourceProperty();
+            dsp.setPoolName(dsKey);
+            dsp.setUrl(instance.getJdbcUrl());
+            dsp.setUsername(instance.getUsername());
+            dsp.setPassword(pwd);
+
+            // Determine driver dynamically
+            if ("mysql".equalsIgnoreCase(instance.getDbType())) {
+                dsp.setDriverClassName("com.mysql.cj.jdbc.Driver");
+            } else if ("dameng".equalsIgnoreCase(instance.getDbType())) {
+                dsp.setDriverClassName("dm.jdbc.driver.DmDriver");
+            } else {
+                dsp.setDriverClassName("com.mysql.cj.jdbc.Driver"); // fallback
+            }
+
+            DynamicRoutingDataSource drds = (DynamicRoutingDataSource) dataSource;
+            DataSource newDataSource = dataSourceCreator.createDataSource(dsp);
+            drds.addDataSource(dsKey, newDataSource);
+            DynamicDataSourceContextHolder.push(dsKey);
+
+            try (Connection conn = drds.getConnection();
                  Statement stmt = conn.createStatement()) {
 
                 // Protection mechanism for large execution sets
@@ -180,6 +211,10 @@ public class AsyncTicketExecutor {
                 System.err.println("JDBC Execution failed: " + e.getMessage());
                 ticket.setStatus("FAILED");
                 sqlTicketMapper.updateById(ticket);
+            } finally {
+                // Clear context and remove dynamic data source
+                DynamicDataSourceContextHolder.poll();
+                drds.removeDataSource(dsKey);
             }
         } catch (Exception e) {
             System.err.println("Ticket execution process failed: " + e.getMessage());
