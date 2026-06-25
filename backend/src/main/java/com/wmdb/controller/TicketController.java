@@ -1,8 +1,8 @@
 package com.wmdb.controller;
 
+import com.wmdb.common.Result;
 import com.wmdb.model.SqlTicket;
 import com.wmdb.service.TicketService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.wmdb.model.SqlTicketDetail;
 import io.minio.GetPresignedObjectUrlArgs;
@@ -59,18 +59,15 @@ public class TicketController {
      * @param instanceId 目标实例 ID
      * @param file 附件文件（长短文分流）
      * @return 响应包含工单基础信息
+     * @throws Exception 上传异常或 AST 解析异常
      */
     @PostMapping("/submit")
-    public ResponseEntity<?> submitTicket(@RequestParam("instanceId") Long instanceId,
-                                          @RequestParam("file") MultipartFile file) {
-        try {
-            // Get ID Card from security context (populated by JwtAuthenticationFilter)
-            String idCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            SqlTicket ticket = ticketService.submitTicket(idCard, instanceId, file);
-            return ResponseEntity.ok(ticket);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Submission failed: " + e.getMessage());
-        }
+    public Result<SqlTicket> submitTicket(@RequestParam("instanceId") Long instanceId,
+                                          @RequestParam("file") MultipartFile file) throws Exception {
+        // Get ID Card from security context (populated by JwtAuthenticationFilter)
+        String idCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        SqlTicket ticket = ticketService.submitTicket(idCard, instanceId, file);
+        return Result.success(ticket);
     }
 
     /**
@@ -80,17 +77,13 @@ public class TicketController {
      * @return 包含工单及明细数据的响应实体
      */
     @GetMapping("/{id}/detail")
-    public ResponseEntity<?> getTicketDetail(@PathVariable("id") Long id) {
-        try {
-            String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            Map<String, Object> detail = ticketService.getTicketDetail(id, currentIdCard);
-            if (detail == null || detail.get("ticket") == null) {
-                return ResponseEntity.status(403).body("Access denied or ticket not found");
-            }
-            return ResponseEntity.ok(detail);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error retrieving details: " + e.getMessage());
+    public Result<Map<String, Object>> getTicketDetail(@PathVariable("id") Long id) {
+        String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Map<String, Object> detail = ticketService.getTicketDetail(id, currentIdCard);
+        if (detail == null || detail.get("ticket") == null) {
+            throw new RuntimeException("Access denied or ticket not found");
         }
+        return Result.success(detail);
     }
 
     /**
@@ -98,38 +91,35 @@ public class TicketController {
      *
      * @param id 工单主键 ID
      * @return 临时防盗链 URL
+     * @throws Exception MinIO 异常
      */
     @GetMapping("/{id}/download-url")
-    public ResponseEntity<?> getDownloadUrl(@PathVariable("id") Long id) {
-        try {
-            String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            Map<String, Object> detailMap = ticketService.getTicketDetail(id, currentIdCard);
-            if (detailMap == null || detailMap.get("detail") == null) {
-                return ResponseEntity.status(403).body("Access denied or ticket not found");
-            }
-
-            SqlTicketDetail detail = (SqlTicketDetail) detailMap.get("detail");
-            String objectKey = detail.getAttachmentOssKey();
-            if (objectKey == null) {
-                return ResponseEntity.badRequest().body("No attachment found for this ticket.");
-            }
-
-            MinioClient minioClient = MinioClient.builder()
-                .endpoint(endpoint)
-                .credentials(accessKey, secretKey)
-                .build();
-
-            String url = minioClient.getPresignedObjectUrl(
-                GetPresignedObjectUrlArgs.builder()
-                    .method(Method.GET)
-                    .bucket(bucketName)
-                    .object(objectKey)
-                    .expiry(5, TimeUnit.MINUTES)
-                    .build());
-
-            return ResponseEntity.ok(Map.of("url", url));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("Failed to generate download URL: " + e.getMessage());
+    public Result<Map<String, String>> getDownloadUrl(@PathVariable("id") Long id) throws Exception {
+        String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Map<String, Object> detailMap = ticketService.getTicketDetail(id, currentIdCard);
+        if (detailMap == null || detailMap.get("detail") == null) {
+            throw new RuntimeException("Access denied or ticket not found");
         }
+
+        SqlTicketDetail detail = (SqlTicketDetail) detailMap.get("detail");
+        String objectKey = detail.getAttachmentOssKey();
+        if (objectKey == null) {
+            throw new RuntimeException("No attachment found for this ticket.");
+        }
+
+        MinioClient minioClient = MinioClient.builder()
+            .endpoint(endpoint)
+            .credentials(accessKey, secretKey)
+            .build();
+
+        String url = minioClient.getPresignedObjectUrl(
+            GetPresignedObjectUrlArgs.builder()
+                .method(Method.GET)
+                .bucket(bucketName)
+                .object(objectKey)
+                .expiry(5, TimeUnit.MINUTES)
+                .build());
+
+        return Result.success(Map.of("url", url));
     }
 }
