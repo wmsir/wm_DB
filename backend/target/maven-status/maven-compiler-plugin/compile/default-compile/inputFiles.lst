@@ -8,9 +8,15 @@
 /app/backend/src/main/java/com/wmdb/security/JwtAuthenticationFilter.java
 /app/backend/src/main/java/com/wmdb/service/StorageService.java
 /app/backend/src/main/java/com/wmdb/controller/AuthController.java
+/app/backend/src/main/java/com/wmdb/mapper/DbInstanceMapper.java
+/app/backend/src/main/java/com/wmdb/mapper/SqlAuditLogMapper.java
 /app/backend/src/main/java/com/wmdb/model/SqlTicketDetail.java
+/app/backend/src/main/java/com/wmdb/config/MybatisPlusConfig.java
+/app/backend/src/main/java/com/wmdb/mapper/SysUserMapper.java
+/app/backend/src/main/java/com/wmdb/mapper/SqlTicketDetailMapper.java
 /app/backend/src/main/java/com/wmdb/controller/TicketController.java
 /app/backend/src/main/java/com/wmdb/controller/WorkflowController.java
 /app/backend/src/main/java/com/wmdb/engine/MysqlEngineImpl.java
+/app/backend/src/main/java/com/wmdb/mapper/SqlTicketMapper.java
 /app/backend/src/main/java/com/wmdb/model/SysUser.java
 /app/backend/src/main/java/com/wmdb/security/SecurityConfig.java

@@ -42,6 +42,12 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * 审批流工单详情视图组件
+ *
+ * 左侧展示基于 Flowable 生成的审批时间线，右侧使用 Monaco Editor（只读模式）渲染 SQL 语句，
+ * 对于含有超大附件的工单，提供带有防盗链处理的临时预签名 URL 下载按钮。
+ */
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -54,7 +60,7 @@ let editor: monaco.editor.IStandaloneCodeEditor | null = null
 
 const ticketDetail = ref<any>(null)
 
-// Mock Flowable timeline data
+// 模拟 Flowable 审批流时间线数据
 const activities = ref([
   {
     content: '工单草稿创建',
@@ -68,6 +74,11 @@ const activities = ref([
   }
 ])
 
+/**
+ * 初始化 Monaco Editor 并设置为 SQL 只读视图
+ *
+ * @param sqlContent 需要渲染的 SQL 文本内容
+ */
 const initMonaco = (sqlContent: string) => {
   if (editorContainer.value) {
     editor = monaco.editor.create(editorContainer.value, {
@@ -81,6 +92,9 @@ const initMonaco = (sqlContent: string) => {
   }
 }
 
+/**
+ * 拉取工单详细信息，包含 AST 解析后的安全审查摘要
+ */
 const fetchTicketDetail = async () => {
   try {
     // const id = route.params.id || '1' // fallback for demo
@@ -98,11 +112,14 @@ const fetchTicketDetail = async () => {
   }
 }
 
+/**
+ * 触发基于 MinIO 防盗链机制的附件安全下载
+ */
 const downloadAttachment = async () => {
   try {
     const id = route.params.id || '1'
     const url = await downloadTicketAttachment(id as string)
-    // Anti-hotlinking implementation: create a temporary anchor element
+    // 防盗链实现：创建临时下载链接进行拉取
     const link = document.createElement('a')
     link.href = url
     link.target = '_blank'

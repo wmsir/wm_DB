@@ -1,7 +1,13 @@
+/**
+ * Vue Router 路由配置
+ *
+ * 定义系统中的所有页面跳转规则。
+ */
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
 import TicketDetail from '../views/TicketDetail.vue'
 
+// 路由规则表
 const routes = [
   {
     path: '/',
@@ -16,7 +22,7 @@ const routes = [
     path: '/ticket/:id',
     name: 'TicketDetail',
     component: TicketDetail,
-    // Typically requires auth metadata here
+    // 实际项目中此处应配置 auth metadata 路由守卫
   }
 ]
 

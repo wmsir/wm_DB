@@ -1,3 +1,8 @@
+/**
+ * 整个前端应用的入口文件
+ *
+ * 负责实例化 Vue 应用，加载路由、UI 组件库（ElementPlus）并注册全局指令（如水印防盗）。
+ */
 import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
@@ -8,8 +13,14 @@ import { watermark } from './directives/watermark'
 
 const app = createApp(App)
 
+// 挂载路由模块
 app.use(router)
+
+// 挂载 Element Plus 组件库
 app.use(ElementPlus)
+
+// 注册全局自定义防盗水印指令
 app.directive('watermark', watermark)
 
+// 启动并挂载到 #app
 app.mount('#app')

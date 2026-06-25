@@ -35,24 +35,36 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * 登录视图组件
+ *
+ * 提供基于身份证号码的实名制安全认证功能。
+ * 包含 18 位身份证号码的正则校验（支持末尾为 X/x），以及基础的密码校验逻辑。
+ * 验证通过后将获取到的 JWT Token 写入 localStorage 中。
+ */
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import axios from 'axios'
 
+// 表单引用和加载状态
 const loginFormRef = ref<FormInstance>()
 const loading = ref(false)
 
+// 登录表单数据
 const loginForm = reactive({
   idCard: '',
   password: ''
 })
 
+/**
+ * 自定义身份证校验规则
+ */
 const validateIdCard = (_rule: any, value: any, callback: any) => {
   if (!value) {
     return callback(new Error('请输入身份证号码'))
   }
-  // 18-digit ID card regex, supporting ending with X/x
+  // 18位身份证正则，支持末尾为大/小写 X
   const idCardRegex = /^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/
   if (!idCardRegex.test(value)) {
     return callback(new Error('身份证号码格式不正确'))
@@ -60,6 +72,7 @@ const validateIdCard = (_rule: any, value: any, callback: any) => {
   callback()
 }
 
+// 绑定至 Element Plus 表单的验证规则
 const loginRules = reactive<FormRules>({
   idCard: [
     { required: true, validator: validateIdCard, trigger: 'blur' }
@@ -70,6 +83,9 @@ const loginRules = reactive<FormRules>({
   ]
 })
 
+/**
+ * 提交登录请求
+ */
 const handleLogin = async () => {
   if (!loginFormRef.value) return
   await loginFormRef.value.validate(async (valid) => {
