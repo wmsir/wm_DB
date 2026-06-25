@@ -7,11 +7,15 @@ import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
 import router from './router'
+import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import { watermark } from './directives/watermark'
 
 const app = createApp(App)
+
+// 挂载 Pinia 状态管理
+app.use(createPinia())
 
 // 挂载路由模块
 app.use(router)
