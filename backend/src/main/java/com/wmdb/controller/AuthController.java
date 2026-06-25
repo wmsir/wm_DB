@@ -3,6 +3,7 @@ package com.wmdb.controller;
 import com.wmdb.service.AuthService;
 import lombok.Data;
 import com.wmdb.common.Result;
+import com.wmdb.common.annotation.RateLimit;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,6 +42,7 @@ public class AuthController {
      * @param loginRequest 登录请求参数封装
      * @return 包含 Token 的响应实体
      */
+    @RateLimit(time = 60, count = 5) // Prevent brute-force: max 5 requests per minute per IP
     @PostMapping("/login")
     public Result<Map<String, String>> login(@RequestBody LoginRequest loginRequest) {
         String token = authService.login(loginRequest.getIdCard(), loginRequest.getPassword());

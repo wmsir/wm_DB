@@ -16,8 +16,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<Void>> handleException(Exception e) {
+        // Log the exception securely here
+        System.err.println("Internal Server Error: " + e.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Result.error(500, e.getMessage()));
+                .body(Result.error(500, "Internal Server Error"));
     }
 
     @ExceptionHandler(RuntimeException.class)

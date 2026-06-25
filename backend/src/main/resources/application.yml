@@ -1,14 +1,18 @@
 spring:
   application:
     name: wmdb-backend
+  redis:
+    host: localhost
+    port: 6379
+    password:
   datasource:
     dynamic:
       primary: master
       datasource:
         master:
-          url: jdbc:mysql://localhost:3306/wmdb?useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC
-          username: root
-          password: password
+          url: ${WMDB_DB_URL:jdbc:mysql://localhost:3306/wmdb?useUnicode=true&characterEncoding=utf-8&serverTimezone=UTC}
+          username: ${WMDB_DB_USERNAME:root}
+          password: ${WMDB_DB_PASSWORD:}
           driver-class-name: com.mysql.cj.jdbc.Driver
 
 mybatis-plus:
@@ -17,10 +21,12 @@ mybatis-plus:
 
 wmdb:
   jwt:
-    secret: ${WMDB_JWT_SECRET:A_VERY_LONG_SECRET_KEY_FOR_WMDB_V2_COMMERCIAL_EDITION_2024_06_24_AND_MOVED_TO_YML!}
+    secret: ${WMDB_JWT_SECRET:A_VERY_LONG_SECRET_KEY_FOR_WMDB_V2_COMMERCIAL_EDITION_2024_06_24_DEFAULT_FALLBACK!}
     expiration: 86400000
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}
     secret-key: ${MINIO_SECRET_KEY:minioadmin}
     bucket: ${MINIO_BUCKET:wmdb-attachments}
+  rsa:
+    private-key: ${WMDB_RSA_PRIVATE_KEY:MIICdQIBADANBgkqhkiG9w0BAQEFAASCAl8wggJbAgEAAoGBAMG9V40wQ723J8q6b/r1E0Wf5Y3QxI6cK7cO0tG8Z4f3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4Nv7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B/q+R8sK8R5b5aJ9mZ2k3v7p1b2W1g3V4N+2J2B}
