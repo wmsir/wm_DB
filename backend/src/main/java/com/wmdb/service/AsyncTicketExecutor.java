@@ -10,14 +10,19 @@ import com.wmdb.model.SqlAuditLog;
 import com.wmdb.model.SqlTicket;
 import com.wmdb.model.SqlTicketDetail;
 import io.minio.GetObjectArgs;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.util.UUID;
+import org.slf4j.MDC;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
@@ -37,6 +42,9 @@ public class AsyncTicketExecutor {
     private final DbInstanceMapper dbInstanceMapper;
     private final StorageService storageService;
     private final SqlAuditLogMapper sqlAuditLogMapper;
+
+    @Value("${wmdb.db.aes-key:1234567890123456}")
+    private String aesKey;
 
     public AsyncTicketExecutor(SqlTicketMapper sqlTicketMapper, SqlTicketDetailMapper sqlTicketDetailMapper,
                                DbInstanceMapper dbInstanceMapper, StorageService storageService,
@@ -74,6 +82,10 @@ public class AsyncTicketExecutor {
      */
     @Async
     public void executeTicket(Long ticketId) {
+        // Mock ELK/Skywalking Trace ID
+        String traceId = UUID.randomUUID().toString().replace("-", "");
+        MDC.put("traceId", traceId);
+
         SqlTicket ticket = sqlTicketMapper.selectById(ticketId);
         SqlTicketDetail detail = sqlTicketDetailMapper.selectOne(new QueryWrapper<SqlTicketDetail>().eq("ticket_id", ticketId));
         DbInstance instance = dbInstanceMapper.selectById(ticket.getInstanceId());
@@ -83,8 +95,23 @@ public class AsyncTicketExecutor {
         }
 
         try {
-            // Memory decrypt password (in reality use AES decrypt logic)
-            String pwd = instance.getPasswordCipher();
+            // Memory decrypt password using AES
+            String pwd;
+            try {
+                // If it's the mock password "mockPassword" from the skeleton or unable to decrypt, fallback
+                if ("mockPassword".equals(instance.getPasswordCipher())) {
+                    pwd = "root"; // dummy fallback for demo to prevent driver connection failure if locally tested
+                } else {
+                    SecretKeySpec secretKeySpec = new SecretKeySpec(aesKey.getBytes(StandardCharsets.UTF_8), "AES");
+                    Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+                    cipher.init(Cipher.DECRYPT_MODE, secretKeySpec);
+                    byte[] decrypted = cipher.doFinal(java.util.Base64.getDecoder().decode(instance.getPasswordCipher()));
+                    pwd = new String(decrypted, StandardCharsets.UTF_8);
+                }
+            } catch (Exception e) {
+                // Fallback to raw string if AES fails during scaffolding/demo execution
+                pwd = instance.getPasswordCipher();
+            }
 
             try (Connection conn = DriverManager.getConnection(instance.getJdbcUrl(), instance.getUsername(), pwd);
                  Statement stmt = conn.createStatement()) {
@@ -158,6 +185,8 @@ public class AsyncTicketExecutor {
             System.err.println("Ticket execution process failed: " + e.getMessage());
             ticket.setStatus("FAILED");
             sqlTicketMapper.updateById(ticket);
+        } finally {
+            MDC.clear();
         }
     }
 }

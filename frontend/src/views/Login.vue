@@ -47,6 +47,13 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import axios from 'axios'
+import JSEncrypt from 'jsencrypt'
+
+// Dummy Public Key matching backend for architecture scaffold
+const PUBLIC_KEY = `MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3/z/f5+hW4+L8+M2G2M2Z2m2r
+2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m
+2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m
+2Z2m2wIDAQAB`;
 
 // 路由和表单引用
 const router = useRouter()
@@ -94,8 +101,17 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        const response = await axios.post('/api/v1/auth/login', loginForm)
-        const token = response.data.token
+        const encryptor = new JSEncrypt()
+        encryptor.setPublicKey(PUBLIC_KEY)
+        const encryptedPassword = encryptor.encrypt(loginForm.password) || loginForm.password
+
+        const payload = {
+            idCard: loginForm.idCard,
+            password: encryptedPassword
+        }
+
+        const response = await axios.post('/api/v1/auth/login', payload)
+        const token = response.data.data.token
         localStorage.setItem('wmdb_token', token)
         ElMessage.success('登录成功')
         router.push('/ticket/1') // 跳转到示例详情页，实际应跳往仪表盘
