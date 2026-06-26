@@ -125,7 +125,7 @@ public class AsyncTicketExecutor {
     }
 
     /**
-     * 保存单条 SQL 执行审计日志
+     * 保存单条 SQL 执行审计日志，并使用 SM3 构建防篡改哈希链
      */
     private void saveAuditLog(Long ticketId, String sql, long costMs, String status, String errorTrace) {
         SqlAuditLog log = new SqlAuditLog();
@@ -134,12 +134,21 @@ public class AsyncTicketExecutor {
         log.setCostTimeMs(costMs);
         log.setStatus(status);
         log.setErrorTrace(errorTrace);
-        // Hash chain logic is omitted for the scaffold, setting dummy hash
-        log.setCurrentHash("dummy-hash");
+
         try {
+            // Retrieve the last log to form the chain
+            SqlAuditLog lastLog = sqlAuditLogMapper.selectOne(new QueryWrapper<SqlAuditLog>().orderByDesc("id").last("LIMIT 1"));
+            String prevHash = (lastLog != null && lastLog.getCurrentHash() != null) ? lastLog.getCurrentHash() : "0000000000000000000000000000000000000000000000000000000000000000";
+            log.setPreviousHash(prevHash);
+
+            // Compute SM3 hash of (prevHash + ticketId + status + sql)
+            String rawStr = prevHash + ticketId + status + sql;
+            String currentHash = com.wmdb.security.SmUtils.sm3Hash(rawStr);
+            log.setCurrentHash(currentHash);
+
             sqlAuditLogMapper.insert(log);
         } catch (Exception e) {
-            System.err.println("Failed to insert audit log: " + e.getMessage());
+            System.err.println("Failed to insert audit log with hash chain: " + e.getMessage());
         }
     }
 
@@ -190,12 +199,18 @@ public class AsyncTicketExecutor {
             dsp.setPassword(pwd);
 
             // Determine driver dynamically
-            if ("mysql".equalsIgnoreCase(instance.getDbType())) {
+            if ("mysql".equalsIgnoreCase(instance.getDbType()) || "tidb".equalsIgnoreCase(instance.getDbType())) {
                 dsp.setDriverClassName("com.mysql.cj.jdbc.Driver");
             } else if ("dameng".equalsIgnoreCase(instance.getDbType())) {
                 dsp.setDriverClassName("dm.jdbc.driver.DmDriver");
             } else if ("oracle".equalsIgnoreCase(instance.getDbType())) {
                 dsp.setDriverClassName("oracle.jdbc.OracleDriver");
+            } else if ("kingbase".equalsIgnoreCase(instance.getDbType())) {
+                dsp.setDriverClassName("com.kingbase8.Driver");
+            } else if ("oceanbase".equalsIgnoreCase(instance.getDbType())) {
+                dsp.setDriverClassName("com.alipay.oceanbase.jdbc.Driver"); // or mysql driver depending on tenant
+            } else if ("opengauss".equalsIgnoreCase(instance.getDbType())) {
+                dsp.setDriverClassName("org.opengauss.Driver");
             } else {
                 dsp.setDriverClassName("com.mysql.cj.jdbc.Driver"); // fallback
             }
