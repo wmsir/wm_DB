@@ -6,7 +6,7 @@ import lombok.Data;
  * 统一 API 响应结果包装类
  *
  * @param <T> 数据类型
- * @author Jules
+ * @author wm
  */
 @Data
 public class Result<T> {

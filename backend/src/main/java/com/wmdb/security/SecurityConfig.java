@@ -16,7 +16,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * 负责配置无状态会话、跨域、CSRF 以及对请求的鉴权拦截规则。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Configuration

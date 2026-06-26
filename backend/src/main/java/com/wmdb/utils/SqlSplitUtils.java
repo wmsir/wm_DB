@@ -9,7 +9,7 @@ import java.util.List;
  * 处理字符串内部的分号，防止 naive split(";") 导致的错误。
  * </p>
  *
- * @author Jules
+ * @author wm
  */
 public class SqlSplitUtils {
 

@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
  * 处理基于身份证号码的实名登录逻辑，校验凭据并签发 JWT Token。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Service

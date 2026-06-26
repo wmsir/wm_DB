@@ -10,7 +10,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 /**
  * Redis 缓存配置类
  *
- * @author Jules
+ * @author wm
  */
 @Configuration
 public class RedisConfig {

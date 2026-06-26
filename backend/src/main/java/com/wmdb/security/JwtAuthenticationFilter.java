@@ -19,7 +19,7 @@ import java.util.ArrayList;
  * 如果有效，将用户信息封装存入 SecurityContextHolder。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Component

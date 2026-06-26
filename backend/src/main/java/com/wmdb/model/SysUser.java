@@ -11,7 +11,7 @@ import lombok.Data;
  * 映射 sys_user 表，存储用户真实姓名、身份证（登录名）、角色等实名制安全信息。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Data

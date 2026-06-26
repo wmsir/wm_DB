@@ -6,7 +6,7 @@ import com.wmdb.model.DbInstance;
 /**
  * 数据库实例 Mapper
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 public interface DbInstanceMapper extends BaseMapper<DbInstance> {

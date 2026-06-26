@@ -19,7 +19,7 @@ import java.util.UUID;
  * 小文件直接转文本，超大文件上传至 MinIO 并截取摘要防 OOM。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Service

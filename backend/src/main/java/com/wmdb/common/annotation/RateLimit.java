@@ -5,7 +5,7 @@ import java.lang.annotation.*;
 /**
  * API 速率限制注解
  *
- * @author Jules
+ * @author wm
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

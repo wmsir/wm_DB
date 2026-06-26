@@ -16,7 +16,7 @@ import java.util.List;
  * 实现针对达梦数据库方言的 AST 语法分析与拦截校验。
  * </p>
  *
- * @author Jules
+ * @author wm
  */
 @Component
 public class DmEngineImpl implements DbEnginePlugin {

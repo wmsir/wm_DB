@@ -11,7 +11,7 @@ import lombok.Data;
  * 映射 db_instance 表，存储纳管的目标数据库实例连接信息及安全凭证。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Data

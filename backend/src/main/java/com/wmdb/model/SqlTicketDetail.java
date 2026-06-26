@@ -11,7 +11,7 @@ import lombok.Data;
  * 映射 sql_ticket_detail 表，存储 SQL 文本内容或超大文件摘要及附件 OSS 路径。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Data

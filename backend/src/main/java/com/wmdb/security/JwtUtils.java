@@ -16,7 +16,7 @@ import java.util.Date;
  * 负责基于 HMAC 算法签发、解析和校验 JWT Token。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Component

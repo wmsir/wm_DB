@@ -11,7 +11,7 @@ import lombok.Data;
  * 映射 sql_ticket 表，记录审批流工单基础信息，串联 Flowable 审批实例。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Data

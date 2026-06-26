@@ -22,7 +22,7 @@ import java.sql.Statement;
  * 目标库直连执行 EXPLAIN 预估执行计划，进行全表扫描拦截和低效索征测。
  * </p>
  *
- * @author Jules
+ * @author wm
  */
 @Service
 public class SqlLintService {

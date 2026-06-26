@@ -6,7 +6,7 @@ import com.wmdb.model.SqlAuditLog;
 /**
  * SQL 执行审计日志 Mapper
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 public interface SqlAuditLogMapper extends BaseMapper<SqlAuditLog> {
