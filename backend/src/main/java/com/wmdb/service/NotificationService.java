@@ -9,7 +9,7 @@ import org.springframework.stereotype.Service;
  * 适配企业微信、钉钉等企业级 IM 平台，推送卡片消息用于一键审批或状态流转通知。
  * </p>
  *
- * @author Jules
+ * @author wm
  */
 @Service
 public class NotificationService {

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 完成权限过滤、装配并入库，实现企业级系统对接。
  * </p>
  *
- * @author Jules
+ * @author wm
  */
 @RestController
 @RequestMapping("/api/v1/sync")

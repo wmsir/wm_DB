@@ -36,7 +36,7 @@ import org.slf4j.MDC;
  * 专门用于在后台线程中异步执行耗时的 SQL 脚本，不阻塞主回调线程。
  * </p>
  *
- * @author Jules
+ * @author wm
  */
 @Service
 public class AsyncTicketExecutor {

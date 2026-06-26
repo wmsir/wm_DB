@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
  * 对 DQL 查询结果集进行正则表达式匹配，识别并脱敏手机号、身份证、邮箱等敏感信息。
  * </p>
  *
- * @author Jules
+ * @author wm
  */
 @Service
 public class DataMaskingService {

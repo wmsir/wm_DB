@@ -17,7 +17,7 @@ import java.util.List;
  * 采用 Alibaba Druid 解析 AST 语法树，对危险语句（如无 Where 范围的删改、Select *）进行强拦截。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Component

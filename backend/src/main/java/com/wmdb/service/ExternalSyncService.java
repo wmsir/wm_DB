@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 动态将外部的部门/岗位标签映射为系统内置的 role，用以驱动 Flowable 动态审批连线。
  * </p>
  *
- * @author Jules
+ * @author wm
  */
 @Service
 public class ExternalSyncService {

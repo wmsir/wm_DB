@@ -11,7 +11,7 @@ import lombok.Data;
  * 映射 sql_audit_log 表，记录执行详情和耗时，采用哈希链机制防止日志篡改。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @Data

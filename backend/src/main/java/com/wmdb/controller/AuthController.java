@@ -18,7 +18,7 @@ import java.util.Map;
  * 提供实名制登录 API 接口，返回验证通过后的 JWT 令牌。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 @RestController

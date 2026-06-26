@@ -6,7 +6,7 @@ import com.wmdb.model.SqlTicket;
 /**
  * SQL 工单 Mapper
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 public interface SqlTicketMapper extends BaseMapper<SqlTicket> {

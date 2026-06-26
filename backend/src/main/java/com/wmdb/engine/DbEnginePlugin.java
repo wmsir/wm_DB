@@ -9,7 +9,7 @@ import com.wmdb.model.DbInstance;
  * 以保证系统架构防腐和高扩展性。
  * </p>
  *
- * @author Jules
+ * @author wm
  * @date 2023-10-25
  */
 public interface DbEnginePlugin {
