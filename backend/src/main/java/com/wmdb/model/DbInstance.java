@@ -40,6 +40,11 @@ public class DbInstance {
     private String jdbcUrl;
 
     /**
+     * 只读从库 JDBC 连接串（可选，用于 DQL 读写分离）
+     */
+    private String readOnlyJdbcUrl;
+
+    /**
      * 数据库账号
      */
     private String username;

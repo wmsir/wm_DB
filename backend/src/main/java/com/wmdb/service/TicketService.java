@@ -46,6 +46,8 @@ public class TicketService {
     private final SqlTicketDetailMapper sqlTicketDetailMapper;
     private final DbInstanceMapper dbInstanceMapper;
     private final AsyncTicketExecutor asyncTicketExecutor;
+    private final SqlLintService sqlLintService;
+    private final NotificationService notificationService;
 
     /**
      * 构造函数注入依赖
@@ -65,7 +67,8 @@ public class TicketService {
                          DmEngineImpl dmEnginePlugin, OracleEngineImpl oracleEnginePlugin,
                          RuntimeService runtimeService, TaskService taskService,
                          SqlTicketMapper sqlTicketMapper, SqlTicketDetailMapper sqlTicketDetailMapper,
-                         DbInstanceMapper dbInstanceMapper, AsyncTicketExecutor asyncTicketExecutor) {
+                         DbInstanceMapper dbInstanceMapper, AsyncTicketExecutor asyncTicketExecutor,
+                         SqlLintService sqlLintService, NotificationService notificationService) {
         this.storageService = storageService;
         this.mysqlEnginePlugin = mysqlEnginePlugin;
         this.dmEnginePlugin = dmEnginePlugin;
@@ -76,6 +79,8 @@ public class TicketService {
         this.sqlTicketDetailMapper = sqlTicketDetailMapper;
         this.dbInstanceMapper = dbInstanceMapper;
         this.asyncTicketExecutor = asyncTicketExecutor;
+        this.sqlLintService = sqlLintService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -115,6 +120,9 @@ public class TicketService {
         DbEnginePlugin enginePlugin = getEnginePlugin(instance.getDbType());
         enginePlugin.preCheck(storageResult.getAstCheckText());
 
+        // 2.5 智能化 SQL 审核：执行 EXPLAIN
+        sqlLintService.explainCheck(instance, storageResult.getAstCheckText());
+
         // 3. Create Ticket
         Long ticketId = System.currentTimeMillis();
         SqlTicket ticket = new SqlTicket();
@@ -152,6 +160,9 @@ public class TicketService {
         ticket.setFlowInstanceId(processInstance.getId());
         sqlTicketMapper.updateById(ticket);
 
+        // 发送通知
+        notificationService.sendTicketNotification(ticket, "SUBMITTED");
+
         return ticket;
     }
 
@@ -165,8 +176,18 @@ public class TicketService {
         if (ticket != null && "AUDITING".equals(ticket.getStatus())) {
             ticket.setStatus("APPROVED");
             sqlTicketMapper.updateById(ticket);
-            // 委托给专门的异步组件执行，避免阻塞回调线程
-            asyncTicketExecutor.executeTicket(ticketId);
+
+            // 发送通知
+            notificationService.sendTicketNotification(ticket, "APPROVED");
+
+            // 维护窗口判断
+            if (ticket.getExecutionWindow() != null && !ticket.getExecutionWindow().isEmpty()) {
+                // 如果有维护窗口，暂时先不执行，由定时任务来拉起。模拟状态。
+                System.out.println("Ticket " + ticketId + " queued for maintenance window: " + ticket.getExecutionWindow());
+            } else {
+                // 委托给专门的异步组件执行，避免阻塞回调线程
+                asyncTicketExecutor.executeTicket(ticketId);
+            }
         }
     }
 
