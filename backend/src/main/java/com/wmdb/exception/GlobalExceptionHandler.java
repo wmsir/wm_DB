@@ -17,14 +17,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Result<Void>> handleException(Exception e) {
         // Log the exception securely here
-        System.err.println("Internal Server Error: " + e.getMessage());
+        System.err.println("系统异常: " + e.getMessage());
+        // B0500: 系统执行出错
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Result.error(500, "Internal Server Error"));
+                .body(Result.error("B0500", "系统内部异常，请联系管理员"));
     }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Result<Void>> handleRuntimeException(RuntimeException e) {
+        // A0400: 用户请求参数错误/校验未通过
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Result.error(400, e.getMessage()));
+                .body(Result.error("A0400", e.getMessage()));
     }
 }

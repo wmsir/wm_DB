@@ -71,7 +71,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         } catch (Exception e) {
-            // Token is invalid, let the request proceed to hit authorization rules
+            // Token is invalid, return standard JSON response
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":\"A0220\", \"message\":\"用户身份验证未通过，请重新登录\"}");
+            return;
         }
 
         filterChain.doFilter(request, response);

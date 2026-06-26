@@ -10,14 +10,14 @@ import lombok.Data;
  */
 @Data
 public class Result<T> {
-    private Integer code;
+    private String code;
     private String message;
     private T data;
 
     public static <T> Result<T> success(T data) {
         Result<T> result = new Result<>();
-        result.setCode(200);
-        result.setMessage("Success");
+        result.setCode("00000"); // 阿里规范：00000 表示一切 ok
+        result.setMessage("操作成功");
         result.setData(data);
         return result;
     }
@@ -26,7 +26,7 @@ public class Result<T> {
         return success(null);
     }
 
-    public static <T> Result<T> error(Integer code, String message) {
+    public static <T> Result<T> error(String code, String message) {
         Result<T> result = new Result<>();
         result.setCode(code);
         result.setMessage(message);
