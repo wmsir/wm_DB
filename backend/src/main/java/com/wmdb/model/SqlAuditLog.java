@@ -58,4 +58,9 @@ public class SqlAuditLog {
      * 当前日志的 Hash 值
      */
     private String currentHash;
+
+    /**
+     * 影子重放（Flashback）生成的回滚 SQL 语句
+     */
+    private String rollbackSql;
 }

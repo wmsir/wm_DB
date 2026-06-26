@@ -53,4 +53,9 @@ public class SqlTicket {
      * 关联的 Flowable 流程实例 ID
      */
     private String flowInstanceId;
+
+    /**
+     * 指定的维护窗口期（如：cron 表达式或特定时间范围，为空则立即执行）
+     */
+    private String executionWindow;
 }
