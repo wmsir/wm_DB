@@ -29,8 +29,8 @@ request.interceptors.response.use(
   response => {
     const res = response.data
 
-    // 如果返回的 code 不是 200，说明业务接口有异常
-    if (res.code && res.code !== 200) {
+    // 如果返回的 code 不是 00000 或 200，说明业务接口有异常
+    if (res.code && res.code !== 200 && res.code !== '00000') {
       ElMessage({
         message: res.message || 'Error',
         type: 'error',

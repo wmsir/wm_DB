@@ -4,9 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.wmdb.mapper.SysUserMapper;
 import com.wmdb.model.SysUser;
 import com.wmdb.security.JwtUtils;
-import com.wmdb.security.RsaUtils;
+import com.wmdb.security.SmUtils;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
@@ -25,8 +24,6 @@ public class AuthService {
 
     private final JwtUtils jwtUtils;
     private final SysUserMapper sysUserMapper;
-    private final PasswordEncoder passwordEncoder;
-    private final RsaUtils rsaUtils;
     private final RedisTemplate<String, Object> redisTemplate;
 
     /**
@@ -34,16 +31,11 @@ public class AuthService {
      *
      * @param jwtUtils JWT 工具类
      * @param sysUserMapper 用户 Mapper
-     * @param passwordEncoder 密码加密器
-     * @param rsaUtils RSA 解密工具
      * @param redisTemplate Redis 缓存模板
      */
-    public AuthService(JwtUtils jwtUtils, SysUserMapper sysUserMapper, PasswordEncoder passwordEncoder,
-                       RsaUtils rsaUtils, RedisTemplate<String, Object> redisTemplate) {
+    public AuthService(JwtUtils jwtUtils, SysUserMapper sysUserMapper, RedisTemplate<String, Object> redisTemplate) {
         this.jwtUtils = jwtUtils;
         this.sysUserMapper = sysUserMapper;
-        this.passwordEncoder = passwordEncoder;
-        this.rsaUtils = rsaUtils;
         this.redisTemplate = redisTemplate;
     }
 
@@ -51,19 +43,19 @@ public class AuthService {
      * 执行登录逻辑
      *
      * @param idCard 身份证号码
-     * @param password 密码
+     * @param encryptedPassword 密码
      * @return 登录成功后签发的 JWT Token
      */
     public String login(String idCard, String encryptedPassword) {
         try {
             // Decrypt password
-            String password = rsaUtils.decrypt(encryptedPassword);
+            String password = SmUtils.sm2Decrypt(encryptedPassword);
 
             // Find user by ID card
             SysUser user = sysUserMapper.selectOne(new QueryWrapper<SysUser>().eq("id_card", idCard));
 
-            // Strictly verify credentials against DB using BCrypt
-            if (user == null || !passwordEncoder.matches(password, user.getPasswordCipher())) {
+            // Strictly verify credentials against DB using SM3
+            if (user == null || !SmUtils.sm3Matches(password, user.getPasswordCipher())) {
                 throw new RuntimeException("Invalid credentials");
             }
 

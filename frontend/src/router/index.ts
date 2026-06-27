@@ -5,6 +5,9 @@
  */
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '../views/Login.vue'
+import Layout from '../views/Layout.vue'
+import Dashboard from '../views/Dashboard.vue'
+import TicketList from '../views/TicketList.vue'
 import TicketDetail from '../views/TicketDetail.vue'
 import WorkflowDesigner from '../views/WorkflowDesigner.vue'
 
@@ -22,16 +25,31 @@ const routes = [
     component: Login
   },
   {
-    path: '/ticket/:id',
-    name: 'TicketDetail',
-    component: TicketDetail,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/workflow-designer',
-    name: 'WorkflowDesigner',
-    component: WorkflowDesigner,
-    meta: { requiresAuth: true }
+    path: '/',
+    component: Layout,
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: 'dashboard',
+        name: 'Dashboard',
+        component: Dashboard
+      },
+      {
+        path: 'ticket-list',
+        name: 'TicketList',
+        component: TicketList
+      },
+      {
+        path: 'ticket/:id',
+        name: 'TicketDetail',
+        component: TicketDetail
+      },
+      {
+        path: 'workflow-designer',
+        name: 'WorkflowDesigner',
+        component: WorkflowDesigner
+      }
+    ]
   }
 ]
 
@@ -48,8 +66,8 @@ router.beforeEach((to, _from, next) => {
     // 若路由需要鉴权且未登录，重定向到登录页
     next({ name: 'Login' })
   } else if (to.name === 'Login' && userStore.isAuthenticated) {
-    // 若已登录且目标是登录页，直接跳转主页或具体工单（此处简化跳至示例）
-    next({ path: '/ticket/1' })
+    // 若已登录且目标是登录页，直接跳转 Dashboard
+    next({ name: 'Dashboard' })
   } else {
     next()
   }
