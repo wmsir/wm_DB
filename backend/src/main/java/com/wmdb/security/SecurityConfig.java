@@ -5,8 +5,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -35,16 +33,6 @@ public class SecurityConfig {
     }
 
     /**
-     * 配置密码加密器 BCrypt
-     *
-     * @return PasswordEncoder 实例
-     */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    /**
      * 配置安全过滤链
      *
      * @param http HttpSecurity 对象
@@ -58,6 +46,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/v1/auth/login").permitAll()
+                .requestMatchers("/api/v1/openapi/**").permitAll() // Allow OpenAPI usage
                 // The callback should ideally be protected by HMAC or IP whitelisting.
                 // For this secure skeleton, we require standard authentication.
                 .requestMatchers("/api/v1/workflow/callback").authenticated()

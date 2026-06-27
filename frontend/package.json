@@ -19,11 +19,13 @@
     "jwt-decode": "^4.0.0",
     "monaco-editor": "^0.55.1",
     "pinia": "^3.0.4",
+    "sm-crypto": "^0.4.0",
     "vue": "^3.5.38",
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
+    "@types/sm-crypto": "^0.3.4",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/tsconfig": "^0.9.1",
     "esbuild": "^0.28.1",

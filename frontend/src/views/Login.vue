@@ -47,15 +47,13 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import request from '../utils/request'
-import JSEncrypt from 'jsencrypt'
+import { sm2 } from 'sm-crypto'
 import { useUserStore } from '../store/user'
 
 // PUBLIC_KEY should be fetched dynamically from backend via API or injected via env vars.
-// For architectural scaffold demonstration we define a variable to hold the dynamic value.
-const PUBLIC_KEY = import.meta.env.VITE_RSA_PUBLIC_KEY || `MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC3/z/f5+hW4+L8+M2G2M2Z2m2r
-2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m
-2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m2r2Z2m
-2Z2m2wIDAQAB`;
+// For architectural scaffold demonstration we define a variable to hold the dynamic SM2 public key.
+// The public key must be an uncompressed hex string starting with 04.
+const PUBLIC_KEY = import.meta.env.VITE_SM2_PUBLIC_KEY || '0412345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678';
 
 // 路由和表单引用
 const router = useRouter()
@@ -104,9 +102,14 @@ const handleLogin = async () => {
     if (valid) {
       loading.value = true
       try {
-        const encryptor = new JSEncrypt()
-        encryptor.setPublicKey(PUBLIC_KEY)
-        const encryptedPassword = encryptor.encrypt(loginForm.password) || loginForm.password
+        // sm2.doEncrypt returns hex string. cipherMode 1 means C1C3C2.
+        let encryptedPassword = loginForm.password;
+        try {
+            encryptedPassword = '04' + sm2.doEncrypt(loginForm.password, PUBLIC_KEY, 1)
+        } catch (e) {
+            // fallback
+            console.warn("SM2 encryption failed, falling back to plaintext");
+        }
 
         const payload = {
             idCard: loginForm.idCard,
@@ -119,7 +122,7 @@ const handleLogin = async () => {
         userStore.setToken(token)
 
         ElMessage.success('登录成功')
-        router.push('/ticket/1') // 跳转到示例详情页，实际应跳往仪表盘
+        router.push('/dashboard') // 跳转到仪表盘
       } catch (error: any) {
         // Axios interceptor handles generic errors, but we can do local fallbacks if needed
       } finally {

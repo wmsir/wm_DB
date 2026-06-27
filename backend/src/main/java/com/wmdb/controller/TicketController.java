@@ -71,6 +71,17 @@ public class TicketController {
     }
 
     /**
+     * 获取用户工单列表
+     *
+     * @return 包含工单列表的响应实体
+     */
+    @GetMapping("/list")
+    public Result<java.util.List<SqlTicket>> listTickets() {
+        String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return Result.success(ticketService.listUserTickets(currentIdCard));
+    }
+
+    /**
      * 获取工单详情
      *
      * @param id 工单主键 ID

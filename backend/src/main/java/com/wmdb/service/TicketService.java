@@ -192,6 +192,16 @@ public class TicketService {
     }
 
     /**
+     * 获取用户工单列表
+     *
+     * @param idCard 申请人身份证号码
+     * @return 用户的工单列表
+     */
+    public java.util.List<SqlTicket> listUserTickets(String idCard) {
+        return sqlTicketMapper.selectList(new QueryWrapper<SqlTicket>().eq("applicant_id_card", idCard).orderByDesc("id"));
+    }
+
+    /**
      * 获取工单聚合详情 (带权限校验)
      *
      * @param ticketId 工单 ID
