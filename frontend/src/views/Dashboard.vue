@@ -46,7 +46,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import request from '../utils/request'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
@@ -114,6 +114,11 @@ const initCharts = () => {
   }
 }
 
+const handleResize = () => {
+  if (ticketChartRef.value) echarts.getInstanceByDom(ticketChartRef.value)?.resize()
+  if (workloadChartRef.value) echarts.getInstanceByDom(workloadChartRef.value)?.resize()
+}
+
 const loadStats = async () => {
   try {
     const res: any = await request.get('/v1/dashboard/stats')
@@ -128,11 +133,11 @@ const loadStats = async () => {
 
 onMounted(() => {
   loadStats()
+  window.addEventListener('resize', handleResize)
+})
 
-  window.addEventListener('resize', () => {
-    if (ticketChartRef.value) echarts.getInstanceByDom(ticketChartRef.value)?.resize()
-    if (workloadChartRef.value) echarts.getInstanceByDom(workloadChartRef.value)?.resize()
-  })
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 

@@ -24,7 +24,7 @@ request.interceptors.request.use(
     return config
   },
   error => {
-    console.log(error)
+    console.error('Request interceptor error:', error)
     return Promise.reject(error)
   }
 )
@@ -48,7 +48,7 @@ request.interceptors.response.use(
     }
   },
   error => {
-    console.log('err' + error) // for debug
+    console.error('Response interceptor error:', error) // for debug
 
     let message = error.message
     if (error.response) {
