@@ -18,6 +18,8 @@ import lombok.Data;
 @TableName("sql_audit_log")
 public class SqlAuditLog {
 
+    private String tenantId;
+
     /**
      * 主键 ID
      */

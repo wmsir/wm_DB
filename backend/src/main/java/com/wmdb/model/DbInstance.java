@@ -18,6 +18,8 @@ import lombok.Data;
 @TableName("db_instance")
 public class DbInstance {
 
+    private String tenantId;
+
     /**
      * 主键 ID
      */

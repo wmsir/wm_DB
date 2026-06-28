@@ -171,24 +171,13 @@ public class AsyncTicketExecutor {
             return;
         }
 
+        // Update status to EXECUTING before starting
+        ticket.setStatus("EXECUTING");
+        sqlTicketMapper.updateById(ticket);
+
         try {
-            // Memory decrypt password using AES
-            String pwd;
-            try {
-                // If it's the mock password "mockPassword" from the skeleton or unable to decrypt, fallback
-                if ("mockPassword".equals(instance.getPasswordCipher())) {
-                    pwd = "root"; // dummy fallback for demo to prevent driver connection failure if locally tested
-                } else {
-                    SecretKeySpec secretKeySpec = new SecretKeySpec(aesKey.getBytes(StandardCharsets.UTF_8), "AES");
-                    Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-                    cipher.init(Cipher.DECRYPT_MODE, secretKeySpec);
-                    byte[] decrypted = cipher.doFinal(java.util.Base64.getDecoder().decode(instance.getPasswordCipher()));
-                    pwd = new String(decrypted, StandardCharsets.UTF_8);
-                }
-            } catch (Exception e) {
-                // Fallback to raw string if AES fails during scaffolding/demo execution
-                pwd = instance.getPasswordCipher();
-            }
+            // Memory decrypt password using SM4
+            String pwd = com.wmdb.security.SmUtils.sm4Decrypt(instance.getPasswordCipher(), aesKey);
 
             // Dynamic Datasource Integration
             String dsKey = "ds_" + instance.getId();

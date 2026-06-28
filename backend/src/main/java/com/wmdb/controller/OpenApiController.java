@@ -33,6 +33,7 @@ public class OpenApiController {
      * @param applicantId 申请人身份证（鉴权校验依据）
      * @return 工单状态和概要信息
      */
+    @com.wmdb.common.annotation.RateLimit(time = 60, count = 100)
     @GetMapping("/ticket/{id}/status")
     public Result<Map<String, Object>> getTicketStatus(@PathVariable("id") Long ticketId,
                                                        @RequestParam("applicantId") String applicantId) {

@@ -18,6 +18,8 @@ import lombok.Data;
 @TableName("sys_user")
 public class SysUser {
 
+    private String tenantId;
+
     /**
      * 主键 ID
      */

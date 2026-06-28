@@ -18,6 +18,8 @@ import lombok.Data;
 @TableName("sql_ticket")
 public class SqlTicket {
 
+    private String tenantId;
+
     /**
      * 主键 ID
      */
