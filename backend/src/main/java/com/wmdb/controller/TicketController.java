@@ -3,16 +3,19 @@ package com.wmdb.controller;
 import com.wmdb.common.Result;
 import com.wmdb.model.SqlTicket;
 import com.wmdb.service.TicketService;
+import com.wmdb.exception.BusinessException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.wmdb.model.SqlTicketDetail;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.http.Method;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Map;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -24,6 +27,7 @@ import java.util.concurrent.TimeUnit;
  * @author wm
  * @date 2023-10-25
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/ticket")
 public class TicketController {
@@ -76,7 +80,7 @@ public class TicketController {
      * @return 包含工单列表的响应实体
      */
     @GetMapping("/list")
-    public Result<java.util.List<SqlTicket>> listTickets() {
+    public Result<List<SqlTicket>> listTickets() {
         String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         return Result.success(ticketService.listUserTickets(currentIdCard));
     }
@@ -92,7 +96,7 @@ public class TicketController {
         String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Map<String, Object> detail = ticketService.getTicketDetail(id, currentIdCard);
         if (detail == null || detail.get("ticket") == null) {
-            throw new RuntimeException("Access denied or ticket not found");
+            throw new BusinessException("A0403", "拒绝访问或工单不存在");
         }
         return Result.success(detail);
     }
@@ -109,13 +113,13 @@ public class TicketController {
         String currentIdCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Map<String, Object> detailMap = ticketService.getTicketDetail(id, currentIdCard);
         if (detailMap == null || detailMap.get("detail") == null) {
-            throw new RuntimeException("Access denied or ticket not found");
+            throw new BusinessException("A0403", "拒绝访问或工单不存在");
         }
 
         SqlTicketDetail detail = (SqlTicketDetail) detailMap.get("detail");
         String objectKey = detail.getAttachmentOssKey();
         if (objectKey == null) {
-            throw new RuntimeException("No attachment found for this ticket.");
+            throw new BusinessException("A0404", "此工单没有附件");
         }
 
         MinioClient minioClient = MinioClient.builder()

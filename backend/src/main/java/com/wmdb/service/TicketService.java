@@ -14,11 +14,14 @@ import com.wmdb.engine.OracleEngineImpl;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
+import lombok.extern.slf4j.Slf4j;
+import com.wmdb.exception.BusinessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,6 +35,7 @@ import java.util.UUID;
  * @author wm
  * @date 2023-10-25
  */
+@Slf4j
 @Service
 public class TicketService {
 
@@ -112,7 +116,7 @@ public class TicketService {
         // Fetch db instance to determine plugin
         DbInstance instance = dbInstanceMapper.selectById(instanceId);
         if (instance == null) {
-            throw new RuntimeException("Target DB instance not found");
+            throw new BusinessException("A0400", "目标数据库实例不存在");
         }
 
         // 2. Pre-Check AST using selected engine plugin
@@ -183,7 +187,7 @@ public class TicketService {
             // 维护窗口判断
             if (ticket.getExecutionWindow() != null && !ticket.getExecutionWindow().isEmpty()) {
                 // 如果有维护窗口，暂时先不执行，由定时任务来拉起。模拟状态。
-                System.out.println("Ticket " + ticketId + " queued for maintenance window: " + ticket.getExecutionWindow());
+                log.info("Ticket {} queued for maintenance window: {}", ticketId, ticket.getExecutionWindow());
             } else {
                 // 委托给专门的异步组件执行，避免阻塞回调线程
                 asyncTicketExecutor.executeTicket(ticketId);
@@ -197,7 +201,7 @@ public class TicketService {
      * @param idCard 申请人身份证号码
      * @return 用户的工单列表
      */
-    public java.util.List<SqlTicket> listUserTickets(String idCard) {
+    public List<SqlTicket> listUserTickets(String idCard) {
         return sqlTicketMapper.selectList(new QueryWrapper<SqlTicket>().eq("applicant_id_card", idCard).orderByDesc("id"));
     }
 

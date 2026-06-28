@@ -7,6 +7,8 @@ import com.alibaba.druid.sql.ast.statement.SQLSelectStatement;
 import com.alibaba.druid.sql.ast.statement.SQLUpdateStatement;
 import com.alibaba.druid.sql.visitor.SchemaStatVisitor;
 import com.wmdb.model.DbInstance;
+import com.wmdb.exception.BusinessException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.List;
  * @author wm
  * @date 2023-10-25
  */
+@Slf4j
 @Component
 public class MysqlEngineImpl implements DbEnginePlugin {
 
@@ -38,18 +41,18 @@ public class MysqlEngineImpl implements DbEnginePlugin {
             if (stmt instanceof SQLUpdateStatement) {
                 SQLUpdateStatement updateStmt = (SQLUpdateStatement) stmt;
                 if (updateStmt.getWhere() == null) {
-                    throw new RuntimeException("AST Error: UPDATE statement without WHERE clause is not allowed.");
+                    throw new BusinessException("A0400", "AST Error: 严禁执行无 WHERE 条件的 UPDATE 语句。");
                 }
             } else if (stmt instanceof SQLDeleteStatement) {
                 SQLDeleteStatement deleteStmt = (SQLDeleteStatement) stmt;
                 if (deleteStmt.getWhere() == null) {
-                    throw new RuntimeException("AST Error: DELETE statement without WHERE clause is not allowed.");
+                    throw new BusinessException("A0400", "AST Error: 严禁执行无 WHERE 条件的 DELETE 语句。");
                 }
             } else if (stmt instanceof SQLSelectStatement) {
                 // A very basic check for "SELECT *"
                 String stmtString = SQLUtils.toSQLString(stmt, dbType).toUpperCase();
                 if (stmtString.contains("SELECT *")) {
-                    throw new RuntimeException("AST Error: SELECT * is not allowed.");
+                    throw new BusinessException("A0400", "AST Error: 严禁执行 SELECT * 查询。");
                 }
             }
         }
@@ -64,6 +67,6 @@ public class MysqlEngineImpl implements DbEnginePlugin {
     @Override
     public void execute(DbInstance instance, String script) {
         // Implementation for execution (to be handled dynamically in TicketService/Flowable callback)
-        System.out.println("Executing script on instance: " + instance.getName());
+        log.info("Executing script on instance: {}", instance.getName());
     }
 }
