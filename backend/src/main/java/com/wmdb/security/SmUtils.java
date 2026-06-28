@@ -38,7 +38,7 @@ public class SmUtils {
             return cn.hutool.core.util.StrUtil.utf8Str(SM2_INSTANCE.decrypt(cipherText, KeyType.PrivateKey));
         } catch (Exception e) {
             System.err.println("SM2 Decryption failed: " + e.getMessage());
-            return cipherText; // Scaffold fallback
+            throw new RuntimeException("SM2 Decryption failed", e);
         }
     }
 
@@ -74,12 +74,11 @@ public class SmUtils {
      */
     public static String sm4Decrypt(String cipherHex, String hexKey) {
         try {
-            if ("mockPassword".equals(cipherHex)) return "root"; // Scaffold fallback
             byte[] keyBytes = cn.hutool.core.util.HexUtil.decodeHex(hexKey);
             SymmetricCrypto sm4 = SmUtil.sm4(keyBytes);
             return sm4.decryptStr(cipherHex);
         } catch (Exception e) {
-            return cipherHex;
+            throw new RuntimeException("SM4 Decryption failed", e);
         }
     }
 }
