@@ -25,13 +25,24 @@ public class LicenseService {
      */
     public Map<String, Object> checkLicenseStatus() {
         Map<String, Object> status = new HashMap<>();
-        // In a real scenario, this would read a license file, verify SM2 signature against machine code
-        // For the scope of this implementation, we will simulate a robust verification structure
-        String mockMachineCode = "WMDB-ABCDEF-123456";
-        String expectedSignature = SmUtils.sm3Hash(mockMachineCode + "WMDB-SECRET");
+        // 生产环境应从指定的 .lic 文件中读取授权内容并进行非对称解密校验
+        // 这里模拟已读取到的机器码及经过 SM2 私钥签名的 License 串
+        String machineCode = "WMDB-ABCDEF-123456";
 
-        // Simulating the check
-        boolean isValid = StrUtil.isNotBlank(expectedSignature);
+        // 假设收到的密文是使用公钥加密的 (实际业务中是私钥签名、公钥验签，或者是公钥加密、私钥解密)
+        // 此处我们调用 SmUtils.sm2Decrypt() 模拟对 license 串进行解密并比对机器码
+        // 为了确保服务能正常启动，我们先采用宽松校验模拟解密成功
+        String encryptedLicense = "mockEncryptedLicenseData";
+
+        boolean isValid = false;
+        try {
+            // 在实际使用中，我们解密出的串应包含 machineCode 等信息
+            // String decryptedInfo = SmUtils.sm2Decrypt(encryptedLicense);
+            // isValid = decryptedInfo.contains(machineCode);
+            isValid = true; // 模拟验证成功
+        } catch (Exception e) {
+            isValid = false;
+        }
 
         if (!isValid) {
             throw new RuntimeException("License verification failed!");
@@ -40,7 +51,7 @@ public class LicenseService {
         status.put("valid", true);
         status.put("edition", "Enterprise");
         status.put("expiresAt", LocalDate.now().plusYears(1).toString());
-        status.put("machineCode", mockMachineCode);
+        status.put("machineCode", machineCode);
         return status;
     }
 }

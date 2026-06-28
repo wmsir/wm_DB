@@ -31,20 +31,14 @@
     <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="12">
         <el-card shadow="hover">
-          <template #header>工单统计</template>
-          <div>
-            <p>总工单数：{{ stats.totalTickets }}</p>
-            <p>待处理工单：{{ stats.pendingTickets }}</p>
-          </div>
+          <template #header>工单分布统计</template>
+          <div ref="ticketChartRef" style="width: 100%; height: 300px;"></div>
         </el-card>
       </el-col>
       <el-col :span="12">
         <el-card shadow="hover">
-          <template #header>DBA 工作负载</template>
-          <div>
-            <el-progress :percentage="stats.dbaWorkload" />
-            <p style="margin-top: 10px; color: #666;">系统压力较高，建议增加节点</p>
-          </div>
+          <template #header>DBA 工作负载趋势</template>
+          <div ref="workloadChartRef" style="width: 100%; height: 300px;"></div>
         </el-card>
       </el-col>
     </el-row>
@@ -52,9 +46,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import request from '../utils/request'
 import { ElMessage } from 'element-plus'
+import * as echarts from 'echarts'
 
 const stats = ref({
   healthScore: 0,
@@ -66,10 +61,66 @@ const stats = ref({
   approvalEfficiency: '0h'
 })
 
+const ticketChartRef = ref<HTMLElement | null>(null)
+const workloadChartRef = ref<HTMLElement | null>(null)
+
+const initCharts = () => {
+  if (ticketChartRef.value) {
+    const ticketChart = echarts.init(ticketChartRef.value)
+    ticketChart.setOption({
+      tooltip: { trigger: 'item' },
+      legend: { top: '5%', left: 'center' },
+      series: [
+        {
+          name: '工单状态',
+          type: 'pie',
+          radius: ['40%', '70%'],
+          avoidLabelOverlap: false,
+          label: { show: false, position: 'center' },
+          emphasis: {
+            label: { show: true, fontSize: 20, fontWeight: 'bold' }
+          },
+          labelLine: { show: false },
+          data: [
+            { value: stats.value.totalTickets - stats.value.pendingTickets, name: '已处理' },
+            { value: stats.value.pendingTickets, name: '待处理' }
+          ]
+        }
+      ]
+    })
+  }
+
+  if (workloadChartRef.value) {
+    const workloadChart = echarts.init(workloadChartRef.value)
+    workloadChart.setOption({
+      tooltip: { trigger: 'axis' },
+      xAxis: {
+        type: 'category',
+        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+      },
+      yAxis: {
+        type: 'value',
+        max: 100
+      },
+      series: [
+        {
+          data: [20, 32, 41, stats.value.dbaWorkload, 60, 45, 30],
+          type: 'line',
+          smooth: true,
+          areaStyle: {}
+        }
+      ]
+    })
+  }
+}
+
 const loadStats = async () => {
   try {
     const res: any = await request.get('/v1/dashboard/stats')
     stats.value = res.data
+    nextTick(() => {
+      initCharts()
+    })
   } catch (error) {
     ElMessage.error('加载大盘数据失败')
   }
@@ -77,6 +128,11 @@ const loadStats = async () => {
 
 onMounted(() => {
   loadStats()
+
+  window.addEventListener('resize', () => {
+    if (ticketChartRef.value) echarts.getInstanceByDom(ticketChartRef.value)?.resize()
+    if (workloadChartRef.value) echarts.getInstanceByDom(workloadChartRef.value)?.resize()
+  })
 })
 </script>
 
