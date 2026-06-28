@@ -16,6 +16,11 @@ request.interceptors.request.use(
     if (userStore.token) {
       config.headers['Authorization'] = `Bearer ${userStore.token}` // 让每个请求携带自定义 token
     }
+
+    // 注入多租户上下文，生产环境应从登录信息或域名解析中动态获取
+    const tenantId = localStorage.getItem('tenantId') || 'public'
+    config.headers['X-Tenant-Id'] = tenantId
+
     return config
   },
   error => {
