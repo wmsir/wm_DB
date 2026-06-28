@@ -28,22 +28,21 @@ public class XssJacksonDeserializer extends JsonDeserializer<String> {
 
     private String stripXSS(String value) {
         if (value != null) {
-            // 仅仅过滤掉最明显的危险 XSS 代码结构
-            // 注意：因为这是一个数据库/SQL 治理平台，过度过滤会导致正常 SQL 语句被破坏。
-            // 实际企业级应用建议在展示层（前端）使用 DOMPurify 或对纯文本进行完全 HTML 编码处理，
-            // 这里我们只去掉最致命且无明显业务意义的 script 节点注入和常见事件
+            // 作为一个 SQL 治理平台，由于输入中可能包含大量合法的 `<`、`>` 符号或类似 HTML 标签的字符内容，
+            // 传统的 Regex XSS 过滤（尤其是全局的 Jackson 过滤）会造成极为严重的数据破坏和误伤。
+            // 因此，后端反序列化时应尽可能保留原始输入以供 AST 解析，
+            // 防护 XSS 的正确且安全的姿势是：
+            // 1. 拦截层对非法空字符进行剥离。
+            // 2. 前端展示数据时，使用 DOMPurify 或 Vue 的内置 HTML 实体编码进行安全渲染。
+
             value = value.replaceAll("\0", "");
 
-            // Only remove script tags explicitly if they are standalone tags intended for XSS
-            // Be very conservative to prevent breaking user's actual SQL strings
-            Pattern scriptPattern = Pattern.compile("<script>(.*?)</script>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-            value = scriptPattern.matcher(value).replaceAll("");
-
-            scriptPattern = Pattern.compile("javascript:alert\\((.*?)\\)", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-            value = scriptPattern.matcher(value).replaceAll("");
-
-            scriptPattern = Pattern.compile("onerror=(.*?)[ >]", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-            value = scriptPattern.matcher(value).replaceAll(" ");
+            // 为了兼顾防御最基本的脚本注入而尽量不误伤 SQL，
+            // 这里仅拦截特定的已知高度恶意的非 SQL 关键词组合，而不是进行正则替换破坏 SQL。
+            String upperValue = value.toUpperCase();
+            if (upperValue.contains("<SCRIPT>") || upperValue.contains("JAVASCRIPT:")) {
+                throw new IllegalArgumentException("Potential XSS payload detected in request body.");
+            }
         }
         return value;
     }
