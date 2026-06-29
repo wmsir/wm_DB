@@ -22,6 +22,9 @@
         <el-menu-item index="/license">
           <span>商业授权 (License)</span>
         </el-menu-item>
+        <el-menu-item index="/ai-sql-review">
+          <span>AI 智能审查</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 

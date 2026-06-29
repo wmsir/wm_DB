@@ -92,8 +92,40 @@ public class AiService {
      * 智能 SQL 优化建议
      */
     public String optimizeSql(String sql) {
-        String sysPrompt = "你是一位资深的 DBA。请对以下 SQL 进行性能审查，指出其中可能存在的全表扫描、隐式转换、死锁风险或不规范的写法，并给出具体的优化建议和重写后的 SQL。";
+        String sysPrompt = "你是一位资深的 DBA。请对以下 SQL 进行性能审查，指出其中可能存在的全表扫描、隐式转换、死锁风险或不规范的写法，并给出具体的优化建议。";
         return callLlm(sysPrompt, sql);
+    }
+
+    /**
+     * SQL 解释
+     */
+    public String explainSql(String sql) {
+        String sysPrompt = "你是一位数据库技术专家。请通俗易懂地解释以下 SQL 语句的业务意图和执行逻辑。";
+        return callLlm(sysPrompt, sql);
+    }
+
+    /**
+     * SQL 重写
+     */
+    public String rewriteSql(String sql) {
+        String sysPrompt = "你是一位数据库开发专家。请将以下 SQL 重写为更加规范、性能更好的等价 SQL，并附带重写理由。只返回重写后的 SQL 和简短注释即可。";
+        return callLlm(sysPrompt, sql);
+    }
+
+    /**
+     * SQL 风险分析
+     */
+    public String riskAnalyzeSql(String sql) {
+        String sysPrompt = "你是一位数据库安全专家。请对以下 SQL 进行严格的安全与风险审计，指出是否存在 SQL 注入风险、越权访问、删除全表、无 WHERE 条件更新等高危操作。";
+        return callLlm(sysPrompt, sql);
+    }
+
+    /**
+     * 执行计划解释
+     */
+    public String explainExecutionPlan(String planStr) {
+        String sysPrompt = "你是一位数据库性能调优专家。用户会提供一段数据库执行计划（EXPLAIN 输出），请用通俗的语言解释其执行过程，指出其中的性能瓶颈（如 filesort, temporary table, 全表扫描等），并给出优化建议。";
+        return callLlm(sysPrompt, planStr);
     }
 
     /**

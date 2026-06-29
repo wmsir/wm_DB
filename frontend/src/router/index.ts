@@ -11,6 +11,7 @@ import TicketList from '../views/TicketList.vue'
 import TicketDetail from '../views/TicketDetail.vue'
 import WorkflowDesigner from '../views/WorkflowDesigner.vue'
 import License from '../views/License.vue'
+import AiSqlReview from '../views/AiSqlReview.vue'
 
 import { useUserStore } from '../store/user'
 
@@ -54,6 +55,11 @@ const routes = [
         path: 'license',
         name: 'License',
         component: License
+      },
+      {
+        path: 'ai-sql-review',
+        name: 'AiSqlReview',
+        component: AiSqlReview
       }
     ]
   }

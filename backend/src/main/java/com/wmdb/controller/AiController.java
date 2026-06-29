@@ -45,6 +45,38 @@ public class AiController {
         return Result.success(aiService.optimizeSql(request.getSql()));
     }
 
+    /**
+     * SQL 解释
+     */
+    @PostMapping("/explain")
+    public Result<String> explainSql(@RequestBody OptimizeRequest request) {
+        return Result.success(aiService.explainSql(request.getSql()));
+    }
+
+    /**
+     * SQL 重写
+     */
+    @PostMapping("/rewrite")
+    public Result<String> rewriteSql(@RequestBody OptimizeRequest request) {
+        return Result.success(aiService.rewriteSql(request.getSql()));
+    }
+
+    /**
+     * SQL 风险分析
+     */
+    @PostMapping("/risk")
+    public Result<String> riskAnalyzeSql(@RequestBody OptimizeRequest request) {
+        return Result.success(aiService.riskAnalyzeSql(request.getSql()));
+    }
+
+    /**
+     * 执行计划解释
+     */
+    @PostMapping("/explain-plan")
+    public Result<String> explainExecutionPlan(@RequestBody OptimizeRequest request) {
+        return Result.success(aiService.explainExecutionPlan(request.getSql())); // request.getSql() holds the plan text
+    }
+
     @Data
     public static class Text2SqlRequest {
         private String prompt;
