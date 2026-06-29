@@ -19,6 +19,9 @@
         <el-menu-item index="/workflow-designer">
           <span>流程设计器</span>
         </el-menu-item>
+        <el-menu-item index="/license">
+          <span>商业授权 (License)</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
