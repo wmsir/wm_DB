@@ -1,6 +1,7 @@
 package com.wmdb.runner;
 
 import com.wmdb.service.LicenseService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
  *
  * @author wm
  */
+@Slf4j
 @Component
 public class LicenseCheckRunner implements CommandLineRunner {
 
@@ -23,12 +25,12 @@ public class LicenseCheckRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        System.out.println("====== 正在校验系统 License ======");
+        log.info("====== 正在校验系统 License ======");
         try {
             licenseService.checkLicenseStatus();
-            System.out.println("====== License 校验通过 ======");
+            log.info("====== License 校验通过 ======");
         } catch (Exception e) {
-            System.err.println("====== License 校验失败，系统即将退出 ======");
+            log.error("====== License 校验失败，系统即将退出 ======", e);
             System.exit(1);
         }
     }
