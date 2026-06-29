@@ -161,6 +161,7 @@ public class TicketService {
         ticket.setApplicantIdCard(idCard);
         ticket.setInstanceId(instanceId);
         ticket.setType(type);
+        ticket.setReason(reason);
         ticket.setStatus("AUDITING");
         ticket.setBusinessKey(UUID.randomUUID().toString());
 
@@ -177,7 +178,8 @@ public class TicketService {
             // Mocking impact estimation for architecture demonstration based on file size
             estimatedRows = file != null && file.getSize() > 1024 * 50 ? 50000 : 50;
         } else {
-            detail.setSqlText("-- 请求原因: \n" + reason);
+            // 安全修复：严禁将业务原因直接拼接进 SQL 以防止越权执行
+            detail.setSqlText("");
         }
         detail.setAffectRowsEstimate(estimatedRows);
 

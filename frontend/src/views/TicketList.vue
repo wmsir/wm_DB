@@ -106,8 +106,11 @@ const viewDetail = (id: number) => {
 const getStatusType = (status: string) => {
   switch (status) {
     case 'APPROVED': return 'success'
+    case 'EXECUTED': return 'success'
     case 'AUDITING': return 'warning'
+    case 'MANUAL_PROCESSING': return 'warning'
     case 'REJECTED': return 'danger'
+    case 'FAILED': return 'danger'
     default: return 'info'
   }
 }

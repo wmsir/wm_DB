@@ -17,6 +17,7 @@ import com.baomidou.dynamic.datasource.creator.DefaultDataSourceCreator;
 import com.baomidou.dynamic.datasource.toolkit.DynamicDataSourceContextHolder;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -38,6 +39,7 @@ import org.slf4j.MDC;
  *
  * @author wm
  */
+@Slf4j
 @Service
 public class AsyncTicketExecutor {
 
@@ -170,6 +172,16 @@ public class AsyncTicketExecutor {
         DbInstance instance = dbInstanceMapper.selectById(ticket.getInstanceId());
 
         if (ticket == null || detail == null || instance == null) {
+            return;
+        }
+
+        // 安全修复：仅允许自动化 SQL 类型进入 JDBC 执行阶段
+        java.util.List<String> autoExecutableTypes = java.util.Arrays.asList("SQL_AUDIT", "DATA_RECOVERY");
+        if (!autoExecutableTypes.contains(ticket.getType())) {
+            log.info("工单 {} 为非自动化 SQL 执行类型 ({})，需转为人工处理通道，安全跳过 JDBC 引擎自动执行步骤。", ticketId, ticket.getType());
+            ticket.setStatus("MANUAL_PROCESSING"); // 标记为需人工处理
+            sqlTicketMapper.updateById(ticket);
+            notificationService.sendTicketNotification(ticket, "MANUAL_PROCESSING");
             return;
         }
 
