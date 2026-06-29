@@ -109,9 +109,12 @@ public class TicketService {
      * @throws Exception 处理异常
      */
     @Transactional(rollbackFor = Exception.class)
-    public SqlTicket submitTicket(String idCard, Long instanceId, MultipartFile file) throws Exception {
-        // 1. Process File
-        StorageService.StorageResult storageResult = storageService.processSqlFile(file);
+    public SqlTicket submitTicket(String idCard, Long instanceId, String type, String reason, MultipartFile file) throws Exception {
+        // 1. Process File (if present)
+        StorageService.StorageResult storageResult = null;
+        if (file != null && !file.isEmpty()) {
+            storageResult = storageService.processSqlFile(file);
+        }
 
         // Fetch db instance to determine plugin
         DbInstance instance = dbInstanceMapper.selectById(instanceId);
@@ -119,13 +122,15 @@ public class TicketService {
             throw new BusinessException("A0400", "目标数据库实例不存在");
         }
 
-        // 2. Pre-Check AST using selected engine plugin
-        // Important: use astCheckText which has no appended strings to prevent Druid ParserException
-        DbEnginePlugin enginePlugin = getEnginePlugin(instance.getDbType());
-        enginePlugin.preCheck(storageResult.getAstCheckText());
+        // 2. Pre-Check AST using selected engine plugin (only for SQL related tickets)
+        if (storageResult != null && ("SQL_AUDIT".equals(type) || "DATA_RECOVERY".equals(type))) {
+            // Important: use astCheckText which has no appended strings to prevent Druid ParserException
+            DbEnginePlugin enginePlugin = getEnginePlugin(instance.getDbType());
+            enginePlugin.preCheck(storageResult.getAstCheckText());
 
-        // 2.5 智能化 SQL 审核：执行 EXPLAIN
-        sqlLintService.explainCheck(instance, storageResult.getAstCheckText());
+            // 2.5 智能化 SQL 审核：执行 EXPLAIN
+            sqlLintService.explainCheck(instance, storageResult.getAstCheckText());
+        }
 
         // 3. Create Ticket
         Long ticketId = System.currentTimeMillis();
@@ -133,19 +138,25 @@ public class TicketService {
         ticket.setId(ticketId);
         ticket.setApplicantIdCard(idCard);
         ticket.setInstanceId(instanceId);
+        ticket.setType(type);
         ticket.setStatus("AUDITING");
         ticket.setBusinessKey(UUID.randomUUID().toString());
 
         SqlTicketDetail detail = new SqlTicketDetail();
         detail.setId(System.currentTimeMillis());
         detail.setTicketId(ticketId);
-        detail.setSqlText(storageResult.getSqlText());
-        detail.setAttachmentOssKey(storageResult.getAttachmentOssKey());
 
-        // 3.5 Calculate Impact Estimate
-        // In a real scenario, this involves analyzing the AST for table stats.
-        // Mocking impact estimation for architecture demonstration based on file size
-        int estimatedRows = file.getSize() > 1024 * 50 ? 50000 : 50;
+        int estimatedRows = 0;
+        if (storageResult != null) {
+            detail.setSqlText(storageResult.getSqlText());
+            detail.setAttachmentOssKey(storageResult.getAttachmentOssKey());
+            // 3.5 Calculate Impact Estimate
+            // In a real scenario, this involves analyzing the AST for table stats.
+            // Mocking impact estimation for architecture demonstration based on file size
+            estimatedRows = file != null && file.getSize() > 1024 * 50 ? 50000 : 50;
+        } else {
+            detail.setSqlText("-- 请求原因: \n" + reason);
+        }
         detail.setAffectRowsEstimate(estimatedRows);
 
         // Save to DB

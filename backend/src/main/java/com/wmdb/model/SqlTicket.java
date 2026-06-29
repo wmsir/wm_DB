@@ -52,6 +52,11 @@ public class SqlTicket {
     private String riskLevel;
 
     /**
+     * 工单类型（SQL_AUDIT, DATA_EXPORT, PERMISSION, ACCOUNT, DB_TABLE, DATA_RECOVERY）
+     */
+    private String type;
+
+    /**
      * 关联的 Flowable 流程实例 ID
      */
     private String flowInstanceId;

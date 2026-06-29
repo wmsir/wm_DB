@@ -10,6 +10,7 @@ import Dashboard from '../views/Dashboard.vue'
 import TicketList from '../views/TicketList.vue'
 import TicketDetail from '../views/TicketDetail.vue'
 import WorkflowDesigner from '../views/WorkflowDesigner.vue'
+import License from '../views/License.vue'
 
 import { useUserStore } from '../store/user'
 
@@ -48,6 +49,11 @@ const routes = [
         path: 'workflow-designer',
         name: 'WorkflowDesigner',
         component: WorkflowDesigner
+      },
+      {
+        path: 'license',
+        name: 'License',
+        component: License
       }
     ]
   }
