@@ -36,4 +36,14 @@ public class DashboardController {
     public Result<Map<String, Object>> getStats() {
         return Result.success(dashboardService.getDashboardStats());
     }
+
+    /**
+     * 获取数据库实时监控指标数据
+     *
+     * @return 监控数据
+     */
+    @GetMapping("/monitor")
+    public Result<Map<String, Object>> getMonitorStats() {
+        return Result.success(dashboardService.getDatabaseMonitorStats());
+    }
 }

@@ -45,4 +45,27 @@ public class DashboardService {
 
         return stats;
     }
+
+    /**
+     * 获取数据库监控指标数据（模拟数据，后续需接入真实的监控平台如 Prometheus）
+     */
+    public Map<String, Object> getDatabaseMonitorStats() {
+        Map<String, Object> monitorStats = new HashMap<>();
+
+        // 核心性能指标
+        monitorStats.put("cpuUsage", 45); // CPU使用率 (%)
+        monitorStats.put("connections", 128); // 当前连接数
+        monitorStats.put("slowSql", 12); // 慢SQL数量
+        monitorStats.put("tps", 850); // 每秒事务数
+        monitorStats.put("qps", 3200); // 每秒查询数
+        monitorStats.put("lockWaits", 3); // 锁等待次数
+        monitorStats.put("replDelay", "12ms"); // 复制延迟
+
+        // 存储指标
+        monitorStats.put("diskSpaceUsage", 68); // 磁盘空间使用率 (%)
+        monitorStats.put("tableSpaceUsage", 55); // 表空间使用率 (%)
+        monitorStats.put("bufferPoolHitRate", 99.2); // Buffer Pool 命中率 (%)
+
+        return monitorStats;
+    }
 }
