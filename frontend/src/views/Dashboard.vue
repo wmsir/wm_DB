@@ -29,6 +29,35 @@
     </el-row>
 
     <el-row :gutter="20" style="margin-top: 20px;">
+      <el-col :span="24">
+        <el-card shadow="hover">
+          <template #header>实时数据库监控</template>
+          <el-descriptions :column="5" border size="small">
+            <el-descriptions-item label="CPU 使用率">
+              <el-progress :percentage="monitorStats.cpuUsage" :color="customColors" />
+            </el-descriptions-item>
+            <el-descriptions-item label="当前连接数">{{ monitorStats.connections }}</el-descriptions-item>
+            <el-descriptions-item label="慢 SQL 数量">
+               <span class="text-danger">{{ monitorStats.slowSql }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item label="TPS / QPS">{{ monitorStats.tps }} / {{ monitorStats.qps }}</el-descriptions-item>
+            <el-descriptions-item label="锁等待">{{ monitorStats.lockWaits }}</el-descriptions-item>
+
+            <el-descriptions-item label="磁盘使用率">
+              <el-progress :percentage="monitorStats.diskSpaceUsage" :color="customColors" />
+            </el-descriptions-item>
+            <el-descriptions-item label="表空间使用率">
+              <el-progress :percentage="monitorStats.tableSpaceUsage" :color="customColors" />
+            </el-descriptions-item>
+            <el-descriptions-item label="Buffer Pool 命中率">{{ monitorStats.bufferPoolHitRate }}%</el-descriptions-item>
+            <el-descriptions-item label="复制延迟">{{ monitorStats.replDelay }}</el-descriptions-item>
+            <el-descriptions-item label="在线状态"><el-tag type="success">RUNNING</el-tag></el-descriptions-item>
+          </el-descriptions>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="12">
         <el-card shadow="hover">
           <template #header>工单分布统计</template>
@@ -51,6 +80,12 @@ import request from '../utils/request'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 
+const customColors = [
+  { color: '#5cb87a', percentage: 20 },
+  { color: '#e6a23c', percentage: 70 },
+  { color: '#f56c6c', percentage: 90 },
+]
+
 const stats = ref({
   healthScore: 0,
   totalSqls: 0,
@@ -59,6 +94,19 @@ const stats = ref({
   pendingTickets: 0,
   dbaWorkload: 0,
   approvalEfficiency: '0h'
+})
+
+const monitorStats = ref({
+  cpuUsage: 0,
+  connections: 0,
+  slowSql: 0,
+  tps: 0,
+  qps: 0,
+  lockWaits: 0,
+  replDelay: '0ms',
+  diskSpaceUsage: 0,
+  tableSpaceUsage: 0,
+  bufferPoolHitRate: 0
 })
 
 const ticketChartRef = ref<HTMLElement | null>(null)
@@ -121,8 +169,13 @@ const handleResize = () => {
 
 const loadStats = async () => {
   try {
-    const res: any = await request.get('/v1/dashboard/stats')
-    stats.value = res.data
+    const [statsRes, monitorRes]: any = await Promise.all([
+      request.get('/v1/dashboard/stats'),
+      request.get('/v1/dashboard/monitor')
+    ])
+    stats.value = statsRes.data
+    monitorStats.value = monitorRes.data
+
     nextTick(() => {
       initCharts()
     })
@@ -131,14 +184,28 @@ const loadStats = async () => {
   }
 }
 
+let monitorInterval: number
+
 onMounted(() => {
   loadStats()
   window.addEventListener('resize', handleResize)
+
+  // 模拟轮询实时监控数据
+  monitorInterval = window.setInterval(async () => {
+    try {
+      const res: any = await request.get('/v1/dashboard/monitor')
+      monitorStats.value = res.data
+    } catch(e) {
+      // 忽略轮询错误以避免频繁提示
+    }
+  }, 10000)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
+  if (monitorInterval) clearInterval(monitorInterval)
 })
+
 </script>
 
 <style scoped>
