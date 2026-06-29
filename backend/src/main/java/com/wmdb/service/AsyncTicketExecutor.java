@@ -50,6 +50,7 @@ public class AsyncTicketExecutor {
     private final DefaultDataSourceCreator dataSourceCreator;
     private final DataMaskingService dataMaskingService;
     private final NotificationService notificationService;
+    private final BlockchainService blockchainService;
 
     @Value("${wmdb.db.aes-key:1234567890abcdef1234567890abcdef}") // Default hex key for SM4
     private String aesKey;
@@ -58,7 +59,7 @@ public class AsyncTicketExecutor {
                                DbInstanceMapper dbInstanceMapper, StorageService storageService,
                                SqlAuditLogMapper sqlAuditLogMapper, DataSource dataSource,
                                DefaultDataSourceCreator dataSourceCreator, DataMaskingService dataMaskingService,
-                               NotificationService notificationService) {
+                               NotificationService notificationService, BlockchainService blockchainService) {
         this.sqlTicketMapper = sqlTicketMapper;
         this.sqlTicketDetailMapper = sqlTicketDetailMapper;
         this.dbInstanceMapper = dbInstanceMapper;
@@ -68,6 +69,7 @@ public class AsyncTicketExecutor {
         this.dataSourceCreator = dataSourceCreator;
         this.dataMaskingService = dataMaskingService;
         this.notificationService = notificationService;
+        this.blockchainService = blockchainService;
     }
 
     /**
@@ -256,6 +258,8 @@ public class AsyncTicketExecutor {
                         } else {
                             // DML Flashback logic hook
                         }
+
+                        blockchainService.preserveEvidence(ticketId, detail.getSqlText(), ticket.getApplicantIdCard());
                         saveAuditLog(ticketId, detail.getSqlText(), System.currentTimeMillis() - start, "SUCCESS", null);
                     } catch (Exception e) {
                         saveAuditLog(ticketId, detail.getSqlText(), System.currentTimeMillis() - start, "FAILED", e.getMessage());
@@ -284,6 +288,8 @@ public class AsyncTicketExecutor {
                                 try {
                                     boolean isSelect = stmt.execute(sqlToExecute);
                                     if (isSelect) processResultSet(stmt);
+
+                                    blockchainService.preserveEvidence(ticketId, sqlToExecute, ticket.getApplicantIdCard());
                                     saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "SUCCESS", null);
                                 } catch (Exception e) {
                                     saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "FAILED", e.getMessage());
@@ -299,6 +305,8 @@ public class AsyncTicketExecutor {
                             try {
                                 boolean isSelect = stmt.execute(sqlToExecute);
                                 if (isSelect) processResultSet(stmt);
+
+                                blockchainService.preserveEvidence(ticketId, sqlToExecute, ticket.getApplicantIdCard());
                                 saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "SUCCESS", null);
                             } catch (Exception e) {
                                 saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "FAILED", e.getMessage());
