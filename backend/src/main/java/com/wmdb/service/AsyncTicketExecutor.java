@@ -53,6 +53,7 @@ public class AsyncTicketExecutor {
     private final DataMaskingService dataMaskingService;
     private final NotificationService notificationService;
     private final BlockchainService blockchainService;
+    private final AiAgentPipelineService aiAgentPipelineService;
 
     @Value("${wmdb.db.aes-key:1234567890abcdef1234567890abcdef}") // Default hex key for SM4
     private String aesKey;
@@ -61,7 +62,8 @@ public class AsyncTicketExecutor {
                                DbInstanceMapper dbInstanceMapper, StorageService storageService,
                                SqlAuditLogMapper sqlAuditLogMapper, DataSource dataSource,
                                DefaultDataSourceCreator dataSourceCreator, DataMaskingService dataMaskingService,
-                               NotificationService notificationService, BlockchainService blockchainService) {
+                               NotificationService notificationService, BlockchainService blockchainService,
+                               AiAgentPipelineService aiAgentPipelineService) {
         this.sqlTicketMapper = sqlTicketMapper;
         this.sqlTicketDetailMapper = sqlTicketDetailMapper;
         this.dbInstanceMapper = dbInstanceMapper;
@@ -72,6 +74,7 @@ public class AsyncTicketExecutor {
         this.dataMaskingService = dataMaskingService;
         this.notificationService = notificationService;
         this.blockchainService = blockchainService;
+        this.aiAgentPipelineService = aiAgentPipelineService;
     }
 
     /**
@@ -189,6 +192,10 @@ public class AsyncTicketExecutor {
         ticket.setStatus("EXECUTING");
         sqlTicketMapper.updateById(ticket);
 
+        long ticketStartTime = System.currentTimeMillis();
+        boolean isOverallSuccess = true;
+        String executionErrorStr = null;
+
         try {
             // Memory decrypt password using SM4.
             // In a real scenario, instance.getPasswordCipher() might fail if it's the scaffolding 'mockPassword'.
@@ -275,6 +282,13 @@ public class AsyncTicketExecutor {
                         saveAuditLog(ticketId, detail.getSqlText(), System.currentTimeMillis() - start, "SUCCESS", null);
                     } catch (Exception e) {
                         saveAuditLog(ticketId, detail.getSqlText(), System.currentTimeMillis() - start, "FAILED", e.getMessage());
+                        executionErrorStr = e.getMessage();
+                        isOverallSuccess = false;
+
+                        // 【AI Agent Pipeline - 自动回滚 & 持续学习】
+                        aiAgentPipelineService.autoRollback(ticket, detail.getSqlText(), e.getMessage());
+                        aiAgentPipelineService.continuousLearning(detail.getSqlText(), e.getMessage());
+
                         throw e; // rethrow to fail the overall ticket
                     }
                 } else {
@@ -305,6 +319,11 @@ public class AsyncTicketExecutor {
                                     saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "SUCCESS", null);
                                 } catch (Exception e) {
                                     saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "FAILED", e.getMessage());
+                                    executionErrorStr = e.getMessage();
+                                    isOverallSuccess = false;
+
+                                    aiAgentPipelineService.autoRollback(ticket, sqlToExecute, e.getMessage());
+                                    aiAgentPipelineService.continuousLearning(sqlToExecute, e.getMessage());
                                     throw e;
                                 }
                                 sqlBuffer.setLength(0); // clear buffer
@@ -322,17 +341,31 @@ public class AsyncTicketExecutor {
                                 saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "SUCCESS", null);
                             } catch (Exception e) {
                                 saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "FAILED", e.getMessage());
+                                executionErrorStr = e.getMessage();
+                                isOverallSuccess = false;
+                                aiAgentPipelineService.autoRollback(ticket, sqlToExecute, e.getMessage());
+                                aiAgentPipelineService.continuousLearning(sqlToExecute, e.getMessage());
                                 throw e;
                             }
                         }
                     }
                 }
 
+                // 执行成功后的逻辑
                 ticket.setStatus("EXECUTED");
                 sqlTicketMapper.updateById(ticket);
                 notificationService.sendTicketNotification(ticket, "EXECUTED");
+
+                // 【AI Agent Pipeline - 自动监控】
+                boolean hasAnomaly = aiAgentPipelineService.autoMonitorAfterRelease(ticketId, instance.getId());
+                if (hasAnomaly) {
+                    log.warn("[AI Agent Pipeline] 发布后发现性能异常告警，正在执行兜底回滚策略...");
+                    // 对小工单模拟智能分析全量内容进行回滚
+                    aiAgentPipelineService.autoRollback(ticket, detail.getSqlText() != null ? detail.getSqlText() : "", "Post-release performance anomaly detected.");
+                }
+
             } catch (Exception e) {
-                System.err.println("JDBC Execution failed: " + e.getMessage());
+                log.error("JDBC Execution failed: ", e);
                 ticket.setStatus("FAILED");
                 sqlTicketMapper.updateById(ticket);
                 notificationService.sendTicketNotification(ticket, "FAILED");
@@ -351,11 +384,17 @@ public class AsyncTicketExecutor {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Ticket execution process failed: " + e.getMessage());
+            log.error("Ticket execution process failed: ", e);
             ticket.setStatus("FAILED");
             sqlTicketMapper.updateById(ticket);
             notificationService.sendTicketNotification(ticket, "FAILED");
         } finally {
+            long totalTimeMs = System.currentTimeMillis() - ticketStartTime;
+
+            // 【AI Agent Pipeline - 自动生成报告】
+            // 无论成功还是失败，均汇总执行链路生成执行评估报告
+            aiAgentPipelineService.autoGenerateReport(ticket, isOverallSuccess, totalTimeMs);
+
             MDC.clear();
         }
     }

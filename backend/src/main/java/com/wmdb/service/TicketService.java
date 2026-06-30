@@ -145,13 +145,19 @@ public class TicketService {
         }
 
         // 2. Pre-Check AST using selected engine plugin (only for SQL related tickets)
+        boolean isSafeAndOptimized = false;
         if (storageResult != null && ("SQL_AUDIT".equals(type) || "DATA_RECOVERY".equals(type))) {
             // Important: use astCheckText which has no appended strings to prevent Druid ParserException
             DbEnginePlugin enginePlugin = getEnginePlugin(instance.getDbType());
             enginePlugin.preCheck(storageResult.getAstCheckText());
 
-            // 2.5 智能化 SQL 审核：执行 EXPLAIN
-            sqlLintService.explainCheck(instance, storageResult.getAstCheckText());
+            // 2.5 智能化 SQL 审核：执行 EXPLAIN (并捕获其安全判定)
+            try {
+                isSafeAndOptimized = sqlLintService.explainCheck(instance, storageResult.getAstCheckText());
+            } catch (Exception e) {
+                // 如果 EXPLAIN 抛出异常（如全表扫描），依然向上抛出拒绝提交，或记录为高危状态
+                throw e;
+            }
         }
 
         // 3. Create Ticket
@@ -201,6 +207,13 @@ public class TicketService {
 
         // 发送通知
         notificationService.sendTicketNotification(ticket, "SUBMITTED");
+
+        // 【AI Agent Pipeline - 自动审批】
+        // 如果 AI 审核认为该语句极其安全且无需人工介入（如：无全表扫描、行数极少），实施自动化审批直通车
+        if (isSafeAndOptimized && estimatedRows < 1000) {
+            log.info("[AI Agent - 自动审批] 工单 {} 通过 AI 审查且影响行数极低，触发自动放行流水线。", ticketId);
+            approveTicket(ticketId); // 自动调用回调放行逻辑，直通下一环节
+        }
 
         return ticket;
     }
