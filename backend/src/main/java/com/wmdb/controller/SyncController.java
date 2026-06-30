@@ -41,7 +41,8 @@ public class SyncController {
         externalSyncService.syncUser(
             request.getRealName(),
             request.getIdCard(),
-            request.getDepartment()
+            request.getDepartment(),
+            request.getTenantId()
         );
         return Result.success("User synchronized successfully");
     }
@@ -54,5 +55,6 @@ public class SyncController {
         private String realName;
         private String idCard;
         private String department;
+        private String tenantId;
     }
 }

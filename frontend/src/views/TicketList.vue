@@ -106,8 +106,11 @@ const viewDetail = (id: number) => {
 const getStatusType = (status: string) => {
   switch (status) {
     case 'APPROVED': return 'success'
+    case 'EXECUTED': return 'success'
     case 'AUDITING': return 'warning'
+    case 'MANUAL_PROCESSING': return 'warning'
     case 'REJECTED': return 'danger'
+    case 'FAILED': return 'danger'
     default: return 'info'
   }
 }
@@ -143,13 +146,9 @@ const submitTicket = async () => {
       formData.append('reason', ticketForm.value.reason)
     }
 
-    // 如果是 SQL 审核类，则附加文件。此处复用后端的 `/api/v1/ticket/submit` 逻辑
+    // 如果是 SQL 审核类，则附加文件。后端已配置为 file 非必填
     if (ticketForm.value.file) {
       formData.append('file', ticketForm.value.file)
-    } else {
-      // 模拟一个空的占位文件，以便通过后端的 MultipartFile 校验
-      const blob = new Blob(['-- 暂无附件'], { type: 'text/plain' })
-      formData.append('file', blob, 'empty.sql')
     }
 
     await request.post('/v1/ticket/submit', formData, {

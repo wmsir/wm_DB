@@ -17,6 +17,7 @@ import com.baomidou.dynamic.datasource.creator.DefaultDataSourceCreator;
 import com.baomidou.dynamic.datasource.toolkit.DynamicDataSourceContextHolder;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -38,6 +39,7 @@ import org.slf4j.MDC;
  *
  * @author wm
  */
+@Slf4j
 @Service
 public class AsyncTicketExecutor {
 
@@ -50,6 +52,7 @@ public class AsyncTicketExecutor {
     private final DefaultDataSourceCreator dataSourceCreator;
     private final DataMaskingService dataMaskingService;
     private final NotificationService notificationService;
+    private final BlockchainService blockchainService;
 
     @Value("${wmdb.db.aes-key:1234567890abcdef1234567890abcdef}") // Default hex key for SM4
     private String aesKey;
@@ -58,7 +61,7 @@ public class AsyncTicketExecutor {
                                DbInstanceMapper dbInstanceMapper, StorageService storageService,
                                SqlAuditLogMapper sqlAuditLogMapper, DataSource dataSource,
                                DefaultDataSourceCreator dataSourceCreator, DataMaskingService dataMaskingService,
-                               NotificationService notificationService) {
+                               NotificationService notificationService, BlockchainService blockchainService) {
         this.sqlTicketMapper = sqlTicketMapper;
         this.sqlTicketDetailMapper = sqlTicketDetailMapper;
         this.dbInstanceMapper = dbInstanceMapper;
@@ -68,6 +71,7 @@ public class AsyncTicketExecutor {
         this.dataSourceCreator = dataSourceCreator;
         this.dataMaskingService = dataMaskingService;
         this.notificationService = notificationService;
+        this.blockchainService = blockchainService;
     }
 
     /**
@@ -171,6 +175,16 @@ public class AsyncTicketExecutor {
             return;
         }
 
+        // 安全修复：仅允许自动化 SQL 类型进入 JDBC 执行阶段
+        java.util.List<String> autoExecutableTypes = java.util.Arrays.asList("SQL_AUDIT", "DATA_RECOVERY");
+        if (!autoExecutableTypes.contains(ticket.getType())) {
+            log.info("工单 {} 为非自动化 SQL 执行类型 ({})，需转为人工处理通道，安全跳过 JDBC 引擎自动执行步骤。", ticketId, ticket.getType());
+            ticket.setStatus("MANUAL_PROCESSING"); // 标记为需人工处理
+            sqlTicketMapper.updateById(ticket);
+            notificationService.sendTicketNotification(ticket, "MANUAL_PROCESSING");
+            return;
+        }
+
         // Update status to EXECUTING before starting
         ticket.setStatus("EXECUTING");
         sqlTicketMapper.updateById(ticket);
@@ -256,6 +270,8 @@ public class AsyncTicketExecutor {
                         } else {
                             // DML Flashback logic hook
                         }
+
+                        blockchainService.preserveEvidence(ticketId, detail.getSqlText(), ticket.getApplicantIdCard());
                         saveAuditLog(ticketId, detail.getSqlText(), System.currentTimeMillis() - start, "SUCCESS", null);
                     } catch (Exception e) {
                         saveAuditLog(ticketId, detail.getSqlText(), System.currentTimeMillis() - start, "FAILED", e.getMessage());
@@ -284,6 +300,8 @@ public class AsyncTicketExecutor {
                                 try {
                                     boolean isSelect = stmt.execute(sqlToExecute);
                                     if (isSelect) processResultSet(stmt);
+
+                                    blockchainService.preserveEvidence(ticketId, sqlToExecute, ticket.getApplicantIdCard());
                                     saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "SUCCESS", null);
                                 } catch (Exception e) {
                                     saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "FAILED", e.getMessage());
@@ -299,6 +317,8 @@ public class AsyncTicketExecutor {
                             try {
                                 boolean isSelect = stmt.execute(sqlToExecute);
                                 if (isSelect) processResultSet(stmt);
+
+                                blockchainService.preserveEvidence(ticketId, sqlToExecute, ticket.getApplicantIdCard());
                                 saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "SUCCESS", null);
                             } catch (Exception e) {
                                 saveAuditLog(ticketId, sqlToExecute, System.currentTimeMillis() - start, "FAILED", e.getMessage());

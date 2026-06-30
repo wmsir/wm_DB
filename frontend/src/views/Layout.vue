@@ -11,16 +11,22 @@
         router
       >
         <el-menu-item index="/dashboard">
-          <span>大盘总览</span>
+          <span>{{ t('menu.dashboard') }}</span>
         </el-menu-item>
         <el-menu-item index="/ticket-list">
-          <span>工单中心</span>
+          <span>{{ t('menu.ticketList') }}</span>
         </el-menu-item>
         <el-menu-item index="/workflow-designer">
-          <span>流程设计器</span>
+          <span>{{ t('menu.workflowDesigner') }}</span>
         </el-menu-item>
         <el-menu-item index="/license">
-          <span>商业授权 (License)</span>
+          <span>{{ t('menu.license') }}</span>
+        </el-menu-item>
+        <el-menu-item index="/ai-sql-review">
+          <span>{{ t('menu.aiSqlReview') }}</span>
+        </el-menu-item>
+        <el-menu-item index="/settings">
+          <span>自定义主题</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -28,8 +34,19 @@
     <el-container>
       <el-header class="layout-header">
         <div class="header-right">
-          <span>欢迎您，{{ userRealName }}</span>
-          <el-button type="text" @click="handleLogout" style="margin-left: 20px;">退出登录</el-button>
+          <el-dropdown @command="handleLanguageChange" style="margin-right: 20px; cursor: pointer;">
+            <span class="el-dropdown-link">
+              语言 / Language<el-icon class="el-icon--right"><arrow-down /></el-icon>
+            </span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="zh">中文</el-dropdown-item>
+                <el-dropdown-item command="en">English</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <span>{{ t('header.welcome') }}，{{ userRealName }}</span>
+          <el-button type="text" @click="handleLogout" style="margin-left: 20px;">{{ t('header.logout') }}</el-button>
         </div>
       </el-header>
 
@@ -44,7 +61,10 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../store/user'
+import { useI18n } from 'vue-i18n'
+import { ArrowDown } from '@element-plus/icons-vue'
 
+const { t, locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
@@ -55,6 +75,11 @@ const userRealName = computed(() => userStore.realName || '管理员')
 const handleLogout = () => {
   userStore.logout()
   router.push('/login')
+}
+
+const handleLanguageChange = (lang: string) => {
+  locale.value = lang
+  localStorage.setItem('language', lang)
 }
 </script>
 

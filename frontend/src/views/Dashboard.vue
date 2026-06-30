@@ -184,26 +184,30 @@ const loadStats = async () => {
   }
 }
 
-let monitorInterval: number
+let monitorTimer: number | null = null
+
+const fetchMonitorData = async () => {
+  try {
+    const res: any = await request.get('/v1/dashboard/monitor')
+    monitorStats.value = res.data
+  } catch(e) {
+    console.warn('监控数据获取失败, 下次重试', e)
+  } finally {
+    // 确保无论成功失败，当前请求完成后才开始下一个 10 秒倒计时，避免请求堆积
+    monitorTimer = window.setTimeout(fetchMonitorData, 10000)
+  }
+}
 
 onMounted(() => {
   loadStats()
   window.addEventListener('resize', handleResize)
-
-  // 模拟轮询实时监控数据
-  monitorInterval = window.setInterval(async () => {
-    try {
-      const res: any = await request.get('/v1/dashboard/monitor')
-      monitorStats.value = res.data
-    } catch(e) {
-      // 忽略轮询错误以避免频繁提示
-    }
-  }, 10000)
+  // 启动安全轮询
+  monitorTimer = window.setTimeout(fetchMonitorData, 10000)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
-  if (monitorInterval) clearInterval(monitorInterval)
+  if (monitorTimer) clearTimeout(monitorTimer)
 })
 
 </script>

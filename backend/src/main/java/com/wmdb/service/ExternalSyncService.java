@@ -35,7 +35,7 @@ public class ExternalSyncService {
      * @param externalDepartment 外部系统的部门或岗位特征
      */
     @Transactional(rollbackFor = Exception.class)
-    public void syncUser(String realName, String idCard, String externalDepartment) {
+    public void syncUser(String realName, String idCard, String externalDepartment, String tenantId) {
         // 动态角色映射逻辑 (Dynamic Role Mapping)
         String mappedRole = mapExternalDepartmentToRole(externalDepartment);
 
@@ -44,6 +44,9 @@ public class ExternalSyncService {
             // Update existing
             existingUser.setRealName(realName);
             existingUser.setRole(mappedRole);
+            if (tenantId != null && !tenantId.isEmpty()) {
+                existingUser.setTenantId(tenantId);
+            }
             sysUserMapper.updateById(existingUser);
         } else {
             // Insert new user
@@ -51,6 +54,9 @@ public class ExternalSyncService {
             newUser.setRealName(realName);
             newUser.setIdCard(idCard);
             newUser.setRole(mappedRole);
+            if (tenantId != null && !tenantId.isEmpty()) {
+                newUser.setTenantId(tenantId);
+            }
 
             // Generate a default temporary password for new synced users, or handle SSO exclusively
             String defaultPwd = idCard.substring(idCard.length() - 6); // default to last 6 digits of ID

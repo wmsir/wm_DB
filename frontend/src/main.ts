@@ -11,6 +11,7 @@ import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import { watermark } from './directives/watermark'
+import i18n from './i18n'
 
 const app = createApp(App)
 
@@ -22,6 +23,9 @@ app.use(router)
 
 // 挂载 Element Plus 组件库
 app.use(ElementPlus)
+
+// 挂载 i18n 国际化
+app.use(i18n)
 
 // 注册全局自定义防盗水印指令
 app.directive('watermark', watermark)

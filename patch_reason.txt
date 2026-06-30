@@ -1,0 +1,22 @@
+<<<<<<< SEARCH
+    /**
+     * 工单类型（SQL_AUDIT, DATA_EXPORT, PERMISSION, ACCOUNT, DB_TABLE, DATA_RECOVERY）
+     */
+    private String type;
+
+    /**
+     * 关联的 Flowable 流程实例 ID
+=======
+    /**
+     * 工单类型（SQL_AUDIT, DATA_EXPORT, PERMISSION, ACCOUNT, DB_TABLE, DATA_RECOVERY）
+     */
+    private String type;
+
+    /**
+     * 申请原因（非 SQL 文件类工单的业务描述）
+     */
+    private String reason;
+
+    /**
+     * 关联的 Flowable 流程实例 ID
+>>>>>>> REPLACE

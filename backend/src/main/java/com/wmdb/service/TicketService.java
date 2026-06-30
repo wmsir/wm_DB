@@ -11,6 +11,10 @@ import com.wmdb.model.SqlTicketDetail;
 import com.wmdb.engine.MysqlEngineImpl;
 import com.wmdb.engine.DmEngineImpl;
 import com.wmdb.engine.OracleEngineImpl;
+import com.wmdb.engine.OceanBaseEngineImpl;
+import com.wmdb.engine.KingbaseEngineImpl;
+import com.wmdb.engine.TiDBEngineImpl;
+import com.wmdb.engine.OpenGaussEngineImpl;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.runtime.ProcessInstance;
@@ -43,6 +47,10 @@ public class TicketService {
     private final MysqlEngineImpl mysqlEnginePlugin;
     private final DmEngineImpl dmEnginePlugin;
     private final OracleEngineImpl oracleEnginePlugin;
+    private final OceanBaseEngineImpl oceanBaseEnginePlugin;
+    private final KingbaseEngineImpl kingbaseEnginePlugin;
+    private final TiDBEngineImpl tiDBEnginePlugin;
+    private final OpenGaussEngineImpl openGaussEnginePlugin;
     private final RuntimeService runtimeService;
     private final TaskService taskService;
 
@@ -69,6 +77,8 @@ public class TicketService {
      */
     public TicketService(StorageService storageService, MysqlEngineImpl mysqlEnginePlugin,
                          DmEngineImpl dmEnginePlugin, OracleEngineImpl oracleEnginePlugin,
+                         OceanBaseEngineImpl oceanBaseEnginePlugin, KingbaseEngineImpl kingbaseEnginePlugin,
+                         TiDBEngineImpl tiDBEnginePlugin, OpenGaussEngineImpl openGaussEnginePlugin,
                          RuntimeService runtimeService, TaskService taskService,
                          SqlTicketMapper sqlTicketMapper, SqlTicketDetailMapper sqlTicketDetailMapper,
                          DbInstanceMapper dbInstanceMapper, AsyncTicketExecutor asyncTicketExecutor,
@@ -77,6 +87,10 @@ public class TicketService {
         this.mysqlEnginePlugin = mysqlEnginePlugin;
         this.dmEnginePlugin = dmEnginePlugin;
         this.oracleEnginePlugin = oracleEnginePlugin;
+        this.oceanBaseEnginePlugin = oceanBaseEnginePlugin;
+        this.kingbaseEnginePlugin = kingbaseEnginePlugin;
+        this.tiDBEnginePlugin = tiDBEnginePlugin;
+        this.openGaussEnginePlugin = openGaussEnginePlugin;
         this.runtimeService = runtimeService;
         this.taskService = taskService;
         this.sqlTicketMapper = sqlTicketMapper;
@@ -95,6 +109,14 @@ public class TicketService {
             return dmEnginePlugin;
         } else if ("oracle".equalsIgnoreCase(dbType)) {
             return oracleEnginePlugin;
+        } else if ("oceanbase".equalsIgnoreCase(dbType)) {
+            return oceanBaseEnginePlugin;
+        } else if ("kingbase".equalsIgnoreCase(dbType)) {
+            return kingbaseEnginePlugin;
+        } else if ("tidb".equalsIgnoreCase(dbType)) {
+            return tiDBEnginePlugin;
+        } else if ("opengauss".equalsIgnoreCase(dbType)) {
+            return openGaussEnginePlugin;
         }
         return mysqlEnginePlugin; // fallback
     }
@@ -139,6 +161,7 @@ public class TicketService {
         ticket.setApplicantIdCard(idCard);
         ticket.setInstanceId(instanceId);
         ticket.setType(type);
+        ticket.setReason(reason);
         ticket.setStatus("AUDITING");
         ticket.setBusinessKey(UUID.randomUUID().toString());
 
@@ -155,7 +178,8 @@ public class TicketService {
             // Mocking impact estimation for architecture demonstration based on file size
             estimatedRows = file != null && file.getSize() > 1024 * 50 ? 50000 : 50;
         } else {
-            detail.setSqlText("-- 请求原因: \n" + reason);
+            // 安全修复：严禁将业务原因直接拼接进 SQL 以防止越权执行
+            detail.setSqlText("");
         }
         detail.setAffectRowsEstimate(estimatedRows);
 

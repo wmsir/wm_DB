@@ -57,6 +57,11 @@ public class SqlTicket {
     private String type;
 
     /**
+     * 申请原因（非 SQL 文件类工单的业务描述）
+     */
+    private String reason;
+
+    /**
      * 关联的 Flowable 流程实例 ID
      */
     private String flowInstanceId;
