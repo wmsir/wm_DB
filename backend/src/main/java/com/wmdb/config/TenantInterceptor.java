@@ -23,11 +23,11 @@ public class TenantInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String tenantId = request.getHeader(TENANT_HEADER);
-        if (tenantId != null && !tenantId.isEmpty()) {
+        if (tenantId != null && !tenantId.isEmpty() && !"public".equals(tenantId)) {
             TenantContextHolder.setTenantId(tenantId);
         } else {
-            // Default to 'public' or null if not multi-tenant request
-            TenantContextHolder.setTenantId("public");
+            // Default to '1' if 'public' or null since the actual DB tenant_id uses numeric IDs
+            TenantContextHolder.setTenantId("1");
         }
         return true;
     }
