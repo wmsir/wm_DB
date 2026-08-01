@@ -44,6 +44,9 @@
             <el-option label="数据恢复" value="DATA_RECOVERY" />
           </el-select>
         </el-form-item>
+        <el-form-item label="SQL 脚本" v-if="ticketForm.type === 'SQL_AUDIT' || ticketForm.type === 'DATA_RECOVERY'">
+           <el-input type="textarea" :rows="4" v-model="ticketForm.sqlText" placeholder="请在此处手动粘贴或输入 SQL 语句（如果上传了附件，将优先使用附件）"></el-input>
+        </el-form-item>
         <el-form-item label="附件 (SQL等)" v-if="ticketForm.type === 'SQL_AUDIT' || ticketForm.type === 'DATA_RECOVERY'">
            <el-upload
              class="upload-demo"
@@ -82,6 +85,7 @@ const ticketForm = ref({
   instanceId: '',
   type: 'SQL_AUDIT',
   reason: '',
+  sqlText: '',
   file: null as File | null
 })
 const loading = ref(false)
@@ -144,6 +148,9 @@ const submitTicket = async () => {
     formData.append('type', ticketForm.value.type)
     if (ticketForm.value.reason) {
       formData.append('reason', ticketForm.value.reason)
+    }
+    if (ticketForm.value.sqlText) {
+      formData.append('sqlText', ticketForm.value.sqlText)
     }
 
     // 如果是 SQL 审核类，则附加文件。后端已配置为 file 非必填
