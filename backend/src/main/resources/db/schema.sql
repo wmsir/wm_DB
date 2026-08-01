@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS db_instance (
   read_only_jdbc_url varchar(255),
   username varchar(100),
   password_cipher varchar(255),
-  env varchar(20)
+  env varchar(20),
+  UNIQUE KEY uk_tenant_name (tenant_id, name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS sql_audit_log (
@@ -46,3 +47,6 @@ CREATE TABLE IF NOT EXISTS sql_audit_log (
   current_hash varchar(255),
   rollback_sql text
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO db_instance (id, tenant_id, name, db_type, jdbc_url, username, password_cipher, env)
+VALUES (1, '1', '默认RDS测试数据库', 'mysql', 'jdbc:mysql://rm-uf6abp6renk8g3l2wio.mysql.rds.aliyuncs.com:3306/huiqitong_erp?useSSL=false&allowPublicKeyRetrieval=true', 'root', 'f5mF2hKiOkbxKqs5', 'PROD');

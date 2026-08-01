@@ -31,7 +31,7 @@
       </el-menu>
     </el-aside>
 
-    <el-container>
+    <el-container class="inner-container">
       <el-header class="layout-header">
         <div class="header-right">
           <el-dropdown @command="handleLanguageChange" style="margin-right: 20px; cursor: pointer;">
@@ -87,9 +87,14 @@ const handleLanguageChange = (lang: string) => {
 .layout-container {
   height: 100vh;
   width: 100vw;
+  display: flex;
+  flex-direction: row !important;
 }
 .layout-aside {
   background-color: #304156;
+  width: 220px !important;
+  flex-shrink: 0;
+  height: 100vh;
 }
 .logo {
   height: 60px;
@@ -102,6 +107,14 @@ const handleLanguageChange = (lang: string) => {
 }
 .el-menu-vertical {
   border-right: none;
+  width: 220px;
+}
+.inner-container {
+  display: flex;
+  flex: 1;
+  flex-direction: column !important;
+  height: 100vh;
+  overflow: hidden;
 }
 .layout-header {
   background-color: #fff;
@@ -119,5 +132,7 @@ const handleLanguageChange = (lang: string) => {
 .layout-main {
   background-color: #f0f2f5;
   padding: 20px;
+  flex: 1;
+  overflow-y: auto;
 }
 </style>
