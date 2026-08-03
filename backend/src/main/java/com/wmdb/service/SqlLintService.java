@@ -39,13 +39,14 @@ public class SqlLintService {
     }
 
     /**
-     * 对脚本进行 EXPLAIN 计划预检
+     * 对脚本进行 EXPLAIN 计划预检，并校验预计影响行数
      *
-     * @param instance 目标数据库实例
-     * @param script   需要预检的脚本
+     * @param instance     目标数据库实例
+     * @param script       需要预检的脚本
+     * @param expectedRows 预期最大影响行数（针对 DML）
      * @return 返回是否通过预检
      */
-    public boolean explainCheck(DbInstance instance, String script) {
+    public boolean explainCheck(DbInstance instance, String script, Integer expectedRows) {
         // 简化逻辑：仅对单条 SELECT 语句或包含更新/删除的语句执行 EXPLAIN 检查
         if (!"mysql".equalsIgnoreCase(instance.getDbType())) {
             // 目前仅支持 MySQL EXPLAIN 解析
@@ -92,11 +93,13 @@ public class SqlLintService {
                 String trimmed = query.trim();
                 if (trimmed.isEmpty() || trimmed.startsWith("--")) continue;
 
-                // 强制只针对 SELECT/UPDATE/DELETE 做 EXPLAIN
-                if (trimmed.toUpperCase().startsWith("SELECT") ||
-                    trimmed.toUpperCase().startsWith("UPDATE") ||
-                    trimmed.toUpperCase().startsWith("DELETE")) {
+                boolean isDml = trimmed.toUpperCase().startsWith("UPDATE") || trimmed.toUpperCase().startsWith("DELETE");
+                boolean isSelect = trimmed.toUpperCase().startsWith("SELECT");
 
+                // 强制只针对 SELECT/UPDATE/DELETE 做 EXPLAIN
+                if (isSelect || isDml) {
+
+                    long totalRows = 0;
                     try (ResultSet rs = stmt.executeQuery("EXPLAIN " + trimmed)) {
                         while (rs.next()) {
                             String type = rs.getString("type");
@@ -104,7 +107,28 @@ public class SqlLintService {
                             if ("ALL".equalsIgnoreCase(type)) {
                                 throw new RuntimeException("SQL Lint Error: EXPLAIN plan shows a full table scan (type=ALL) for query: " + trimmed);
                             }
+
+                            if (isDml) {
+                                // 尝试获取 MySQL EXPLAIN 中的 rows 字段
+                                try {
+                                    String rowsStr = rs.getString("rows");
+                                    if (rowsStr != null) {
+                                        totalRows += Long.parseLong(rowsStr);
+                                    }
+                                } catch (Exception ignore) {
+                                }
+                            }
                         }
+                    }
+
+                    // 如果是 DML 且传入了 expectedRows，进行校验
+                    if (isDml && expectedRows != null) {
+                        if (totalRows > expectedRows) {
+                             throw new RuntimeException(String.format("SQL Lint Error: Estimated affected rows (%d) exceeds the expected maximum (%d) for query: %s", totalRows, expectedRows, trimmed));
+                        }
+                    } else if (isDml && totalRows > 1000) {
+                        // 兜底硬性限制，如果不传 expectedRows 或者兜底策略
+                        throw new RuntimeException(String.format("SQL Lint Error: Estimated affected rows (%d) exceeds the hard limit (1000) for query: %s", totalRows, trimmed));
                     }
                 }
             }

@@ -69,10 +69,11 @@ public class TicketController {
     public Result<SqlTicket> submitTicket(@RequestParam("instanceId") Long instanceId,
                                           @RequestParam(value = "type", defaultValue = "SQL_AUDIT") String type,
                                           @RequestParam(value = "reason", required = false) String reason,
+                                          @RequestParam(value = "expectedRows", required = false) Integer expectedRows,
                                           @RequestParam(value = "file", required = false) MultipartFile file) throws Exception {
         // Get ID Card from security context (populated by JwtAuthenticationFilter)
         String idCard = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        SqlTicket ticket = ticketService.submitTicket(idCard, instanceId, type, reason, file);
+        SqlTicket ticket = ticketService.submitTicket(idCard, instanceId, type, reason, file, expectedRows);
         return Result.success(ticket);
     }
 
