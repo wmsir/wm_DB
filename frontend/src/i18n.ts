@@ -7,7 +7,9 @@ const messages = {
       ticketList: '工单中心',
       workflowDesigner: '流程设计器',
       license: '商业授权 (License)',
-      aiSqlReview: 'AI 智能审查'
+      aiSqlReview: 'AI 智能审查',
+      instanceList: '实例管理',
+      roleList: '角色管理'
     },
     header: {
       welcome: '欢迎您',
@@ -20,7 +22,9 @@ const messages = {
       ticketList: 'Ticket Center',
       workflowDesigner: 'Workflow Designer',
       license: 'Commercial License',
-      aiSqlReview: 'AI SQL Review'
+      aiSqlReview: 'AI SQL Review',
+      instanceList: 'Instance Management',
+      roleList: 'Role Management'
     },
     header: {
       welcome: 'Welcome',

@@ -60,4 +60,9 @@ public class DbInstance {
      * 所属环境（DEV, TEST, PROD）
      */
     private String env;
+
+    /**
+     * 状态（AUDITING, APPROVED）
+     */
+    private String status;
 }

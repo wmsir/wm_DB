@@ -13,6 +13,8 @@ import WorkflowDesigner from '../views/WorkflowDesigner.vue'
 import License from '../views/License.vue'
 import AiSqlReview from '../views/AiSqlReview.vue'
 import Settings from '../views/Settings.vue'
+import InstanceList from '../views/InstanceList.vue'
+import RoleList from '../views/RoleList.vue'
 
 import { useUserStore } from '../store/user'
 
@@ -66,6 +68,16 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: Settings
+      },
+      {
+        path: 'instance-list',
+        name: 'InstanceList',
+        component: InstanceList
+      },
+      {
+        path: 'role-list',
+        name: 'RoleList',
+        component: RoleList
       }
     ]
   }
