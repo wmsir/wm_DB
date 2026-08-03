@@ -16,6 +16,12 @@
         <el-menu-item index="/ticket-list">
           <span>{{ t('menu.ticketList') }}</span>
         </el-menu-item>
+        <el-menu-item index="/instance-list">
+          <span>{{ t('menu.instanceList') }}</span>
+        </el-menu-item>
+        <el-menu-item index="/role-list">
+          <span>{{ t('menu.roleList') }}</span>
+        </el-menu-item>
         <el-menu-item index="/workflow-designer">
           <span>{{ t('menu.workflowDesigner') }}</span>
         </el-menu-item>
