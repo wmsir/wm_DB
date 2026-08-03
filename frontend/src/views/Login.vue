@@ -53,7 +53,7 @@ import { useUserStore } from '../store/user'
 // PUBLIC_KEY should be fetched dynamically from backend via API or injected via env vars.
 // For architectural scaffold demonstration we define a variable to hold the dynamic SM2 public key.
 // The public key must be an uncompressed hex string starting with 04.
-const PUBLIC_KEY = import.meta.env.VITE_SM2_PUBLIC_KEY || '0412345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678';
+const PUBLIC_KEY = import.meta.env.VITE_SM2_PUBLIC_KEY || '0496a363b8948c8a4c8818db7e81f5f3f5d9d98557ee29a57b75d5bb10c2c94913341ffab517c56377fe77592119708b72c509fa2af4bc47c76f5baf919ef7efd3';
 
 // 路由和表单引用
 const router = useRouter()

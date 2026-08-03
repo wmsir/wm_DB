@@ -127,11 +127,12 @@ public class TicketService {
      * @param idCard 申请人身份证号码
      * @param instanceId 目标数据库实例 ID
      * @param file 上传的 SQL 附件
+     * @param expectedRows 预期影响行数
      * @return 创建成功的工单实例
      * @throws Exception 处理异常
      */
     @Transactional(rollbackFor = Exception.class)
-    public SqlTicket submitTicket(String idCard, Long instanceId, String type, String reason, MultipartFile file) throws Exception {
+    public SqlTicket submitTicket(String idCard, Long instanceId, String type, String reason, MultipartFile file, Integer expectedRows) throws Exception {
         // 1. Process File (if present)
         StorageService.StorageResult storageResult = null;
         if (file != null && !file.isEmpty()) {
@@ -151,7 +152,7 @@ public class TicketService {
             enginePlugin.preCheck(storageResult.getAstCheckText());
 
             // 2.5 智能化 SQL 审核：执行 EXPLAIN
-            sqlLintService.explainCheck(instance, storageResult.getAstCheckText());
+            sqlLintService.explainCheck(instance, storageResult.getAstCheckText(), expectedRows);
         }
 
         // 3. Create Ticket

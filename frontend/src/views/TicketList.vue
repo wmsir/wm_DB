@@ -29,8 +29,8 @@
     </el-card>
 
     <!-- 创建工单对话框 -->
-    <el-dialog v-model="showNewTicketDialog" title="创建工单" width="500px">
-      <el-form :model="ticketForm" label-width="120px">
+    <el-dialog v-model="showNewTicketDialog" title="创建工单" width="700px">
+      <el-form :model="ticketForm" label-width="140px">
         <el-form-item label="目标实例ID" required>
           <el-input v-model="ticketForm.instanceId" placeholder="请输入数据库实例ID"></el-input>
         </el-form-item>
@@ -43,6 +43,13 @@
             <el-option label="库表申请" value="DB_TABLE" />
             <el-option label="数据恢复" value="DATA_RECOVERY" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="预期影响行数" v-if="ticketForm.type === 'SQL_AUDIT'">
+          <el-input-number v-model="ticketForm.expectedRows" :min="0" :max="1000000" placeholder="例如: 1" />
+          <div style="font-size: 12px; color: #909399; margin-left: 10px;">用于 DML (UPDATE/DELETE) 执行前校验，实际行数超出将阻断执行</div>
+        </el-form-item>
+        <el-form-item label="SQL 脚本" v-if="ticketForm.type === 'SQL_AUDIT' || ticketForm.type === 'DATA_RECOVERY'">
+           <el-input type="textarea" :rows="8" v-model="ticketForm.sqlText" placeholder="请在此处手动粘贴或输入 SQL 语句（如果上传了附件，将优先使用附件）"></el-input>
         </el-form-item>
         <el-form-item label="附件 (SQL等)" v-if="ticketForm.type === 'SQL_AUDIT' || ticketForm.type === 'DATA_RECOVERY'">
            <el-upload
@@ -82,6 +89,8 @@ const ticketForm = ref({
   instanceId: '',
   type: 'SQL_AUDIT',
   reason: '',
+  sqlText: '',
+  expectedRows: 1 as number | null,
   file: null as File | null
 })
 const loading = ref(false)
@@ -144,6 +153,13 @@ const submitTicket = async () => {
     formData.append('type', ticketForm.value.type)
     if (ticketForm.value.reason) {
       formData.append('reason', ticketForm.value.reason)
+    }
+    if (ticketForm.value.sqlText) {
+      formData.append('sqlText', ticketForm.value.sqlText)
+    }
+
+    if (ticketForm.value.type === 'SQL_AUDIT' && ticketForm.value.expectedRows !== null) {
+      formData.append('expectedRows', ticketForm.value.expectedRows.toString())
     }
 
     // 如果是 SQL 审核类，则附加文件。后端已配置为 file 非必填

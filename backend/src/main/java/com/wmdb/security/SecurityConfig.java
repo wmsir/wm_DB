@@ -76,7 +76,7 @@ public class SecurityConfig {
                 .csrfTokenRequestHandler(requestHandler)
                 // Ignore CSRF for specific endpoints like login or OpenAPI if desired,
                 // but let's keep it secure by default except for specific ones.
-                .ignoringRequestMatchers("/api/v1/auth/login", "/api/v1/openapi/**")
+                .ignoringRequestMatchers("/api/v1/auth/login", "/api/v1/openapi/**", "/api/v1/ticket/submit")
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz

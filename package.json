@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "sm-crypto": "^0.5.4",
     "vue-i18n": "^9.14.5"
   }
 }
