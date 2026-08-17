@@ -1,178 +1,173 @@
 <template>
   <div class="ticket-detail">
-    <div class="layout-left">
-      <el-card class="timeline-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>审批时间线</span>
-          </div>
-        </template>
-        <el-timeline>
-          <el-timeline-item
-            v-for="(activity, index) in activities"
-            :key="index"
-            :timestamp="activity.timestamp"
-            :type="activity.type"
-          >
-            {{ activity.content }}
-          </el-timeline-item>
-        </el-timeline>
-      </el-card>
+    <div class="top-actions">
+      <el-button>ODS拦截</el-button>
+      <el-button>查看提交信息</el-button>
+      <el-button type="primary" @click="downloadAttachment" v-if="ticketDetail?.detail?.attachmentOssKey">下载备份SQL</el-button>
     </div>
 
-    <div class="layout-right">
-      <el-card class="editor-card" shadow="never">
-        <template #header>
-          <div class="card-header">
-            <span>SQL 审核内容</span>
-            <el-button
-              v-if="ticketDetail?.attachmentOssKey"
-              type="primary"
-              size="small"
-              @click="downloadAttachment"
-            >
-              下载完整附件
-            </el-button>
+    <div class="section">
+      <div class="section-title">审批流</div>
+      <div class="approval-flow">
+        西安非车甲方PM ➔ 非车运维PM ➔ 数据库PM ➔ DBA
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">其他信息</div>
+      <el-table :data="ticketInfoList" border style="width: 100%">
+        <el-table-column prop="applicant" label="发起人" />
+        <el-table-column prop="instance" label="目标实例" />
+        <el-table-column prop="database" label="数据库" />
+        <el-table-column prop="startTime" label="发起时间" />
+        <el-table-column prop="executeWindow" label="可执行时间范围" width="300">
+           <template #default="{ row }">
+             <span style="color: #F56C6C;">{{ row.executeWindow }}</span>
+           </template>
+        </el-table-column>
+        <el-table-column prop="endTime" label="结束时间" />
+        <el-table-column prop="backup" label="备份" width="60" />
+        <el-table-column prop="type" label="工单类型" />
+        <el-table-column prop="status" label="当前状态">
+           <template #default="{ row }">
+             <span style="color: #67C23A; font-weight: bold;">{{ row.status }}</span>
+           </template>
+        </el-table-column>
+        <el-table-column prop="group" label="组" />
+        <el-table-column prop="sqlType" label="SQL类型" />
+      </el-table>
+    </div>
+
+    <div class="section">
+      <div class="section-title">执行说明</div>
+      <div class="execution-desc">
+        {{ ticketDetail?.ticket?.reason || '-' }}
+      </div>
+    </div>
+
+    <div class="tabs-section">
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="工单详情" name="details">
+          <div class="table-actions-bar">
+            <el-button size="small">展开全部</el-button>
+            <div class="right-actions">
+              <el-input v-model="searchQuery" placeholder="搜索" size="small" style="width: 200px;" />
+              <el-button size="small" :icon="Refresh"></el-button>
+              <el-button size="small" :icon="Menu"></el-button>
+            </div>
           </div>
-        </template>
-        <div ref="editorContainer" class="monaco-editor-container"></div>
-      </el-card>
+          <el-table :data="filteredSqlList" style="width: 100%" size="small" border>
+            <el-table-column type="expand">
+              <template #default="props">
+                <div style="padding: 10px;">{{ props.row.sqlContent }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="id" label="ID" width="60" />
+            <el-table-column prop="sqlContent" label="SQL内容" show-overflow-tooltip />
+            <el-table-column prop="status" label="审核/执行状态" width="120" />
+            <el-table-column prop="message" label="审核/执行信息" width="120" />
+            <el-table-column prop="affectedRows" label="扫描/影响行数" width="120" />
+            <el-table-column prop="executionTime" label="执行耗时" width="100" />
+            <el-table-column prop="backupTime" label="备份耗时" width="100" />
+            <el-table-column prop="currentStage" label="当前阶段" width="100" />
+            <el-table-column prop="actions" label="操作" width="80" />
+          </el-table>
+        </el-tab-pane>
+        <el-tab-pane label="工单日志" name="logs">
+          <div style="padding: 20px;">暂无日志</div>
+        </el-tab-pane>
+      </el-tabs>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-/**
- * 审批流工单详情视图组件
- *
- * 左侧展示基于 Flowable 生成的审批时间线，右侧使用 Monaco Editor（只读模式）渲染 SQL 语句，
- * 对于含有超大附件的工单，提供带有防盗链处理的临时预签名 URL 下载按钮。
- */
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Refresh, Menu } from '@element-plus/icons-vue'
 import request from '../utils/request'
-import * as monaco from 'monaco-editor'
 import { downloadTicketAttachment } from '../api/ticket'
 
 const route = useRoute()
-const editorContainer = ref<HTMLElement | null>(null)
-let editor: monaco.editor.IStandaloneCodeEditor | null = null
-
+const activeTab = ref('details')
+const searchQuery = ref('')
 const ticketDetail = ref<any>(null)
 
-// 模拟 Flowable 审批流时间线数据
-const activities = ref([
-  {
-    content: '工单草稿创建',
-    timestamp: '2023-10-25 10:00:00',
-    type: 'info'
-  },
-  {
-    content: '提交审批 (DBA审核中)',
-    timestamp: '2023-10-25 10:05:00',
-    type: 'primary'
-  }
-])
-
-/**
- * 初始化 Monaco Editor 并设置为 SQL 只读视图
- *
- * @param sqlContent 需要渲染的 SQL 文本内容
- */
-/**
- * 注册 Monaco Editor 自定义 SQL 代码提示 (Snippets & IntelliSense)
- */
-const registerMonacoSnippets = () => {
-  monaco.languages.registerCompletionItemProvider('sql', {
-    provideCompletionItems: (_model, _position) => {
-      const suggestions = [
-        {
-          label: 'SELECT',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'SELECT * FROM ',
-          detail: 'Select Statement'
-        },
-        {
-          label: 'UPDATE',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'UPDATE ${1:table_name} SET ${2:column} = ${3:value} WHERE ${4:condition};',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          detail: 'Update Statement'
-        },
-        {
-          label: 'DELETE',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'DELETE FROM ${1:table_name} WHERE ${2:condition};',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          detail: 'Delete Statement'
-        }
-      ]
-      return { suggestions: suggestions as any }
-    }
-  })
-}
-
-/**
- * 初始化 Monaco Editor 并设置为 SQL 只读视图
- *
- * @param sqlContent 需要渲染的 SQL 文本内容
- */
-const initMonaco = (sqlContent: string) => {
-  if (editorContainer.value) {
-    registerMonacoSnippets()
-    editor = monaco.editor.create(editorContainer.value, {
-      value: sqlContent,
-      language: 'sql',
-      theme: 'vs-dark',
-      readOnly: false, // 允许编辑以体验代码提示功能，实际审批环节应为 true
-      minimap: { enabled: false },
-      automaticLayout: true
-    })
-  }
-}
-
-/**
- * 拉取工单详细信息，包含 AST 解析后的安全审查摘要
- */
 const fetchTicketDetail = async () => {
   try {
-    const id = route.params.id || '1' // fallback for demo
-
-    // 使用封装的 request.ts，自动携带 JWT 并处理异常
+    const id = route.params.id || '1'
     const response: any = await request.get(`/v1/ticket/${id}/detail`)
+    ticketDetail.value = response.data
 
-    ticketDetail.value = response.data.detail
-
-    // 初始化编辑器
-    if (ticketDetail.value && ticketDetail.value.sqlText) {
-       initMonaco(ticketDetail.value.sqlText)
-    } else {
-       initMonaco('-- 暂无 SQL 文本数据')
+    if (!ticketDetail.value || !ticketDetail.value.ticket) {
+      throw new Error('No data')
     }
   } catch (error) {
     ElMessage.error('获取详情失败，请检查工单 ID 或权限')
-    // 降级演示处理：防止完全白屏
+    // Prevent complete blank page by initializing with empty structure
     ticketDetail.value = {
-      sqlText: "-- 无法拉取实际接口数据，展示示例 SQL\nSELECT * FROM users WHERE status = 'ACTIVE';\nUPDATE products SET price = price * 1.1 WHERE category = 'ELEC';",
-      attachmentOssKey: 'mock-uuid-large-file.sql'
+      ticket: {},
+      detail: {}
     }
-    initMonaco(ticketDetail.value.sqlText)
   }
 }
 
-/**
- * 触发基于 MinIO 防盗链机制的附件安全下载
- */
+const ticketInfoList = computed(() => {
+  if (!ticketDetail.value || !ticketDetail.value.ticket) return []
+  const t = ticketDetail.value.ticket
+  return [
+    {
+      applicant: t.applicantIdCard || '-',
+      instance: t.instanceId || '-',
+      database: '-',
+      startTime: '-',
+      executeWindow: t.executionWindow || '-',
+      endTime: '-',
+      backup: '-',
+      type: t.type || '-',
+      status: t.status === 'EXECUTED' ? '已正常结束' : (t.status || '-'),
+      group: '-',
+      sqlType: '-'
+    }
+  ]
+})
+
+const sqlList = computed(() => {
+  if (!ticketDetail.value || !ticketDetail.value.detail || !ticketDetail.value.detail.sqlText) return []
+  const text = ticketDetail.value.detail.sqlText
+  const queries = text.split(';').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
+
+  return queries.map((query: string, index: number) => {
+    return {
+      id: index + 1,
+      sqlContent: query,
+      status: '-',
+      message: '-',
+      affectedRows: '-',
+      executionTime: '-',
+      backupTime: '-',
+      currentStage: '-',
+      actions: '-'
+    }
+  })
+})
+
+const filteredSqlList = computed(() => {
+  if (!searchQuery.value) return sqlList.value
+  return sqlList.value.filter((item: any) =>
+    item.sqlContent.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+})
+
 const downloadAttachment = async () => {
   try {
     const id = route.params.id || '1'
     const url = await downloadTicketAttachment(id as string)
-    // 防盗链实现：创建临时下载链接进行拉取
     const link = document.createElement('a')
     link.href = url
     link.target = '_blank'
-    link.download = ticketDetail.value.attachmentOssKey
+    link.download = ticketDetail.value?.detail?.attachmentOssKey || 'backup.sql'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -184,59 +179,58 @@ const downloadAttachment = async () => {
 onMounted(() => {
   fetchTicketDetail()
 })
-
-onBeforeUnmount(() => {
-  if (editor) {
-    editor.dispose()
-  }
-})
 </script>
 
 <style scoped>
 .ticket-detail {
-  display: flex;
-  height: 100vh;
   padding: 20px;
-  box-sizing: border-box;
-  background-color: #f5f7fa;
-  gap: 20px;
+  background-color: #fff;
+  min-height: 100vh;
 }
 
-.layout-left {
-  flex: 0 0 300px;
+.top-actions {
+  margin-bottom: 20px;
 }
 
-.layout-right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.section {
+  margin-bottom: 20px;
 }
 
-.timeline-card, .editor-card {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+.section-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 10px;
 }
 
-.card-header {
+.approval-flow {
+  font-size: 14px;
+  color: #333;
+}
+
+.execution-desc {
+  background-color: #f2f2f2;
+  padding: 15px;
+  border-radius: 4px;
+  min-height: 60px;
+  color: #666;
+}
+
+.tabs-section {
+  margin-top: 20px;
+}
+
+.table-actions-bar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  margin-bottom: 10px;
 }
 
-.monaco-editor-container {
-  flex: 1;
-  min-height: 500px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-/* Ensure the el-card body takes up remaining space */
-:deep(.el-card__body) {
-  flex: 1;
+.right-actions {
   display: flex;
-  flex-direction: column;
-  overflow: auto;
+  gap: 10px;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background-color: #f5f7fa;
 }
 </style>
