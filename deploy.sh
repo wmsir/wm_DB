@@ -1,13 +1,19 @@
 #!/bin/bash
 set -e
 
-SERVER_IP="39.97.158.22"
-SERVER_PORT="22"
-SERVER_USER="root"
-SERVER_PASS="wangmeng0902++"
-DB_URL="jdbc:mysql://rm-uf6abp6renk8g3l2wio.mysql.rds.aliyuncs.com:3306/huiqitong_erp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
-DB_USER="root"
-DB_PASS="f5mF2hKiOkbxKqs5"
+SERVER_IP=${SERVER_IP}
+SERVER_PORT=${SERVER_PORT:-"22"}
+SERVER_USER=${SERVER_USER:-"root"}
+SERVER_PASS=${SERVER_PASS}
+DB_URL=${DB_URL}
+DB_USER=${DB_USER}
+DB_PASS=${DB_PASS}
+
+if [ -z "$SERVER_IP" ] || [ -z "$SERVER_PASS" ] || [ -z "$DB_URL" ] || [ -z "$DB_USER" ] || [ -z "$DB_PASS" ]; then
+  echo "Error: Missing required environment variables."
+  echo "Please set SERVER_IP, SERVER_PASS, DB_URL, DB_USER, and DB_PASS before running this script."
+  exit 1
+fi
 
 echo "Building backend..."
 mvn clean package -DskipTests -f backend/pom.xml
@@ -26,16 +32,16 @@ tar -czf frontend-dist.tar.gz -C frontend/dist .
 sshpass -p "${SERVER_PASS}" scp -o StrictHostKeyChecking=no -P ${SERVER_PORT} frontend-dist.tar.gz ${SERVER_USER}@${SERVER_IP}:/opt/wmdb/frontend/
 
 echo "Starting application on server..."
-sshpass -p "${SERVER_PASS}" ssh -o StrictHostKeyChecking=no -p ${SERVER_PORT} ${SERVER_USER}@${SERVER_IP} << 'EOF'
+sshpass -p "${SERVER_PASS}" ssh -o StrictHostKeyChecking=no -p ${SERVER_PORT} ${SERVER_USER}@${SERVER_IP} << EOF
   pkill -f wmdb-backend-1.0.0-SNAPSHOT.jar || true
 
   cd /opt/wmdb/frontend
   tar -xzf frontend-dist.tar.gz
 
   cd /opt/wmdb/backend
-  java -Dspring.datasource.dynamic.datasource.master.url='jdbc:mysql://rm-uf6abp6renk8g3l2wio.mysql.rds.aliyuncs.com:3306/huiqitong_erp?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true' \
-       -Dspring.datasource.dynamic.datasource.master.username='root' \
-       -Dspring.datasource.dynamic.datasource.master.password='f5mF2hKiOkbxKqs5' \
+  java -Dspring.datasource.dynamic.datasource.master.url="${DB_URL}" \
+       -Dspring.datasource.dynamic.datasource.master.username="${DB_USER}" \
+       -Dspring.datasource.dynamic.datasource.master.password="${DB_PASS}" \
        -jar wmdb-backend-1.0.0-SNAPSHOT.jar > backend.log 2>&1 &
 EOF
 
