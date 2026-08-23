@@ -34,6 +34,21 @@ public class RoutingPreviewDTO {
     private Boolean isPinned;
 
     /**
+     * 是否为条件网关分支流 (true: SpEL 双分支网关, false: 顺序多级递进审批流)
+     */
+    private Boolean isGateway;
+
+    /**
+     * 绑定的生效业务资源组
+     */
+    private String resourceGroups;
+
+    /**
+     * 绑定的生效目标数据库范围
+     */
+    private String targetDatabases;
+
+    /**
      * 适用变更类型
      */
     private String flowType;

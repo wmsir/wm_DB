@@ -257,7 +257,20 @@
                   style="display: flex; align-items: center; gap: 4px;"
                 >
                   <el-icon><Coin /></el-icon>
-                  <span><b>生效目标：</b>{{ currentTemplateDbScopeText }}</span>
+                  <span><b>生效资源组与目标库：</b>{{ currentTemplateDbScopeText }}</span>
+                </el-tag>
+              </div>
+
+              <!-- 生效工单类型徽标 -->
+              <div class="deploy-status-badge">
+                <el-tag
+                  type="success"
+                  effect="light"
+                  size="default"
+                  style="display: flex; align-items: center; gap: 4px;"
+                >
+                  <el-icon><Operation /></el-icon>
+                  <span><b>生效工单类型：</b>{{ currentTemplateFlowTypeText }}</span>
                 </el-tag>
               </div>
             </div>
@@ -304,14 +317,14 @@
           </div>
 
           <div class="bpmn-designer-body-layout">
-            <!-- 左侧：权限组与角色资产面板 (支持拖拽、搜索、每页10条分页与数据库展开) -->
+            <!-- 左侧：权限组与审批角色资产面板 (拖拽 ➕ 插入 BPMN 节点) -->
             <div class="bpmn-palette-panel">
               <div class="palette-panel-header">
                 <div class="p-title-row">
                   <el-icon color="#409EFF"><UserFilled /></el-icon>
-                  <span class="p-title">权限组与审批资产库</span>
+                  <span class="p-title">审批角色与引擎资产库</span>
                 </div>
-                <div class="p-sub-tip">点击选定生效目标 · 拖拽 ➕ 插入节点</div>
+                <div class="p-sub-tip">拖拽 ➕ 插入 BPMN 流程节点</div>
               </div>
 
               <!-- 搜索过滤 -->
@@ -319,108 +332,14 @@
                 <el-input
                   v-model="paletteSearchKeyword"
                   size="small"
-                  placeholder="搜索资源组/角色/人员/库名..."
+                  placeholder="搜索审批角色/人员/网关/节点..."
                   clearable
                   :prefix-icon="Search"
                 />
               </div>
 
               <div class="palette-scroll-content">
-                <!-- 1. 业务资源组权限资产 (支持每页 10 条分页与数据库展开) -->
-                <div class="palette-group">
-                  <div class="group-header">
-                    <el-icon color="#E6A23C"><FolderOpened /></el-icon>
-                    <span>配置的业务资源组</span>
-                    <el-tag size="small" type="warning" effect="plain" class="count-tag">
-                      共 {{ filteredPaletteResourceGroups.length }} 个
-                    </el-tag>
-                  </div>
-                  
-                  <div class="group-items-list">
-                    <div
-                      v-for="rg in paginatedPaletteResourceGroups"
-                      :key="rg"
-                      class="palette-card palette-card-rg"
-                      :class="{ 'is-selected-rg': focusedResourceGroup === rg }"
-                      @click="handleSelectResourceGroupCard(rg)"
-                      draggable="true"
-                      @dragstart="handleDragStart($event, { type: 'RESOURCE_GROUP', name: rg, role: 'DEV_LEAD' })"
-                    >
-                      <div class="card-info">
-                        <div class="card-title-row" style="display: flex; align-items: center; justify-content: space-between;">
-                          <span class="card-name">{{ rg }}</span>
-                          <el-tag size="small" :type="focusedResourceGroup === rg ? 'success' : 'info'" effect="dark" style="font-size: 10px; height: 18px; padding: 0 4px;">
-                            {{ focusedResourceGroup === rg ? '当前生效' : '点击切换' }}
-                          </el-tag>
-                        </div>
-                        <span class="card-sub">{{ getResourceGroupMeta(rg) }}</span>
-
-                        <!-- 展开的数据库列表选择 (支持全选/取消全选及单个/多个多选) -->
-                        <div v-if="focusedResourceGroup === rg" class="rg-expanded-db-list" style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed #cbd5e1;">
-                          <div style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
-                            <span>📌 细化选择生效数据库：</span>
-                            <span style="font-size: 10px; color: #64748b;">
-                              已选 {{ getSelectedCountInGroup(rg) }}/{{ getDatabasesByResourceGroup(rg).length }}
-                            </span>
-                          </div>
-                          <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                            <!-- 🌐 全选 / 取消全选 按钮标签 -->
-                            <el-tag
-                              size="small"
-                              :effect="isAllDatabasesSelected(rg) ? 'dark' : 'plain'"
-                              :type="isAllDatabasesSelected(rg) ? 'primary' : 'info'"
-                              class="db-select-pill all-pill"
-                              style="cursor: pointer; font-weight: 600;"
-                              @click.stop="handleToggleSelectAllDatabases(rg)"
-                            >
-                              {{ isAllDatabasesSelected(rg) ? '✓ 全选' : '🌐 全选' }}
-                            </el-tag>
-
-                            <!-- 单个数据库标签 (支持多选，选中有深色高亮和勾选状态) -->
-                            <el-tag
-                              v-for="db in getDatabasesByResourceGroup(rg)"
-                              :key="db"
-                              size="small"
-                              :effect="focusedDatabases.includes(db) ? 'dark' : 'plain'"
-                              :type="focusedDatabases.includes(db) ? 'success' : 'info'"
-                              class="db-select-pill"
-                              :class="{ 'is-active-db': focusedDatabases.includes(db) }"
-                              style="cursor: pointer;"
-                              @click.stop="handleToggleSingleDatabase(db)"
-                            >
-                              <span v-if="focusedDatabases.includes(db)" style="margin-right: 2px;">✓</span>
-                              {{ db }}
-                            </el-tag>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div class="card-actions-row" style="display: flex; flex-direction: column; gap: 4px; align-items: center;">
-                        <el-button
-                          size="small"
-                          type="primary"
-                          link
-                          :icon="Plus"
-                          title="添加到画布流程"
-                          @click.stop="addNodeToCanvas({ type: 'RESOURCE_GROUP', name: rg, role: 'DEV_LEAD' })"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 资源组 10 条迷你分页 -->
-                  <div v-if="filteredPaletteResourceGroups.length > 10" class="palette-pagination-wrap" style="display: flex; justify-content: center; margin-top: 8px;">
-                    <el-pagination
-                      small
-                      layout="prev, pager, next"
-                      :page-size="10"
-                      :total="filteredPaletteResourceGroups.length"
-                      v-model:current-page="resourceGroupPage"
-                    />
-                  </div>
-                </div>
-
-                <!-- 2. 系统审批角色权限组 (支持展示成员与编辑) -->
+                <!-- 1. 系统审批角色权限组 (支持展示成员与编辑) -->
                 <div class="palette-group">
                   <div class="group-header">
                     <el-icon color="#409EFF"><User /></el-icon>
@@ -529,19 +448,11 @@
             >
               <!-- 浮动实时生效上下文指示牌 -->
               <div class="floating-context-card">
-                <div class="context-pill" :class="{ 'is-db-mode': !isAllDatabasesSelected(focusedResourceGroup) && focusedDatabases.length > 0 }">
-                  <span class="context-icon">{{ !isAllDatabasesSelected(focusedResourceGroup) && focusedDatabases.length > 0 ? '🎯' : '🏢' }}</span>
+                <div class="context-pill">
+                  <span class="context-icon">🎯</span>
                   <div class="context-content">
-                    <span class="context-title">
-                      {{ !isAllDatabasesSelected(focusedResourceGroup) && focusedDatabases.length > 0
-                        ? `当前生效定制数据库 (已选 ${focusedDatabases.length} 个)`
-                        : '当前生效业务资源组' }}
-                    </span>
-                    <span class="context-val">
-                      {{ !isAllDatabasesSelected(focusedResourceGroup) && focusedDatabases.length > 0
-                        ? `${focusedResourceGroup} ➔ [${focusedDatabases.join(', ')}]`
-                        : `${focusedResourceGroup} · 全部数据库通用 (共 ${getDatabasesByResourceGroup(focusedResourceGroup).length} 个库)` }}
-                    </span>
+                    <span class="context-title">当前 BPMN 审批流程生效范围</span>
+                    <span class="context-val">{{ currentTemplateDbScopeText }} · 【{{ currentTemplateFlowTypeText }}】</span>
                   </div>
                 </div>
               </div>
@@ -892,11 +803,11 @@
       </template>
     </el-dialog>
 
-    <!-- 绑定当前 BPMN 审批流程生效范围（资源组 + 全部/细化具体数据库） -->
+    <!-- 绑定当前 BPMN 审批流程生效范围（工单类型 + 业务资源组 + 全部/细化具体数据库） -->
     <el-dialog
       title="🎯 绑定当前 BPMN 审批流程生效范围"
       v-model="quickBindDialogVisible"
-      width="640px"
+      width="680px"
       destroy-on-close
       append-to-body
     >
@@ -905,11 +816,47 @@
           当前流程：{{ getPresetTitle(selectedBpmnPreset) }}
         </div>
         <div style="font-size: 12px; color: #15803d; line-height: 1.5;">
-          💡 <b>个性化覆盖说明</b>：若给整个资源组配置了通用流程，当该资源组下的某个核心数据库需要定制不同审核流时，可在此细化选择具体数据库，系统将优先命中针对该数据库定制的审批流！
+          💡 <b>生效范围说明</b>：系统将根据此流程绑定的【工单类型】、【业务资源组】与【目标数据库】进行精确匹配，在创建工单时将直接展示对应的审批链路！
         </div>
       </div>
 
       <el-form label-width="120px" size="default">
+        <!-- 1. 生效工单类型 -->
+        <el-form-item label="生效工单类型">
+          <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; width: 100%;">
+            <el-button size="small" type="primary" plain :icon="Select" @click="handleSelectAllQuickBindTicketTypes">
+              🌐 一键全选所有类型 (4)
+            </el-button>
+            <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['DML_CHANGE']">
+              仅 DML 数据变更
+            </el-button>
+            <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['DDL_CHANGE']">
+              仅 DDL 结构变更
+            </el-button>
+            <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['DATA_EXPORT']">
+              仅数据导出
+            </el-button>
+            <el-button size="small" type="danger" plain :icon="CloseBold" @click="quickBindTicketTypes = []">
+              清空
+            </el-button>
+          </div>
+          <el-checkbox-group v-model="quickBindTicketTypes" style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <el-checkbox value="DML_CHANGE">
+              <el-tag size="small" type="primary" effect="dark">DML 数据变更 (INSERT / UPDATE / DELETE)</el-tag>
+            </el-checkbox>
+            <el-checkbox value="DDL_CHANGE">
+              <el-tag size="small" type="danger" effect="dark">DDL 结构变更 (CREATE / ALTER / DROP)</el-tag>
+            </el-checkbox>
+            <el-checkbox value="DATA_EXPORT">
+              <el-tag size="small" type="warning" effect="dark">DATA_EXPORT 敏感数据导出</el-tag>
+            </el-checkbox>
+            <el-checkbox value="DATA_QUERY">
+              <el-tag size="small" type="success" effect="dark">DATA_QUERY 数据查询提权</el-tag>
+            </el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+
+        <!-- 2. 生效业务资源组 -->
         <el-form-item label="生效业务资源组">
           <div style="display: flex; gap: 8px; margin-bottom: 8px; width: 100%;">
             <el-button size="small" type="primary" plain :icon="Select" @click="handleSelectAllQuickBindResourceGroups">
@@ -1145,7 +1092,6 @@ import {
   VideoPause,
   CircleCheckFilled,
   InfoFilled,
-  FolderOpened,
   UserFilled,
   User,
   Operation,
@@ -1164,11 +1110,6 @@ const router = useRouter()
 const allUsers = ref<any[]>([])
 const availableInstancesList = ref<any[]>([])
 const allResourceGroupDetails = ref<any[]>([])
-
-const resourceGroupPage = ref(1)
-const resourceGroupPageSize = 10
-const focusedResourceGroup = ref<string>('车险承保资源组')
-const focusedDatabases = ref<string[]>(['car_prod_mysql/car_insurance_db', 'car_prod_mysql/car_claim_db'])
 
 export interface PaletteRoleItem {
   key: string
@@ -1247,7 +1188,7 @@ const fetchResourceGroupDetails = async () => {
 
 const currentStepIndex = computed(() => {
   if (currentDeployStatus.value.isDeployed) return 3
-  if (focusedResourceGroup.value) return 2
+  if (selectedBpmnPreset.value) return 2
   return 1
 })
 
@@ -1326,20 +1267,6 @@ const handleSaveRoleMembers = async () => {
 const paletteSearchKeyword = ref('')
 const draggedItem = ref<any>(null)
 
-const filteredPaletteResourceGroups = computed(() => {
-  const kw = paletteSearchKeyword.value.trim().toLowerCase()
-  if (!kw) return availableResourceGroups.value
-  return availableResourceGroups.value.filter(rg => {
-    const meta = getResourceGroupMeta(rg)
-    return rg.toLowerCase().includes(kw) || meta.toLowerCase().includes(kw)
-  })
-})
-
-const paginatedPaletteResourceGroups = computed(() => {
-  const start = (resourceGroupPage.value - 1) * resourceGroupPageSize
-  return filteredPaletteResourceGroups.value.slice(start, start + resourceGroupPageSize)
-})
-
 const filteredPaletteRoles = computed(() => {
   const kw = paletteSearchKeyword.value.trim().toLowerCase()
   if (!kw) return paletteRoles.value
@@ -1348,16 +1275,6 @@ const filteredPaletteRoles = computed(() => {
     return r.label.toLowerCase().includes(kw) || r.key.toLowerCase().includes(kw) || (r.description && r.description.toLowerCase().includes(kw)) || memberNames.includes(kw)
   })
 })
-
-const getResourceGroupMeta = (rgName: string) => {
-  const found = allResourceGroupDetails.value.find(g => g.groupName === rgName)
-  if (found) {
-    const dept = found.deptName || '业务部门'
-    const lead = found.devLead ? ` · 组长: ${found.devLead.split(' ')[0]}` : ''
-    return `${dept}${lead}`
-  }
-  return '业务线初审责任组'
-}
 
 const getDatabasesByResourceGroup = (rgName: string) => {
   const dbs: string[] = []
@@ -1377,57 +1294,6 @@ const getDatabasesByResourceGroup = (rgName: string) => {
     dbs.push('car_prod_mysql/car_insurance_db', 'car_prod_mysql/car_claim_db')
   }
   return dbs
-}
-
-const isAllDatabasesSelected = (rgName: string) => {
-  const allDbs = getDatabasesByResourceGroup(rgName)
-  if (allDbs.length === 0) return false
-  return allDbs.every(db => focusedDatabases.value.includes(db))
-}
-
-const getSelectedCountInGroup = (rgName: string) => {
-  const allDbs = getDatabasesByResourceGroup(rgName)
-  return allDbs.filter(db => focusedDatabases.value.includes(db)).length
-}
-
-const handleToggleSelectAllDatabases = (rgName: string) => {
-  const allDbs = getDatabasesByResourceGroup(rgName)
-  if (isAllDatabasesSelected(rgName)) {
-    // 已经全选，再次点击则全部取消
-    focusedDatabases.value = focusedDatabases.value.filter(d => !allDbs.includes(d))
-    ElMessage.info(`已取消全选【${rgName}】下的数据库`)
-  } else {
-    // 未全选，点击全选
-    const newSelected = [...focusedDatabases.value]
-    allDbs.forEach(d => {
-      if (!newSelected.includes(d)) newSelected.push(d)
-    })
-    focusedDatabases.value = newSelected
-    ElMessage.success(`已全选【${rgName}】下的全部 ${allDbs.length} 个数据库`)
-  }
-}
-
-const handleToggleSingleDatabase = (dbKey: string) => {
-  const idx = focusedDatabases.value.indexOf(dbKey)
-  if (idx > -1) {
-    focusedDatabases.value.splice(idx, 1)
-    ElMessage.info(`已取消选中数据库【${dbKey}】`)
-  } else {
-    focusedDatabases.value.push(dbKey)
-    ElMessage.success(`已选中数据库【${dbKey}】(当前共选 ${focusedDatabases.value.length} 个)`)
-  }
-}
-
-const handleSelectResourceGroupCard = (rgName: string) => {
-  focusedResourceGroup.value = rgName
-  // 默认选中该资源组下的所有数据库
-  const allDbs = getDatabasesByResourceGroup(rgName)
-  const newSelected = [...focusedDatabases.value]
-  allDbs.forEach(d => {
-    if (!newSelected.includes(d)) newSelected.push(d)
-  })
-  focusedDatabases.value = newSelected
-  ElMessage.info(`已切换当前生效业务资源组为【${rgName}】`)
 }
 
 const handleDragStart = (e: DragEvent, item: any) => {
@@ -1538,6 +1404,31 @@ const currentTemplateDbScopeText = computed(() => {
   }
   return '全部业务资源组 · [全部数据库通用]'
 })
+
+const currentTemplateFlowTypeText = computed(() => {
+  if (selectedBpmnPreset.value.startsWith('tpl_')) {
+    const tplId = Number(selectedBpmnPreset.value.replace('tpl_', ''))
+    const found = templateList.value.find(t => t.id === tplId)
+    if (found) {
+      return formatFlowTypeBadge(found.flowType)
+    }
+  }
+  return '全部工单类型通用'
+})
+
+const formatFlowTypeBadge = (flowType?: string) => {
+  if (!flowType || flowType === 'ALL') return '全部工单类型通用 (ALL)'
+  const map: Record<string, string> = {
+    DML_CHANGE: 'DML 数据变更',
+    DDL_CHANGE: 'DDL 结构变更',
+    DATA_EXPORT: '数据导出与脱敏',
+    DATA_QUERY: '数据查询提权',
+    SQL_AUDIT: 'SQL 变更审核'
+  }
+  const parts = flowType.split(',').map(s => s.trim())
+  const labels = parts.map(p => map[p] || p)
+  return labels.join('、')
+}
 
 const handleDbScopeModeChange = (mode: string) => {
   if (mode === 'ALL') {
@@ -1685,9 +1576,15 @@ const currentDeployStatus = ref<{
 // 绑定生效范围弹窗状态
 const quickBindDialogVisible = ref(false)
 const quickBindLoading = ref(false)
+const quickBindTicketTypes = ref<string[]>(['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY'])
 const quickBindResourceGroups = ref<string[]>([])
 const quickBindDbScopeMode = ref<'ALL' | 'CUSTOM'>('ALL')
 const quickBindSelectedDatabases = ref<string[]>([])
+
+const handleSelectAllQuickBindTicketTypes = () => {
+  quickBindTicketTypes.value = ['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY']
+  ElMessage.success('已全选所有 4 种工单变更类型')
+}
 
 const handleQuickBindDbScopeChange = (mode: string) => {
   if (mode === 'ALL') {
@@ -2381,6 +2278,12 @@ const handleOpenQuickBindDialog = () => {
     const found = templateList.value.find(t => t.id === tplId)
     if (found) {
       quickBindResourceGroups.value = parseResourceGroups(found.resourceGroups)
+      if (!found.flowType || found.flowType === 'ALL') {
+        quickBindTicketTypes.value = ['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY']
+      } else {
+        const types = found.flowType.split(',').map((s: string) => s.trim()).filter(Boolean)
+        quickBindTicketTypes.value = types.length > 0 ? types : ['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY']
+      }
       if (found.targetDatabases && !found.targetDatabases.includes('ALL') && found.targetDatabases !== '[]') {
         try {
           const parsed = JSON.parse(found.targetDatabases)
@@ -2404,19 +2307,19 @@ const handleOpenQuickBindDialog = () => {
     }
   }
 
-  // 默认使用当前选中的资源组与数据库
-  quickBindResourceGroups.value = focusedResourceGroup.value ? [focusedResourceGroup.value] : ['车险承保资源组']
-  if (!isAllDatabasesSelected(focusedResourceGroup.value) && focusedDatabases.value.length > 0) {
-    quickBindDbScopeMode.value = 'CUSTOM'
-    quickBindSelectedDatabases.value = [...focusedDatabases.value]
-  } else {
-    quickBindDbScopeMode.value = 'ALL'
-    quickBindSelectedDatabases.value = []
-  }
+  // 默认使用当前选中的资源组与全量工单类型
+  quickBindTicketTypes.value = ['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY']
+  quickBindResourceGroups.value = ['车险承保资源组']
+  quickBindDbScopeMode.value = 'ALL'
+  quickBindSelectedDatabases.value = []
   quickBindDialogVisible.value = true
 }
 
 const handleExecuteQuickBind = async () => {
+  if (quickBindTicketTypes.value.length === 0) {
+    ElMessage.warning('请至少选择一个生效工单变更类型')
+    return
+  }
   if (quickBindResourceGroups.value.length === 0) {
     ElMessage.warning('请至少选择一个生效业务资源组')
     return
@@ -2428,45 +2331,36 @@ const handleExecuteQuickBind = async () => {
   quickBindLoading.value = true
   try {
     const title = getPresetTitle(selectedBpmnPreset.value)
-    const isCond = selectedBpmnPreset.value === 'dml_condition'
-    let finalNodes = [
-      { step: 1, nodeName: '开发组长初审', role: 'DEV_LEAD' },
-      { step: 2, nodeName: '核心DBA安全复审', role: 'DBA' }
-    ]
-    if (isCond) {
-      finalNodes = [
-        { step: 1, nodeName: '影响行数智能排他网关判定', role: 'GATEWAY' } as any,
-        { step: 2, nodeName: '核心DBA安全复核 (高危大事务)', role: 'DBA' },
-        { step: 3, nodeName: '运维/开发组长初审 (常规低危)', role: 'DEV_LEAD' }
-      ]
-    }
-
     let tplId: number | null = null
+    let existingTpl: any = null
     if (selectedBpmnPreset.value.startsWith('tpl_')) {
       tplId = Number(selectedBpmnPreset.value.replace('tpl_', ''))
+      existingTpl = templateList.value.find(t => t.id === tplId) as any
     }
+
+    const flowTypeVal = quickBindTicketTypes.value.length === 4 ? 'ALL' : quickBindTicketTypes.value.join(',')
 
     const payload = {
       id: tplId,
-      templateName: title.split(' (')[0],
-      flowType: selectedBpmnPreset.value === 'ddl' ? 'DDL_CHANGE' : (selectedBpmnPreset.value === 'export' ? 'DATA_EXPORT' : 'DML_CHANGE'),
+      templateName: existingTpl ? existingTpl.templateName : title.split(' (')[0],
+      flowType: flowTypeVal,
       resourceGroups: JSON.stringify(quickBindResourceGroups.value),
       targetDatabases: JSON.stringify(quickBindDbScopeMode.value === 'ALL' ? ['ALL'] : quickBindSelectedDatabases.value),
-      nodeConfig: JSON.stringify(finalNodes),
-      conditionDimension: 'AFFECT_ROWS',
-      affectRowsThreshold: 1000,
-      highRiskRole: 'DBA',
-      lowRiskRole: 'DEV_LEAD',
-      spelExpression: '#{affectRows > 1000}',
-      defaultExecutionMode: JSON.stringify(['IMMEDIATE', 'SCHEDULED']),
-      triggerCondition: isCond ? '影响行数 > 1000 (SpEL: #{affectRows > 1000}) 需核心 DBA 审核；影响行数 ≤ 1000 由开发组长审核' : '由 BPMN 2.0 引擎全自动路由',
+      nodeConfig: existingTpl?.nodeConfig || JSON.stringify(form.value.nodes),
+      conditionDimension: existingTpl?.conditionDimension || form.value.conditionDimension || 'AFFECT_ROWS',
+      affectRowsThreshold: existingTpl?.affectRowsThreshold || form.value.affectRowsThreshold || 1000,
+      highRiskRole: existingTpl?.highRiskRole || form.value.highRiskRole || 'DBA',
+      lowRiskRole: existingTpl?.lowRiskRole || form.value.lowRiskRole || 'DEV_LEAD',
+      spelExpression: existingTpl?.spelExpression || form.value.spelExpression || '#{affectRows > 1000}',
+      defaultExecutionMode: existingTpl?.defaultExecutionMode || JSON.stringify(['IMMEDIATE', 'SCHEDULED']),
+      triggerCondition: existingTpl?.triggerCondition || form.value.triggerCondition || '由 BPMN 2.0 引擎根据生效范围自动匹配流转',
       description: quickBindDbScopeMode.value === 'CUSTOM'
-        ? `绑定至 ${quickBindResourceGroups.value.join('、')} [定制数据库: ${quickBindSelectedDatabases.value.join(', ')}]`
-        : `绑定至 ${quickBindResourceGroups.value.join('、')} [全部业务库通用]`,
+        ? `生效工单[${flowTypeVal}] · 绑定至 ${quickBindResourceGroups.value.join('、')} [定制数据库: ${quickBindSelectedDatabases.value.join(', ')}]`
+        : `生效工单[${flowTypeVal}] · 绑定至 ${quickBindResourceGroups.value.join('、')} [全部业务库通用]`,
       status: 1
     }
     await request.post('/v1/workflow/template/save', payload)
-    ElMessage.success('已成功将该 BPMN 流程与所选生效范围（资源组及数据库）完成绑定生效！')
+    ElMessage.success('已成功将该 BPMN 流程与所选生效范围（工单类型、资源组及数据库）完成绑定生效！')
     quickBindDialogVisible.value = false
     await fetchTemplates()
   } catch (e: any) {

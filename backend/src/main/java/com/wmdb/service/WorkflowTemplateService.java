@@ -377,7 +377,7 @@ public class WorkflowTemplateService {
                 new QueryWrapper<WorkflowTemplate>().eq("status", 1).orderByDesc("id")
         );
 
-        // 1. 优先判定：BPMN 设计器细化绑定的生效目标数据库/实例 (Custom Target Databases)
+        // 1. 优先判定：BPMN 设计器细化绑定的生效目标数据库/实例 (Custom Target Databases + 工单类型)
         for (WorkflowTemplate tpl : allTemplates) {
             if (tpl.getTargetDatabases() != null && !tpl.getTargetDatabases().isEmpty()
                     && !tpl.getTargetDatabases().equals("[\"ALL\"]") && !tpl.getTargetDatabases().equals("[]")) {
@@ -386,8 +386,9 @@ public class WorkflowTemplateService {
                 boolean dbMatched = (dbName != null && !dbName.isEmpty() && td.contains(dbName)) ||
                         (instance != null && instance.getName() != null && td.contains(instance.getName())) ||
                         td.contains(fullDbKey);
-                if (dbMatched) {
-                    String reason = "目标实例/数据库已细化绑定专属 BPMN 流程【" + tpl.getTemplateName() + "】";
+                boolean typeMatched = isFlowTypeMatched(tpl.getFlowType(), ticketType);
+                if (dbMatched && typeMatched) {
+                    String reason = "🎯 命中 BPMN 细化绑定生效范围：业务资源组【" + (resourceGroup.isEmpty() ? "全部资源组" : resourceGroup) + "】+ 工单类型【" + formatTicketTypeChinese(tpl.getFlowType()) + "】+ 目标库【" + (dbName != null ? dbName : instance.getName()) + "】";
                     RoutingPreviewDTO dto = buildRoutingPreviewDTO(tpl, true, reason, expectedRows, ticketType, request.getSqlSnippet());
                     dto.setEnforceDryRun(enforceDryRun);
                     dto.setEnableStep3Rollback(enableStep3Rollback);
@@ -397,15 +398,32 @@ public class WorkflowTemplateService {
             }
         }
 
-        // 2. 次优先判定：Flowable 引擎当前已挂载并部署生效的 BPMN 2.0 流程 (Active Deployed Flowable Process)
+        // 2. 次优先判定：BPMN 绑定的生效业务资源组 + 生效工单类型
+        for (WorkflowTemplate tpl : allTemplates) {
+            String rgs = tpl.getResourceGroups() != null ? tpl.getResourceGroups() : "";
+            boolean isSpecificRg = !rgs.isEmpty() && !rgs.contains("全部业务资源组通用") && !rgs.contains("默认核心业务资源组");
+            boolean rgMatched = !resourceGroup.isEmpty() && rgs.contains(resourceGroup);
+            boolean typeMatched = isFlowTypeMatched(tpl.getFlowType(), ticketType);
+            if (isSpecificRg && rgMatched && typeMatched) {
+                String reason = "🎯 命中绑定生效范围：业务资源组【" + resourceGroup + "】+ 生效工单类型【" + formatTicketTypeChinese(tpl.getFlowType()) + "】";
+                RoutingPreviewDTO dto = buildRoutingPreviewDTO(tpl, true, reason, expectedRows, ticketType, request.getSqlSnippet());
+                dto.setEnforceDryRun(enforceDryRun);
+                dto.setEnableStep3Rollback(enableStep3Rollback);
+                dto.setEnableStep4DryRun(enableStep4DryRun);
+                return dto;
+            }
+        }
+
+        // 3. Flowable 引擎当前已挂载并部署生效的 BPMN 2.0 流程 (Active Deployed Flowable Process)
         String activeDeployed = workflowService != null ? workflowService.getLatestActiveDeployedProcessName() : null;
         if (activeDeployed != null && !activeDeployed.isEmpty()) {
             for (WorkflowTemplate tpl : allTemplates) {
                 if (activeDeployed.contains(tpl.getTemplateName()) || tpl.getTemplateName().contains(activeDeployed)) {
                     String rgs = tpl.getResourceGroups() != null ? tpl.getResourceGroups() : "";
                     boolean rgMatch = resourceGroup.isEmpty() || rgs.contains(resourceGroup) || rgs.contains("全部业务资源组通用") || rgs.contains("默认核心业务资源组");
-                    if (rgMatch) {
-                        String reason = "⚡ Flowable 引擎已挂载并部署生效专属 BPMN 2.0 流程【" + tpl.getTemplateName() + "】";
+                    boolean typeMatched = isFlowTypeMatched(tpl.getFlowType(), ticketType);
+                    if (rgMatch && typeMatched) {
+                        String reason = "⚡ Flowable 引擎已挂载部署生效：【" + tpl.getTemplateName() + "】+ 工单类型【" + formatTicketTypeChinese(tpl.getFlowType()) + "】";
                         RoutingPreviewDTO dto = buildRoutingPreviewDTO(tpl, true, reason, expectedRows, ticketType, request.getSqlSnippet());
                         dto.setEnforceDryRun(enforceDryRun);
                         dto.setEnableStep3Rollback(enableStep3Rollback);
@@ -416,7 +434,7 @@ public class WorkflowTemplateService {
             }
         }
 
-        // 3. 资源组中为具体数据库配置的专属审批流
+        // 4. 资源组中为具体数据库配置的专属审批流
         if (customDbWorkflowName != null && !customDbWorkflowName.isEmpty() && !"DEFAULT".equalsIgnoreCase(customDbWorkflowName)) {
             List<WorkflowTemplate> matchedList = workflowTemplateMapper.selectList(
                     new QueryWrapper<WorkflowTemplate>().eq("template_name", customDbWorkflowName).last("LIMIT 1")
@@ -432,7 +450,7 @@ public class WorkflowTemplateService {
             }
         }
 
-        // 4. 实例级专属固定审批流 (Pinned / Fixed Workflow Template)
+        // 5. 实例级专属固定审批流 (Pinned / Fixed Workflow Template)
         if (instance != null && instance.getFixedWorkflowTemplateId() != null && instance.getFixedWorkflowTemplateId() > 0) {
             WorkflowTemplate pinnedTpl = workflowTemplateMapper.selectById(instance.getFixedWorkflowTemplateId());
             if (pinnedTpl != null && (pinnedTpl.getStatus() == null || pinnedTpl.getStatus() == 1)) {
@@ -445,7 +463,7 @@ public class WorkflowTemplateService {
             }
         }
 
-        // 5. 动态综合智能决策 (Dynamic Multi-Dimensional Decision)
+        // 6. 动态综合智能决策 (Dynamic Multi-Dimensional Decision)
 
         WorkflowTemplate bestMatch = null;
         int highestScore = -1;
@@ -668,6 +686,9 @@ public class WorkflowTemplateService {
                 .templateId(tpl.getId())
                 .templateName(tpl.getTemplateName())
                 .isPinned(isPinned)
+                .isGateway(isGatewayTemplate)
+                .resourceGroups(tpl.getResourceGroups())
+                .targetDatabases(tpl.getTargetDatabases())
                 .flowType(tpl.getFlowType())
                 .routingReason(reason)
                 .triggerCondition(tpl.getTriggerCondition())
@@ -682,11 +703,61 @@ public class WorkflowTemplateService {
                 .build();
     }
 
+    private boolean isFlowTypeMatched(String flowType, String ticketType) {
+        if (flowType == null || flowType.trim().isEmpty() || "ALL".equalsIgnoreCase(flowType.trim())) {
+            return true;
+        }
+        if (ticketType == null || ticketType.trim().isEmpty()) {
+            return true;
+        }
+        String ft = flowType.trim();
+        if (ft.contains(ticketType)) {
+            return true;
+        }
+        if ("SQL_AUDIT".equalsIgnoreCase(ticketType)) {
+            return ft.contains("DML_CHANGE") || ft.contains("DDL_CHANGE") || ft.contains("SQL_AUDIT");
+        }
+        return false;
+    }
+
+    private String formatTicketTypeChinese(String type) {
+        if (type == null || type.trim().isEmpty() || "ALL".equalsIgnoreCase(type)) return "全部工单类型通用";
+        StringBuilder sb = new StringBuilder();
+        String[] parts = type.replace("[", "").replace("]", "").replace("\"", "").split(",");
+        for (String p : parts) {
+            String clean = p.trim();
+            if (clean.isEmpty()) continue;
+            if (sb.length() > 0) sb.append("、");
+            switch (clean.toUpperCase()) {
+                case "DML_CHANGE":
+                    sb.append("DML 数据变更");
+                    break;
+                case "DDL_CHANGE":
+                    sb.append("DDL 结构变更");
+                    break;
+                case "DATA_EXPORT":
+                    sb.append("数据导出与脱敏");
+                    break;
+                case "DATA_QUERY":
+                    sb.append("数据查询提权");
+                    break;
+                case "SQL_AUDIT":
+                    sb.append("SQL 变更审核");
+                    break;
+                default:
+                    sb.append(clean);
+                    break;
+            }
+        }
+        return sb.length() > 0 ? sb.toString() : "全部工单类型通用";
+    }
+
     private RoutingPreviewDTO buildDefaultFallbackPreview() {
         return RoutingPreviewDTO.builder()
                 .templateId(0L)
                 .templateName("标准生产变更两级审批流")
                 .isPinned(false)
+                .isGateway(false)
                 .flowType("SQL_AUDIT")
                 .routingReason("默认通用审批流")
                 .triggerCondition("通用 SQL 变更")

@@ -362,8 +362,8 @@
                 </span>
               </div>
 
-              <!-- BPMN 2.0 分支图形可视化看板 (高质感 SVG 连线与分支导向) -->
-              <div class="bpmn-flow-visual-box">
+              <!-- 模式 A：BPMN 2.0 分支图形可视化看板 (当且仅当为条件排他网关时) -->
+              <div v-if="routingPreview.isGateway" class="bpmn-flow-visual-box">
                 <!-- 1. 起点 -->
                 <div class="bpmn-node-pill bpmn-start-pill">
                   <div class="bpmn-circle start-circle"></div>
@@ -464,6 +464,53 @@
                 <div class="bpmn-node-pill bpmn-end-pill">
                   <div class="bpmn-circle end-circle"></div>
                   <span class="bpmn-label">变更完成归档</span>
+                </div>
+              </div>
+
+              <!-- 模式 B：顺序多级审批流 / 测试免审直通流 / 递进混合审批流 (清晰线性管道) -->
+              <div v-else class="bpmn-flow-visual-box bpmn-pipeline-flow" style="display: flex; align-items: center; flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding: 18px 16px;">
+                <!-- 1. 起点 -->
+                <div class="bpmn-node-pill bpmn-start-pill">
+                  <div class="bpmn-circle start-circle"></div>
+                  <span class="bpmn-label">提交申请</span>
+                </div>
+
+                <!-- 动态解析节点 -->
+                <template v-for="(node, nIdx) in (routingPreview.nodes || []).slice(1)" :key="nIdx">
+                  <!-- SVG 平滑导向箭头 -->
+                  <div class="bpmn-svg-arrow-wrap">
+                    <svg class="bpmn-flow-svg-line" width="30" height="20" viewBox="0 0 30 20">
+                      <line x1="2" y1="10" x2="20" y2="10" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3,3" />
+                      <polygon points="20,6 28,10 20,14" fill="#64748b" />
+                    </svg>
+                  </div>
+
+                  <!-- 节点卡片 -->
+                  <div
+                    class="bpmn-task-card"
+                    :class="getNodeCardClass(node.role)"
+                    style="min-width: 140px; padding: 8px 12px;"
+                  >
+                    <div class="task-icon-col">
+                      <el-icon :size="18"><component :is="getNodeIcon(node.role)" /></el-icon>
+                    </div>
+                    <div class="task-title-col">
+                      <div class="t-name" style="font-size: 12px; font-weight: 600;">{{ node.nodeName }}</div>
+                      <div class="t-role" style="font-size: 11px; color: #64748b; margin-top: 2px;">{{ node.approverRole || formatRoleText(node.role) }}</div>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- 终止归档节点 -->
+                <div class="bpmn-svg-arrow-wrap">
+                  <svg class="bpmn-flow-svg-line" width="30" height="20" viewBox="0 0 30 20">
+                    <line x1="2" y1="10" x2="20" y2="10" stroke="#94a3b8" stroke-width="2" stroke-dasharray="3,3" />
+                    <polygon points="20,6 28,10 20,14" fill="#64748b" />
+                  </svg>
+                </div>
+                <div class="bpmn-node-pill bpmn-end-pill">
+                  <div class="bpmn-circle end-circle"></div>
+                  <span class="bpmn-label">变更归档</span>
                 </div>
               </div>
 
@@ -900,7 +947,8 @@ import {
   ArrowLeft, CopyDocument, Check, DocumentCopy,
   UploadFilled, VideoPlay,
   InfoFilled, FullScreen, ScaleToOriginal,
-  Share, Refresh, Warning, Tickets, Document
+  Share, Refresh, Warning, Tickets, Document,
+  User, UserFilled, Operation, Setting, Lock
 } from '@element-plus/icons-vue'
 import request from '../utils/request'
 import { useUserStore } from '../store/user'
@@ -1565,6 +1613,43 @@ const loadDatabasesForInstance = async (instanceId: number | string) => {
   } finally {
     databasesLoading.value = false
   }
+}
+
+const getNodeCardClass = (role?: string) => {
+  if (!role) return 'task-lead'
+  const r = role.toUpperCase()
+  if (r.includes('SYSTEM') || r.includes('AUTO') || r.includes('预检') || r.includes('直通')) return 'task-lead'
+  if (r.includes('DBA')) return 'task-dba'
+  if (r.includes('ADMIN')) return 'task-dba'
+  if (r.includes('SERVICE') || r.includes('EXEC')) return 'task-service'
+  if (r.includes('AUDITOR') || r.includes('SECURITY')) return 'task-lead'
+  return 'task-lead'
+}
+
+const getNodeIcon = (role?: string) => {
+  if (!role) return User
+  const r = role.toUpperCase()
+  if (r.includes('SYSTEM') || r.includes('AUTO') || r.includes('预检') || r.includes('直通')) return Operation
+  if (r.includes('DBA')) return UserFilled
+  if (r.includes('ADMIN')) return UserFilled
+  if (r.includes('SERVICE') || r.includes('EXEC')) return Setting
+  if (r.includes('AUDITOR') || r.includes('SECURITY')) return Lock
+  return User
+}
+
+const formatRoleText = (role?: string) => {
+  if (!role) return '审批人'
+  const map: Record<string, string> = {
+    DEV_LEAD: '业务开发组长',
+    DBA: '核心数据库管理员',
+    ADMIN: '系统管理员终审',
+    AUDITOR: '安全合规审计员',
+    OPS: '业务系统运维',
+    SECURITY: '数据安全官',
+    SYSTEM: '系统预检引擎 (自动)',
+    SERVICE: 'JDBC 流式执行引擎'
+  }
+  return map[role.toUpperCase()] || role
 }
 
 const fetchRoutingPreview = async () => {
