@@ -1623,9 +1623,16 @@ const handleApproveTicket = async () => {
       comment: approvalComment.value
     })
 
-    if (res.data && res.data.success) {
+    if (res.data && res.data.message && (res.data.message.includes('流转') || res.data.message.includes('推进') || res.data.message.includes('待'))) {
       ElNotification({
-        title: '审批通过并已执行',
+        title: '阶段节点审批通过',
+        message: res.data.message,
+        type: 'success',
+        duration: 5000
+      })
+    } else if (res.data && res.data.success) {
+      ElNotification({
+        title: '终审通过并已执行',
         message: res.data.message || '已在目标数据库成功执行完毕！',
         type: 'success',
         duration: 5000

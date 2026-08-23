@@ -319,18 +319,88 @@ public class TicketService {
     public AsyncTicketExecutor.ExecutionResult approveTicket(Long ticketId, String operatorIdCard,
             String executionMode, String scheduledTime, Integer batchSize, Integer intervalMs, String comment) {
         SqlTicket ticket = sqlTicketMapper.selectById(ticketId);
-        if (ticket == null) throw new BusinessException("A0400", "ticket not found");
+        if (ticket == null) throw new BusinessException("A0400", "工单不存在: #" + ticketId);
         if (!"AUDITING".equals(ticket.getStatus()) && !"WAITING_EXECUTION".equals(ticket.getStatus()))
-            throw new BusinessException("A0400", "ticket status " + ticket.getStatus() + " cannot approve");
-        String mode = executionMode != null && !executionMode.trim().isEmpty() ? executionMode.toUpperCase() : "IMMEDIATE";
+            throw new BusinessException("A0400", "当前工单状态为 " + ticket.getStatus() + "，无法进行审批操作");
+
         SysUser operator = getSysUserByIdentifier(operatorIdCard);
         String opName = operator != null ? userDisplayNameService.getDisplayName(operator) : operatorIdCard;
+
+        // 获取已完成的中间审批阶段记录
+        List<TicketOperationLog> logs = ticketOperationLogMapper.selectList(
+                new QueryWrapper<TicketOperationLog>().eq("ticket_id", ticketId).orderByAsc("id")
+        );
+        int stageApprovedCount = 0;
+        if (logs != null) {
+            for (TicketOperationLog l : logs) {
+                if ("STAGE_APPROVE".equals(l.getOperationType())) {
+                    stageApprovedCount++;
+                }
+            }
+        }
+
+        String tplName = ticket.getWorkflowTemplateName() != null ? ticket.getWorkflowTemplateName() : "";
+        boolean is4Level = tplName.contains("四级");
+        boolean is3Level = tplName.contains("三级");
+
+        // 1. 四级审批流多阶段审批递进判定 (节点 1 自动预检，节点 2 组长初审，节点 3 DBA复核，节点 4 总监终审)
+        if (is4Level && stageApprovedCount == 0) {
+            // 第 2 级 (业务开发组长初审通过) -> 推进至第 3 级 (核心 DBA 安全复核)
+            appendLog(ticketId, operatorIdCard, opName, "STAGE_APPROVE", "业务开发组长初审节点",
+                    "【业务开发组长初审】通过（审核人: " + opName + "），四级审批流程已流转推进至第 3 节点【核心DBA安全复核】。" + (comment != null && !comment.trim().isEmpty() ? " 审批批注: " + comment : ""));
+            notificationService.sendTicketNotification(ticket, "AUDITING");
+            return AsyncTicketExecutor.ExecutionResult.builder()
+                    .success(true)
+                    .totalActualRows(0)
+                    .durationMs(0)
+                    .message("业务开发组长初审通过，流程已成功流转至【核心DBA安全复核】待审核")
+                    .build();
+        } else if (is4Level && stageApprovedCount == 1) {
+            // 第 3 级 (核心 DBA 复核通过) -> 推进至第 4 级 (运维安全总监终审)
+            appendLog(ticketId, operatorIdCard, opName, "STAGE_APPROVE", "核心DBA安全复核节点",
+                    "【核心DBA安全复核】通过（审核人: " + opName + "），四级审批流程已流转推进至第 4 节点【运维安全总监终审】。" + (comment != null && !comment.trim().isEmpty() ? " 审批批注: " + comment : ""));
+            notificationService.sendTicketNotification(ticket, "AUDITING");
+            return AsyncTicketExecutor.ExecutionResult.builder()
+                    .success(true)
+                    .totalActualRows(0)
+                    .durationMs(0)
+                    .message("核心DBA安全复核通过，流程已成功流转至【运维安全总监终审】待终审")
+                    .build();
+        }
+
+        // 2. 三级审批流多阶段审批递进判定 (节点 1 组长初审，节点 2 DBA复审，节点 3 管理员终审)
+        if (is3Level && stageApprovedCount == 0) {
+            appendLog(ticketId, operatorIdCard, opName, "STAGE_APPROVE", "开发组长初审节点",
+                    "【开发组长初审】通过（审核人: " + opName + "），三级审批流程已流转推进至第 2 节点【核心DBA技术复审】。" + (comment != null && !comment.trim().isEmpty() ? " 审批批注: " + comment : ""));
+            notificationService.sendTicketNotification(ticket, "AUDITING");
+            return AsyncTicketExecutor.ExecutionResult.builder()
+                    .success(true)
+                    .totalActualRows(0)
+                    .durationMs(0)
+                    .message("开发组长初审通过，流程已成功流转至【核心DBA技术复审】待复审")
+                    .build();
+        } else if (is3Level && stageApprovedCount == 1) {
+            appendLog(ticketId, operatorIdCard, opName, "STAGE_APPROVE", "核心DBA技术复审节点",
+                    "【核心DBA技术复审】通过（审核人: " + opName + "），三级审批流程已流转推进至第 3 节点【系统管理员终审】。" + (comment != null && !comment.trim().isEmpty() ? " 审批批注: " + comment : ""));
+            notificationService.sendTicketNotification(ticket, "AUDITING");
+            return AsyncTicketExecutor.ExecutionResult.builder()
+                    .success(true)
+                    .totalActualRows(0)
+                    .durationMs(0)
+                    .message("核心DBA技术复审通过，流程已成功流转至【系统管理员终审】待终审")
+                    .build();
+        }
+
+        // 3. 最终终审节点 (或单级审批) 审批通过并触发执行
+        String mode = executionMode != null && !executionMode.trim().isEmpty() ? executionMode.toUpperCase() : "IMMEDIATE";
+        String finalNodeName = is4Level ? "运维安全总监终审节点" : (is3Level ? "系统管理员终审节点" : "审批流转节点");
+
         if ("SCHEDULED".equals(mode)) {
             String window = scheduledTime != null && !scheduledTime.trim().isEmpty() ? scheduledTime : "计划维护低峰窗口";
             ticket.setStatus("WAITING_EXECUTION"); ticket.setExecutionWindow("计划定时执行: " + window);
             sqlTicketMapper.updateById(ticket); notificationService.sendTicketNotification(ticket, "WAITING_EXECUTION");
-            appendLog(ticketId, operatorIdCard, opName, "SCHEDULED", "审批排期调度节点", "已排期预约于 [" + window + "] 定时执行" + (comment != null && !comment.trim().isEmpty() ? "；审批批注: " + comment : ""));
-            return AsyncTicketExecutor.ExecutionResult.builder().success(true).totalActualRows(0).durationMs(0).message("已成功排期预约定时执行").build();
+            appendLog(ticketId, operatorIdCard, opName, "SCHEDULED", "审批排期调度节点", "终审通过，已排期预约于 [" + window + "] 定时执行" + (comment != null && !comment.trim().isEmpty() ? "；审批批注: " + comment : ""));
+            return AsyncTicketExecutor.ExecutionResult.builder().success(true).totalActualRows(0).durationMs(0).message("终审通过，已成功排期预约定时执行").build();
         } else if ("CANARY_BATCH".equals(mode)) {
             int bSize = batchSize != null && batchSize > 0 ? batchSize : 500;
             int ivMs = intervalMs != null && intervalMs >= 0 ? intervalMs : 100;
@@ -341,12 +411,13 @@ public class TicketService {
         } else if ("MANUAL_DBA".equals(mode)) {
             ticket.setStatus("MANUAL_PROCESSING"); ticket.setExecutionWindow("转 DBA 线下工具执行");
             sqlTicketMapper.updateById(ticket); notificationService.sendTicketNotification(ticket, "MANUAL_PROCESSING");
-            appendLog(ticketId, operatorIdCard, opName, "APPROVE", "审批流转节点", "审批通过，已转交核心 DBA 线下安全执行" + (comment != null && !comment.trim().isEmpty() ? "；批注: " + comment : ""));
-            return AsyncTicketExecutor.ExecutionResult.builder().success(true).totalActualRows(0).durationMs(0).message("转 DBA 线下执行").build();
+            appendLog(ticketId, operatorIdCard, opName, "APPROVE", finalNodeName, "终审通过，已转交核心 DBA 线下安全执行" + (comment != null && !comment.trim().isEmpty() ? "；批注: " + comment : ""));
+            return AsyncTicketExecutor.ExecutionResult.builder().success(true).totalActualRows(0).durationMs(0).message("终审通过，转 DBA 线下执行").build();
         }
+
         ticket.setStatus("APPROVED"); ticket.setExecutionWindow("立即流式执行");
         sqlTicketMapper.updateById(ticket); notificationService.sendTicketNotification(ticket, "APPROVED");
-        appendLog(ticketId, operatorIdCard, opName, "APPROVE", "审批流转节点", "审批通过，立即触发流式执行" + (comment != null && !comment.trim().isEmpty() ? "；批注: " + comment : ""));
+        appendLog(ticketId, operatorIdCard, opName, "APPROVE", finalNodeName, "终审通过，全流程审批完成，立即触发流式执行！" + (comment != null && !comment.trim().isEmpty() ? "；批注: " + comment : ""));
         return asyncTicketExecutor.executeTicketSync(ticketId);
     }
     public AsyncTicketExecutor.ExecutionResult approveTicket(Long ticketId, String operatorIdCard, String executionMode, String scheduledTime, String comment) {
@@ -654,6 +725,147 @@ public class TicketService {
                     ticket.setWorkflowTemplateName(preview.getTemplateName());
                 }
             } catch (Exception ignored) {}
+        }
+
+        // 1. 四级混合审批流当前责任人与节点名称动态解析
+        if (template != null && template.getTemplateName() != null && template.getTemplateName().contains("四级")) {
+            List<TicketOperationLog> logs = ticketOperationLogMapper.selectList(
+                    new QueryWrapper<TicketOperationLog>().eq("ticket_id", ticket.getId()).orderByAsc("id")
+            );
+            int stageApproved = 0;
+            if (logs != null) {
+                for (TicketOperationLog l : logs) {
+                    if ("STAGE_APPROVE".equals(l.getOperationType())) stageApproved++;
+                }
+            }
+
+            info.template = template;
+            info.threshold = 999999;
+            info.isHighRisk = false;
+            info.spelExpression = "#{nodeIndex == 1 ? auto_pass : manual_review}";
+
+            List<SysUser> allUsers = sysUserMapper.selectList(new QueryWrapper<SysUser>().eq("status", "1"));
+            List<String> eligible = new ArrayList<>();
+
+            if (stageApproved == 0) {
+                info.nodeName = "业务开发组长初审 (四级流程第 2 级)";
+                info.roleDesc = "业务开发组长初审";
+                info.targetRole = "DEV_LEAD";
+                if (allUsers != null) {
+                    for (SysUser u : allUsers) {
+                        List<String> roles = userDisplayNameService.parseRoles(u.getRole());
+                        if (roles.contains("DEV_LEAD") || roles.contains("ADMIN")) {
+                            List<String> userGroups = userDisplayNameService.parseResourceGroups(u.getResourceGroup());
+                            boolean groupMatched = applicantGroups.isEmpty() || applicantGroups.stream().anyMatch(userGroups::contains)
+                                    || userGroups.contains("全平台最高决策组") || userGroups.contains("全部业务资源组通用") || roles.contains("ADMIN");
+                            if (groupMatched) {
+                                String name = (u.getRealName() != null && !u.getRealName().trim().isEmpty())
+                                        ? u.getRealName() + " (开发组长)" : u.getUsername() + " (开发组长)";
+                                if (!eligible.contains(name)) eligible.add(name);
+                            }
+                        }
+                    }
+                }
+            } else if (stageApproved == 1) {
+                info.nodeName = "核心DBA安全复核 (四级流程第 3 级)";
+                info.roleDesc = "核心数据库管理员安全复审";
+                info.targetRole = "DBA";
+                if (allUsers != null) {
+                    for (SysUser u : allUsers) {
+                        List<String> roles = userDisplayNameService.parseRoles(u.getRole());
+                        if (roles.contains("DBA") || roles.contains("ADMIN")) {
+                            String name = (u.getRealName() != null && !u.getRealName().trim().isEmpty())
+                                    ? u.getRealName() + " (核心 DBA)" : u.getUsername() + " (核心 DBA)";
+                            if (!eligible.contains(name)) eligible.add(name);
+                        }
+                    }
+                }
+            } else {
+                info.nodeName = "运维安全总监终审 (四级流程第 4 级)";
+                info.roleDesc = "运维安全总监终审 (ADMIN)";
+                info.targetRole = "ADMIN";
+                if (allUsers != null) {
+                    for (SysUser u : allUsers) {
+                        List<String> roles = userDisplayNameService.parseRoles(u.getRole());
+                        if (roles.contains("ADMIN")) {
+                            String name = (u.getRealName() != null && !u.getRealName().trim().isEmpty())
+                                    ? u.getRealName() + " (超级管理员)" : u.getUsername() + " (超级管理员)";
+                            if (!eligible.contains(name)) eligible.add(name);
+                        }
+                    }
+                }
+            }
+            if (eligible.isEmpty()) eligible.add("系统管理员 (admin)");
+            info.eligibleApprovers = eligible;
+            return info;
+        }
+
+        // 2. 三级审批流当前责任人与节点名称动态解析
+        if (template != null && template.getTemplateName() != null && template.getTemplateName().contains("三级")) {
+            List<TicketOperationLog> logs = ticketOperationLogMapper.selectList(
+                    new QueryWrapper<TicketOperationLog>().eq("ticket_id", ticket.getId()).orderByAsc("id")
+            );
+            int stageApproved = 0;
+            if (logs != null) {
+                for (TicketOperationLog l : logs) {
+                    if ("STAGE_APPROVE".equals(l.getOperationType())) stageApproved++;
+                }
+            }
+
+            info.template = template;
+            info.threshold = 0;
+            info.isHighRisk = true;
+            info.spelExpression = "#{hasDdl == true}";
+
+            List<SysUser> allUsers = sysUserMapper.selectList(new QueryWrapper<SysUser>().eq("status", "1"));
+            List<String> eligible = new ArrayList<>();
+
+            if (stageApproved == 0) {
+                info.nodeName = "业务开发组长初审 (三级流程第 1 级)";
+                info.roleDesc = "业务开发组长初审";
+                info.targetRole = "DEV_LEAD";
+                if (allUsers != null) {
+                    for (SysUser u : allUsers) {
+                        List<String> roles = userDisplayNameService.parseRoles(u.getRole());
+                        if (roles.contains("DEV_LEAD") || roles.contains("ADMIN")) {
+                            String name = (u.getRealName() != null && !u.getRealName().trim().isEmpty())
+                                    ? u.getRealName() + " (开发组长)" : u.getUsername() + " (开发组长)";
+                            if (!eligible.contains(name)) eligible.add(name);
+                        }
+                    }
+                }
+            } else if (stageApproved == 1) {
+                info.nodeName = "核心DBA技术复审 (三级流程第 2 级)";
+                info.roleDesc = "核心数据库管理员安全复审";
+                info.targetRole = "DBA";
+                if (allUsers != null) {
+                    for (SysUser u : allUsers) {
+                        List<String> roles = userDisplayNameService.parseRoles(u.getRole());
+                        if (roles.contains("DBA") || roles.contains("ADMIN")) {
+                            String name = (u.getRealName() != null && !u.getRealName().trim().isEmpty())
+                                    ? u.getRealName() + " (核心 DBA)" : u.getUsername() + " (核心 DBA)";
+                            if (!eligible.contains(name)) eligible.add(name);
+                        }
+                    }
+                }
+            } else {
+                info.nodeName = "系统管理员终审 (三级流程第 3 级)";
+                info.roleDesc = "系统管理员终审";
+                info.targetRole = "ADMIN";
+                if (allUsers != null) {
+                    for (SysUser u : allUsers) {
+                        List<String> roles = userDisplayNameService.parseRoles(u.getRole());
+                        if (roles.contains("ADMIN")) {
+                            String name = (u.getRealName() != null && !u.getRealName().trim().isEmpty())
+                                    ? u.getRealName() + " (超级管理员)" : u.getUsername() + " (超级管理员)";
+                            if (!eligible.contains(name)) eligible.add(name);
+                        }
+                    }
+                }
+            }
+            if (eligible.isEmpty()) eligible.add("系统管理员 (admin)");
+            info.eligibleApprovers = eligible;
+            return info;
         }
 
         int threshold = (template != null && template.getAffectRowsThreshold() != null && template.getAffectRowsThreshold() > 0)
@@ -1023,23 +1235,28 @@ public class TicketService {
         nodes.add(n1);
 
         ApproverInfo approverInfo = resolveApproverInfo(ticket, detail);
+        List<TicketOperationLog> stageLogs = new ArrayList<>();
         TicketOperationLog reviewLog = null;
         TicketOperationLog terminateLog = null;
+        TicketOperationLog rejectLog = null;
         if (opLogs != null) {
             for (TicketOperationLog l : opLogs) {
                 String opType = l.getOperationType();
-                if ("APPROVE".equals(opType) || "REJECT".equals(opType) || "SCHEDULED".equals(opType)
+                if ("STAGE_APPROVE".equals(opType)) {
+                    stageLogs.add(l);
+                } else if ("APPROVE".equals(opType) || "SCHEDULED".equals(opType)
                         || "CANARY_BATCH".equals(opType) || "MANUAL_DBA".equals(opType)) {
                     reviewLog = l;
-                }
-                if ("TERMINATE".equals(opType)) {
+                } else if ("REJECT".equals(opType)) {
+                    rejectLog = l;
+                } else if ("TERMINATE".equals(opType)) {
                     terminateLog = l;
                 }
             }
         }
 
         // 判定是否匹配四级递进混合审批流 (节点 1 系统自动审批，节点 2/3/4 人工逐级复核)
-        if (approverInfo.template != null && approverInfo.template.getTemplateName().contains("四级")) {
+        if (approverInfo.template != null && approverInfo.template.getTemplateName() != null && approverInfo.template.getTemplateName().contains("四级")) {
             // 节点 1 (子级审批)：系统预检自动审批
             FlowNodeDTO step1 = new FlowNodeDTO();
             step1.setNodeKey("auto_precheck");
@@ -1060,24 +1277,26 @@ public class TicketService {
             step2.setNodeType("USER_TASK");
             step2.setApproverRole("业务开发组长初审");
             step2.setEligibleApprovers(List.of("张伟 (开发组长)", "陈敏 (开发组长)"));
-            if ("AUDITING".equals(ticket.getStatus()) || "PENDING_APPROVAL".equals(ticket.getStatus())) {
-                step2.setStatus("ACTIVE");
-                step2.setComment("等待业务开发组长审核中...");
+
+            if (!stageLogs.isEmpty() || reviewLog != null) {
+                step2.setStatus("COMPLETED");
+                TicketOperationLog l = !stageLogs.isEmpty() ? stageLogs.get(0) : reviewLog;
+                step2.setActualApprover(l != null ? l.getOperatorName() : "张伟 (开发组长)");
+                step2.setFinishTime(l != null ? l.getCreatedTime() : ticket.getCreateTime());
+                step2.setComment(l != null && l.getComment() != null ? l.getComment() : "初审通过");
             } else if ("REJECTED".equals(ticket.getStatus())) {
                 step2.setStatus("REJECTED");
-                step2.setActualApprover(reviewLog != null ? reviewLog.getOperatorName() : "开发组长");
-                step2.setFinishTime(reviewLog != null ? reviewLog.getCreatedTime() : null);
-                step2.setComment(reviewLog != null ? reviewLog.getComment() : "组长初审驳回");
+                step2.setActualApprover(rejectLog != null ? rejectLog.getOperatorName() : "开发组长");
+                step2.setFinishTime(rejectLog != null ? rejectLog.getCreatedTime() : null);
+                step2.setComment(rejectLog != null ? rejectLog.getComment() : "组长初审驳回");
             } else if ("TERMINATED".equals(ticket.getStatus())) {
                 step2.setStatus("REJECTED");
                 step2.setActualApprover(terminateLog != null ? terminateLog.getOperatorName() : "操作人主动终止");
                 step2.setFinishTime(terminateLog != null ? terminateLog.getCreatedTime() : null);
                 step2.setComment("工单已终止");
             } else {
-                step2.setStatus("COMPLETED");
-                step2.setActualApprover(reviewLog != null ? reviewLog.getOperatorName() : "张伟 (开发组长)");
-                step2.setFinishTime(reviewLog != null ? reviewLog.getCreatedTime() : ticket.getCreateTime());
-                step2.setComment(reviewLog != null ? reviewLog.getComment() : "初审通过");
+                step2.setStatus("ACTIVE");
+                step2.setComment("等待业务开发组长审核中...");
             }
             nodes.add(step2);
 
@@ -1088,16 +1307,24 @@ public class TicketService {
             step3.setNodeType("USER_TASK");
             step3.setApproverRole("核心数据库管理员安全复审");
             step3.setEligibleApprovers(List.of("赵DBA (核心数据库架构师)", "钱DBA (高级数据库专家)"));
-            if ("APPROVED".equals(ticket.getStatus()) || "WAITING_EXECUTION".equals(ticket.getStatus()) || "EXECUTED".equals(ticket.getStatus())) {
+
+            if (stageLogs.size() >= 2 || (reviewLog != null && stageLogs.size() >= 1)) {
                 step3.setStatus("COMPLETED");
-                step3.setActualApprover(reviewLog != null ? reviewLog.getOperatorName() : "赵DBA (核心 DBA)");
-                step3.setFinishTime(reviewLog != null ? reviewLog.getCreatedTime() : ticket.getCreateTime());
-                step3.setComment("DBA 复核通过");
-            } else if ("AUDITING".equals(ticket.getStatus())) {
-                step3.setStatus("PENDING");
-                step3.setComment("等待组长初审通过后自动流转");
+                TicketOperationLog l = stageLogs.size() >= 2 ? stageLogs.get(1) : reviewLog;
+                step3.setActualApprover(l != null ? l.getOperatorName() : "赵DBA (核心 DBA)");
+                step3.setFinishTime(l != null ? l.getCreatedTime() : ticket.getCreateTime());
+                step3.setComment(l != null && l.getComment() != null ? l.getComment() : "DBA 复核通过");
+            } else if (stageLogs.size() == 1 && "AUDITING".equals(ticket.getStatus())) {
+                step3.setStatus("ACTIVE");
+                step3.setComment("开发组长已初审通过，等待核心 DBA 安全复核...");
+            } else if (stageLogs.size() == 1 && "REJECTED".equals(ticket.getStatus())) {
+                step3.setStatus("REJECTED");
+                step3.setActualApprover(rejectLog != null ? rejectLog.getOperatorName() : "核心 DBA");
+                step3.setFinishTime(rejectLog != null ? rejectLog.getCreatedTime() : null);
+                step3.setComment(rejectLog != null ? rejectLog.getComment() : "DBA 复核驳回");
             } else {
                 step3.setStatus("PENDING");
+                step3.setComment("等待开发组长初审通过后自动流转");
             }
             nodes.add(step3);
 
@@ -1108,21 +1335,95 @@ public class TicketService {
             step4.setNodeType("USER_TASK");
             step4.setApproverRole("运维安全总监终审 (ADMIN)");
             step4.setEligibleApprovers(List.of("王总 (超级管理员)", "系统管理员"));
-            if ("EXECUTED".equals(ticket.getStatus())) {
+
+            if (reviewLog != null || "EXECUTED".equals(ticket.getStatus()) || "APPROVED".equals(ticket.getStatus()) || "WAITING_EXECUTION".equals(ticket.getStatus())) {
                 step4.setStatus("COMPLETED");
-                step4.setActualApprover("王总 (超级管理员)");
-                step4.setFinishTime(ticket.getCreateTime());
-                step4.setComment("终审放行准予执行");
-            } else if ("APPROVED".equals(ticket.getStatus()) || "WAITING_EXECUTION".equals(ticket.getStatus())) {
-                step4.setStatus("COMPLETED");
-                step4.setActualApprover("王总 (超级管理员)");
-                step4.setFinishTime(ticket.getCreateTime());
-                step4.setComment("审批通过");
+                step4.setActualApprover(reviewLog != null ? reviewLog.getOperatorName() : "王总 (超级管理员)");
+                step4.setFinishTime(reviewLog != null ? reviewLog.getCreatedTime() : ticket.getCreateTime());
+                step4.setComment(reviewLog != null && reviewLog.getComment() != null ? reviewLog.getComment() : "终审放行准予执行");
+            } else if (stageLogs.size() >= 2 && "AUDITING".equals(ticket.getStatus())) {
+                step4.setStatus("ACTIVE");
+                step4.setComment("核心 DBA 复核已通过，等待运维安全总监终审放行...");
+            } else if (stageLogs.size() >= 2 && "REJECTED".equals(ticket.getStatus())) {
+                step4.setStatus("REJECTED");
+                step4.setActualApprover(rejectLog != null ? rejectLog.getOperatorName() : "系统管理员");
+                step4.setFinishTime(rejectLog != null ? rejectLog.getCreatedTime() : null);
+                step4.setComment(rejectLog != null ? rejectLog.getComment() : "终审驳回");
             } else {
                 step4.setStatus("PENDING");
                 step4.setComment("等待 DBA 复核后终审放行");
             }
             nodes.add(step4);
+        } else if (approverInfo.template != null && approverInfo.template.getTemplateName() != null && approverInfo.template.getTemplateName().contains("三级")) {
+            // 节点 1：开发组长初审
+            FlowNodeDTO step1 = new FlowNodeDTO();
+            step1.setNodeKey("dev_lead_review");
+            step1.setNodeName("开发组长初审");
+            step1.setNodeType("USER_TASK");
+            step1.setApproverRole("业务开发组长初审");
+            step1.setEligibleApprovers(List.of("张伟 (开发组长)", "陈敏 (开发组长)"));
+
+            if (!stageLogs.isEmpty() || reviewLog != null) {
+                step1.setStatus("COMPLETED");
+                TicketOperationLog l = !stageLogs.isEmpty() ? stageLogs.get(0) : reviewLog;
+                step1.setActualApprover(l != null ? l.getOperatorName() : "开发组长");
+                step1.setFinishTime(l != null ? l.getCreatedTime() : ticket.getCreateTime());
+                step1.setComment(l != null && l.getComment() != null ? l.getComment() : "初审通过");
+            } else if ("REJECTED".equals(ticket.getStatus())) {
+                step1.setStatus("REJECTED");
+                step1.setActualApprover(rejectLog != null ? rejectLog.getOperatorName() : "开发组长");
+                step1.setFinishTime(rejectLog != null ? rejectLog.getCreatedTime() : null);
+                step1.setComment(rejectLog != null ? rejectLog.getComment() : "初审驳回");
+            } else {
+                step1.setStatus("ACTIVE");
+                step1.setComment("等待开发组长审核中...");
+            }
+            nodes.add(step1);
+
+            // 节点 2：核心DBA技术复审
+            FlowNodeDTO step2 = new FlowNodeDTO();
+            step2.setNodeKey("dba_review");
+            step2.setNodeName("核心DBA技术复审");
+            step2.setNodeType("USER_TASK");
+            step2.setApproverRole("核心数据库管理员安全复审");
+            step2.setEligibleApprovers(List.of("赵DBA (核心数据库架构师)", "钱DBA (高级数据库专家)"));
+
+            if (stageLogs.size() >= 2 || (reviewLog != null && stageLogs.size() >= 1)) {
+                step2.setStatus("COMPLETED");
+                TicketOperationLog l = stageLogs.size() >= 2 ? stageLogs.get(1) : reviewLog;
+                step2.setActualApprover(l != null ? l.getOperatorName() : "核心 DBA");
+                step2.setFinishTime(l != null ? l.getCreatedTime() : ticket.getCreateTime());
+                step2.setComment(l != null && l.getComment() != null ? l.getComment() : "DBA 复审通过");
+            } else if (stageLogs.size() == 1 && "AUDITING".equals(ticket.getStatus())) {
+                step2.setStatus("ACTIVE");
+                step2.setComment("开发组长初审已通过，等待核心 DBA 复审...");
+            } else {
+                step2.setStatus("PENDING");
+                step2.setComment("等待开发组长初审后流转");
+            }
+            nodes.add(step2);
+
+            // 节点 3：系统管理员终审
+            FlowNodeDTO step3 = new FlowNodeDTO();
+            step3.setNodeKey("admin_review");
+            step3.setNodeName("系统管理员终审");
+            step3.setNodeType("USER_TASK");
+            step3.setApproverRole("系统超级管理员终审 (ADMIN)");
+            step3.setEligibleApprovers(List.of("王总 (超级管理员)", "系统管理员"));
+
+            if (reviewLog != null || "EXECUTED".equals(ticket.getStatus()) || "APPROVED".equals(ticket.getStatus()) || "WAITING_EXECUTION".equals(ticket.getStatus())) {
+                step3.setStatus("COMPLETED");
+                step3.setActualApprover(reviewLog != null ? reviewLog.getOperatorName() : "超级管理员");
+                step3.setFinishTime(reviewLog != null ? reviewLog.getCreatedTime() : ticket.getCreateTime());
+                step3.setComment(reviewLog != null && reviewLog.getComment() != null ? reviewLog.getComment() : "终审放行通过");
+            } else if (stageLogs.size() >= 2 && "AUDITING".equals(ticket.getStatus())) {
+                step3.setStatus("ACTIVE");
+                step3.setComment("DBA 复审已通过，等待系统管理员终审放行...");
+            } else {
+                step3.setStatus("PENDING");
+                step3.setComment("等待 DBA 复审后终审放行");
+            }
+            nodes.add(step3);
         } else {
             // 常规 / 测试免审节点处理
             FlowNodeDTO n2 = new FlowNodeDTO();
