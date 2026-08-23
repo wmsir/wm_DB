@@ -1826,10 +1826,8 @@ const toggleExecMode = (key: string) => {
 const isConditionTemplate = (tpl: any) => {
   if (!tpl) return false
   const name = tpl.templateName || ''
-  const cond = tpl.triggerCondition || ''
   const config = tpl.nodeConfig || ''
-  const dim = tpl.conditionDimension || ''
-  return name.includes('条件') || name.includes('影响行数') || cond.includes('1000') || cond.includes('2000') || cond.includes('影响行数') || config.includes('GATEWAY') || !!dim
+  return config.includes('"role":"GATEWAY"') || config.includes('"role": "GATEWAY"') || (name.includes('智能条件分支') && !name.includes('四级'))
 }
 
 const applySpelPreset = (preset: typeof SPEL_PRESETS[0]) => {
@@ -2159,7 +2157,7 @@ const generateBpmnXmlFromNodes = (
   templateName: string,
   nodes: ApprovalNodeItem[],
   flowType: string,
-  triggerCondition?: string,
+  _triggerCondition?: string,
   isConditionGateway?: boolean,
   conditionDimension?: string,
   affectRowsThreshold?: number,
@@ -2167,7 +2165,7 @@ const generateBpmnXmlFromNodes = (
   lowRiskRole?: string,
   spelExpression?: string
 ): string => {
-  const isCond = isConditionGateway || (triggerCondition && (triggerCondition.includes('1000') || triggerCondition.includes('2000') || triggerCondition.includes('行数') || triggerCondition.includes('条件') || triggerCondition.includes('分支') || triggerCondition.includes('SpEL'))) || (templateName && templateName.includes('条件分支'))
+  const isCond = isConditionGateway || (templateName && templateName.includes('智能条件分支') && !templateName.includes('四级'))
 
   const th = affectRowsThreshold || 1000
   const dim = conditionDimension || 'AFFECT_ROWS'
@@ -2232,32 +2230,36 @@ const generateBpmnXmlFromNodes = (
   let processElementsXml = `    <startEvent id="Start_1" name="提交${flowType === 'DDL_CHANGE' ? 'DDL' : 'SQL'}工单" />\n`
   processElementsXml += `    <sequenceFlow id="Flow_0" sourceRef="Start_1" targetRef="Task_1" />\n`
 
-  shapesXml += `      <bpmndi:BPMNShape id="Start_1_di" bpmnElement="Start_1"><dc:Bounds x="120" y="102" width="36" height="36" /></bpmndi:BPMNShape>\n`
-  edgesXml += `      <bpmndi:BPMNEdge id="Flow_0_di" bpmnElement="Flow_0"><di:waypoint x="156" y="120" /><di:waypoint x="220" y="120" /></bpmndi:BPMNEdge>\n`
+  shapesXml += `      <bpmndi:BPMNShape id="Start_1_di" bpmnElement="Start_1"><dc:Bounds x="80" y="102" width="36" height="36" /></bpmndi:BPMNShape>\n`
+  edgesXml += `      <bpmndi:BPMNEdge id="Flow_0_di" bpmnElement="Flow_0"><di:waypoint x="116" y="120" /><di:waypoint x="170" y="120" /></bpmndi:BPMNEdge>\n`
 
-  let currentX = 220
+  let currentX = 170
   activeNodes.forEach((node, idx) => {
     const taskId = `Task_${idx + 1}`
     const nextTargetId = (idx === activeNodes.length - 1) ? 'Task_Exec' : `Task_${idx + 2}`
     const flowId = `Flow_${idx + 1}`
 
-    processElementsXml += `    <userTask id="${taskId}" name="${node.nodeName} (${node.role})" />\n`
+    const isSystem = node.role === 'SYSTEM' || (node.nodeName && node.nodeName.includes('自动审批'))
+    const taskTag = isSystem ? 'serviceTask' : 'userTask'
+    const roleSuffix = isSystem ? '(系统自动审批)' : `(${node.role || 'DEV_LEAD'})`
+
+    processElementsXml += `    <${taskTag} id="${taskId}" name="${node.nodeName} ${roleSuffix}" />\n`
     processElementsXml += `    <sequenceFlow id="${flowId}" sourceRef="${taskId}" targetRef="${nextTargetId}" />\n`
 
-    shapesXml += `      <bpmndi:BPMNShape id="${taskId}_di" bpmnElement="${taskId}"><dc:Bounds x="${currentX}" y="80" width="140" height="80" /></bpmndi:BPMNShape>\n`
-    edgesXml += `      <bpmndi:BPMNEdge id="${flowId}_di" bpmnElement="${flowId}"><di:waypoint x="${currentX + 140}" y="120" /><di:waypoint x="${currentX + 200}" y="120" /></bpmndi:BPMNEdge>\n`
+    shapesXml += `      <bpmndi:BPMNShape id="${taskId}_di" bpmnElement="${taskId}"><dc:Bounds x="${currentX}" y="80" width="165" height="80" /></bpmndi:BPMNShape>\n`
+    edgesXml += `      <bpmndi:BPMNEdge id="${flowId}_di" bpmnElement="${flowId}"><di:waypoint x="${currentX + 165}" y="120" /><di:waypoint x="${currentX + 220}" y="120" /></bpmndi:BPMNEdge>\n`
 
-    currentX += 200
+    currentX += 220
   })
 
-  const execName = flowType === 'DDL_CHANGE' ? 'gh-ost表结构执行' : (flowType === 'DATA_EXPORT' ? '动态脱敏流式打包' : 'JDBC安全流式执行')
+  const execName = flowType === 'DDL_CHANGE' ? 'gh-ost表结构安全执行' : (flowType === 'DATA_EXPORT' ? '动态脱敏流式打包' : 'JDBC安全流式执行')
   processElementsXml += `    <serviceTask id="Task_Exec" name="${execName}" />\n`
   processElementsXml += `    <sequenceFlow id="Flow_End" sourceRef="Task_Exec" targetRef="End_1" />\n`
   processElementsXml += `    <endEvent id="End_1" name="变更完成归档" />\n`
 
-  shapesXml += `      <bpmndi:BPMNShape id="Task_Exec_di" bpmnElement="Task_Exec"><dc:Bounds x="${currentX}" y="80" width="140" height="80" /></bpmndi:BPMNShape>\n`
+  shapesXml += `      <bpmndi:BPMNShape id="Task_Exec_di" bpmnElement="Task_Exec"><dc:Bounds x="${currentX}" y="80" width="150" height="80" /></bpmndi:BPMNShape>\n`
   shapesXml += `      <bpmndi:BPMNShape id="End_1_di" bpmnElement="End_1"><dc:Bounds x="${currentX + 200}" y="102" width="36" height="36" /></bpmndi:BPMNShape>\n`
-  edgesXml += `      <bpmndi:BPMNEdge id="Flow_End_di" bpmnElement="Flow_End"><di:waypoint x="${currentX + 140}" y="120" /><di:waypoint x="${currentX + 200}" y="120" /></bpmndi:BPMNEdge>\n`
+  edgesXml += `      <bpmndi:BPMNEdge id="Flow_End_di" bpmnElement="Flow_End"><di:waypoint x="${currentX + 150}" y="120" /><di:waypoint x="${currentX + 200}" y="120" /></bpmndi:BPMNEdge>\n`
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
