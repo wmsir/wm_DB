@@ -327,6 +327,36 @@ public class WorkflowTemplateService {
             }
         }
 
+        // 0. 优先判定：测试/开发环境免审批直通执行（测试环境无需多级审批流转，预校验通过后直接自动执行）
+        boolean isTestOrDev = instance != null && instance.getEnv() != null
+                && ("TEST".equalsIgnoreCase(instance.getEnv()) || "DEV".equalsIgnoreCase(instance.getEnv()) || "UAT".equalsIgnoreCase(instance.getEnv()) || "SIT".equalsIgnoreCase(instance.getEnv()) || "LOCAL".equalsIgnoreCase(instance.getEnv()));
+
+        if (isTestOrDev) {
+            String envName = instance.getEnv().toUpperCase();
+            RoutingPreviewDTO testDto = RoutingPreviewDTO.builder()
+                    .templateId(999L)
+                    .templateName("测试/开发环境免审批直通执行流")
+                    .isPinned(true)
+                    .routingReason("检测到目标数据库实例【" + instance.getName() + "】所属环境为【" + envName + "】测试环境，系统开启免审批直通模式，提交预校验通过后直接自动执行上线。")
+                    .triggerCondition("测试环境 (env == '" + envName + "') 免审批直接执行")
+                    .flowType(ticketType)
+                    .highRiskRole("系统免审直通")
+                    .lowRiskRole("系统免审直通")
+                    .affectRowsThreshold(999999)
+                    .spelExpression("#{env == 'TEST' || env == 'DEV'}")
+                    .conditionDimension("ENV")
+                    .enforceDryRun(enforceDryRun)
+                    .enableStep3Rollback(enableStep3Rollback)
+                    .enableStep4DryRun(enableStep4DryRun)
+                    .nodes(List.of(
+                            RoutingPreviewDTO.PreviewNodeDTO.builder().step(1).nodeName("SQL 语法与影响行数预校验").approverRole("系统预检引擎").eligibleApprovers(List.of("静态语法与事务预检")).build(),
+                            RoutingPreviewDTO.PreviewNodeDTO.builder().step(2).nodeName("测试环境免审批自动放行").approverRole("系统自动放行网关").eligibleApprovers(List.of("测试环境免审直通")).build(),
+                            RoutingPreviewDTO.PreviewNodeDTO.builder().step(3).nodeName("JDBC 流式安全执行并归档").approverRole("异步流式执行引擎").eligibleApprovers(List.of("执行归档引擎")).build()
+                    ))
+                    .build();
+            return testDto;
+        }
+
         // 1. 优先判定：资源组中为具体数据库配置的专属审批流
         if (customDbWorkflowName != null && !customDbWorkflowName.isEmpty() && !"DEFAULT".equalsIgnoreCase(customDbWorkflowName)) {
             List<WorkflowTemplate> matchedList = workflowTemplateMapper.selectList(

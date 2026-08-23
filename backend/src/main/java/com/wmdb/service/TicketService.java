@@ -256,6 +256,15 @@ public class TicketService {
             log.warn("Resolve workflow template failed: {}", e.getMessage());
         }
 
+        boolean isTestOrDev = instance.getEnv() != null
+                && ("TEST".equalsIgnoreCase(instance.getEnv()) || "DEV".equalsIgnoreCase(instance.getEnv()) || "UAT".equalsIgnoreCase(instance.getEnv()) || "SIT".equalsIgnoreCase(instance.getEnv()) || "LOCAL".equalsIgnoreCase(instance.getEnv()));
+
+        if (isTestOrDev) {
+            ticket.setStatus("APPROVED");
+            ticket.setExecutionWindow("测试环境免审批直通执行");
+            ticket.setWorkflowTemplateName("测试/开发环境免审批直通执行流");
+        }
+
         SqlTicketDetail detail = new SqlTicketDetail();
         detail.setId(System.currentTimeMillis());
         detail.setTicketId(ticketId);
@@ -268,7 +277,24 @@ public class TicketService {
         sqlTicketMapper.insert(ticket);
         sqlTicketDetailMapper.insert(detail);
 
-        appendLog(ticketId, idCard, applicantName, "SUBMIT", "submit node", "submit ticket type:" + type + (reason != null ? " reason:" + reason : ""));
+        appendLog(ticketId, idCard, applicantName, "SUBMIT", "工单提交节点", "提交工单 类型:" + type + (reason != null ? " 原因:" + reason : ""));
+
+        if (isTestOrDev) {
+            String envStr = instance != null && instance.getEnv() != null ? instance.getEnv().toUpperCase() : "TEST";
+            String instName = instance != null ? instance.getName() : "测试实例";
+            appendLog(ticketId, "SYSTEM", "系统自动决策网关", "AUTO_APPROVE", "测试环境免审批直通节点",
+                    "🎯 目标数据库实例【" + instName + "】属于【" + envStr + "】测试/开发环境，SQL 预校验通过后自动免审放行，已触发立即直接执行！");
+
+            try {
+                // 立即执行 SQL 变更并记录执行结果
+                asyncTicketExecutor.executeTicketSync(ticketId);
+            } catch (Exception e) {
+                log.error("Auto execute ticket on test env failed: {}", e.getMessage(), e);
+            }
+            notificationService.sendTicketNotification(ticket, "APPROVED");
+            return sqlTicketMapper.selectById(ticketId);
+        }
+
         Map<String, Object> variables = new HashMap<>();
         variables.put("applicant", idCard);
         variables.put("ticketId", ticketId);
@@ -581,6 +607,21 @@ public class TicketService {
         ApproverInfo info = new ApproverInfo();
         SysUser applicantUser = getSysUserByIdentifier(ticket.getApplicantIdCard());
         List<String> applicantGroups = applicantUser != null ? userDisplayNameService.parseResourceGroups(applicantUser.getResourceGroup()) : Collections.emptyList();
+
+        DbInstance instance = dbInstanceMapper.selectById(ticket.getInstanceId());
+        boolean isTestOrDev = instance != null && instance.getEnv() != null
+                && ("TEST".equalsIgnoreCase(instance.getEnv()) || "DEV".equalsIgnoreCase(instance.getEnv()) || "UAT".equalsIgnoreCase(instance.getEnv()) || "SIT".equalsIgnoreCase(instance.getEnv()) || "LOCAL".equalsIgnoreCase(instance.getEnv()));
+
+        if (isTestOrDev) {
+            info.nodeName = "测试环境免审批直通 (自动放行执行)";
+            info.roleDesc = "系统自动化免审直通网关";
+            info.targetRole = "SYSTEM";
+            info.isHighRisk = false;
+            info.threshold = 999999;
+            info.spelExpression = "#{env == 'TEST' || env == 'DEV'}";
+            info.eligibleApprovers = List.of("系统免审直通执行引擎");
+            return info;
+        }
 
         int affectRows = detail != null && detail.getAffectRowsEstimate() != null ? detail.getAffectRowsEstimate() : 0;
         String type = ticket.getType() != null ? ticket.getType() : "SQL_AUDIT";

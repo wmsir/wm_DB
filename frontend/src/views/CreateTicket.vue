@@ -752,7 +752,7 @@
                 :loading="submitLoading"
                 @click="handleSubmitTicket"
               >
-                确认提交工单
+                {{ isCurrentInstanceTestEnv ? '🚀 确认提交并直接执行变更 (测试环境直通)' : '确认提交工单' }}
               </el-button>
             </div>
           </div>
@@ -768,7 +768,7 @@
                 :loading="submitLoading"
                 @click="handleSubmitTicket"
               >
-                确认提交工单
+                {{ isCurrentInstanceTestEnv ? '🚀 确认提交并直接执行变更 (测试环境直通)' : '确认提交工单' }}
               </el-button>
             </div>
           </div>
@@ -814,7 +814,12 @@
                 style="margin-bottom: 8px;"
               />
 
-              <div v-if="dryRunResult.totalActualRows !== undefined" class="dry-run-gateway-hint">
+              <div v-if="isCurrentInstanceTestEnv" class="dry-run-gateway-hint" style="background: #f0fdf4; border-color: #86efac; color: #166534;">
+                <el-icon style="color: #16a34a; margin-right: 6px; font-size: 16px;"><Check /></el-icon>
+                <span>🎯 <b>测试/开发环境免审直通</b>：目标为【{{ currentSelectedInstance?.env || 'TEST' }}】测试环境，提交并通过预校验后将<b>直接自动执行变更并归档</b>，无需等待人工多级审批流转！</span>
+              </div>
+
+              <div v-else-if="dryRunResult.totalActualRows !== undefined" class="dry-run-gateway-hint">
                 <el-icon style="color: #409EFF; margin-right: 4px;"><Share /></el-icon>
                 <span>智能排他网关判定：预执行累计影响行数为 <b>{{ dryRunResult.totalActualRows }}</b> 行（判定阈值：{{ routingPreview?.affectRowsThreshold || 1000 }} 行，SpEL: <code>{{ routingPreview?.spelExpression || '#{affectRows > 1000}' }}</code>） ➔ 提交后将自动路由至【<b :style="{ color: dryRunResult.totalActualRows > (routingPreview?.affectRowsThreshold || 1000) ? '#F56C6C' : '#67C23A' }">{{ dryRunResult.totalActualRows > (routingPreview?.affectRowsThreshold || 1000) ? `${routingPreview?.highRiskRole || '核心 DBA'} 审核 (触发高危管控)` : `${routingPreview?.lowRiskRole || '运维/开发组长'} 审核 (常规放行)` }}</b>】</span>
               </div>
@@ -879,7 +884,7 @@
                 :loading="submitLoading"
                 @click="handleSubmitTicket"
               >
-                确认提交工单
+                {{ isCurrentInstanceTestEnv ? '🚀 确认提交并直接执行变更 (测试环境直通)' : '确认提交工单' }}
               </el-button>
             </div>
           </div>
@@ -939,6 +944,12 @@ const safetyPolicies = ref({
 const currentSelectedInstance = computed(() => {
   if (!form.value.instanceId) return null
   return filteredInstances.value.find(i => String(i.id) === String(form.value.instanceId)) || null
+})
+
+// 当前选中实例是否为测试/开发免审直通环境
+const isCurrentInstanceTestEnv = computed(() => {
+  const env = currentSelectedInstance.value?.env?.toUpperCase()
+  return env === 'TEST' || env === 'DEV' || env === 'UAT' || env === 'SIT' || env === 'LOCAL' || (routingPreview.value?.templateName && routingPreview.value.templateName.includes('测试'))
 })
 
 const parseInstanceTags = (tagsRaw?: string): string[] => {
@@ -1850,7 +1861,11 @@ const handleSubmitTicket = async () => {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
 
-    ElMessage.success('工单提交成功，已完成预校验与回滚方案归档并进入审批流！')
+    if (isCurrentInstanceTestEnv.value) {
+      ElMessage.success('工单已成功提交并在测试环境中直接自动执行！')
+    } else {
+      ElMessage.success('工单提交成功，已完成预校验与回滚方案归档并进入审批流！')
+    }
     router.push(`/ticket/${res.data.id}`)
   } catch (error: any) {
     console.error('Submit ticket error', error)
