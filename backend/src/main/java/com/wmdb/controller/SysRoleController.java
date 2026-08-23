@@ -28,6 +28,14 @@ public class SysRoleController {
         return Result.success(sysRoleService.listRoles());
     }
 
+    @GetMapping("/page")
+    public Result<com.wmdb.model.PageResultDTO<SysRole>> pageRoles(
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "keyword", required = false) String keyword) {
+        return Result.success(sysRoleService.pageRoles(page, size, keyword));
+    }
+
     @PostMapping("/save")
     public Result<Void> saveRole(@RequestBody SysRole role) {
         sysRoleService.saveRole(role);

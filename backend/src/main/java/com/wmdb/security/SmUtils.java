@@ -4,6 +4,7 @@ import cn.hutool.crypto.SmUtil;
 import cn.hutool.crypto.asymmetric.KeyType;
 import cn.hutool.crypto.asymmetric.SM2;
 import cn.hutool.crypto.symmetric.SymmetricCrypto;
+import org.bouncycastle.crypto.engines.SM2Engine;
 
 /**
  * 国密 (SM) 算法工具类
@@ -15,27 +16,37 @@ import cn.hutool.crypto.symmetric.SymmetricCrypto;
  */
 public class SmUtils {
 
-    // 静态 SM2 实例，实际应用中建议公私钥从配置文件读取，此处为了兼容 scaffolding 初始化固定密钥
-    private static final SM2 SM2_INSTANCE = SmUtil.sm2();
-    private static final String SM2_PUBLIC_KEY_HEX = SM2_INSTANCE.getPublicKeyBase64();
+    private static final String DEFAULT_PRIVATE_KEY_HEX = "3ff785ed8c545e64fe89877c5d095c4b5c7f9b07553239f63b7f202361a01cb4";
+    private static final String DEFAULT_PUBLIC_KEY_HEX = "04fea943c0bb2c03cefbf0e26eab00b5c7266c3fb7f47e8e80401a2b614315f2b89b0ba40eea69d3322e9942b317a7ecf8415ed7c73b026c02e3f568f0acdcc94e";
+
+    private static final SM2 SM2_INSTANCE;
+
+    static {
+        SM2 sm2 = SmUtil.sm2(DEFAULT_PRIVATE_KEY_HEX, DEFAULT_PUBLIC_KEY_HEX);
+        sm2.setMode(SM2Engine.Mode.C1C3C2);
+        SM2_INSTANCE = sm2;
+    }
 
     /**
      * 获取前端使用的 SM2 公钥
      */
     public static String getSm2PublicKey() {
-        return SM2_PUBLIC_KEY_HEX;
+        return DEFAULT_PUBLIC_KEY_HEX;
     }
 
     /**
      * SM2 解密 (用于前端传输过来的加密密码)
      */
     public static String sm2Decrypt(String cipherText) {
-        // sm-crypto 默认使用 C1C3C2，这里假设前端发来的是 04 开头的 hex，Hutool 解密需兼容
+        if (cipherText == null || cipherText.isEmpty()) {
+            return cipherText;
+        }
         try {
-            if (cipherText.startsWith("04")) {
-                cipherText = cipherText.substring(2);
+            String hex = cipherText.trim();
+            if (!hex.startsWith("04")) {
+                hex = "04" + hex;
             }
-            return cn.hutool.core.util.StrUtil.utf8Str(SM2_INSTANCE.decrypt(cipherText, KeyType.PrivateKey));
+            return SM2_INSTANCE.decryptStr(hex, KeyType.PrivateKey);
         } catch (Exception e) {
             System.err.println("SM2 Decryption failed: " + e.getMessage());
             throw new RuntimeException("SM2 Decryption failed", e);

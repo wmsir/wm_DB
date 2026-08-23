@@ -1,0 +1,695 @@
+package com.wmdb.service;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wmdb.exception.BusinessException;
+import com.wmdb.mapper.DbInstanceMapper;
+import com.wmdb.mapper.WorkflowTemplateMapper;
+import com.wmdb.model.DbInstance;
+import com.wmdb.model.RoutingPreviewDTO;
+import com.wmdb.model.RoutingPreviewRequestDTO;
+import com.wmdb.model.WorkflowTemplate;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.*;
+
+/**
+ * 审批流模板业务服务
+ *
+ * @author wm
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class WorkflowTemplateService {
+
+    private final WorkflowTemplateMapper workflowTemplateMapper;
+    private final DbInstanceMapper dbInstanceMapper;
+    private final com.wmdb.mapper.ResourceGroupMapper resourceGroupMapper;
+    private final DataSource dataSource;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @PostConstruct
+    public void initTableAndDefaults() {
+        try (Connection conn = dataSource.getConnection()) {
+            DatabaseMetaData md = conn.getMetaData();
+            String catalog = conn.getCatalog();
+            String schema = conn.getSchema();
+
+            boolean exists = false;
+            try (ResultSet rs = md.getTables(catalog, schema, "workflow_template", new String[]{"TABLE"})) {
+                if (rs.next()) {
+                    exists = true;
+                }
+            }
+
+            try (Statement stmt = conn.createStatement()) {
+                if (!exists) {
+                    String createSql = "CREATE TABLE IF NOT EXISTS workflow_template (" +
+                            "id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY," +
+                            "tenant_id VARCHAR(50) NOT NULL DEFAULT '1'," +
+                            "template_name VARCHAR(100) NOT NULL," +
+                            "flow_type VARCHAR(50) NOT NULL," +
+                            "resource_groups TEXT," +
+                            "node_config TEXT," +
+                            "condition_dimension VARCHAR(50) DEFAULT 'AFFECT_ROWS'," +
+                            "affect_rows_threshold INT DEFAULT 1000," +
+                            "high_risk_role VARCHAR(50) DEFAULT 'DBA'," +
+                            "low_risk_role VARCHAR(50) DEFAULT 'DEV_LEAD'," +
+                            "spel_expression VARCHAR(255) DEFAULT '#{affectRows > 1000}'," +
+                            "trigger_condition VARCHAR(255)," +
+                            "default_execution_mode VARCHAR(255) DEFAULT '[\"IMMEDIATE\"]'," +
+                            "status INT NOT NULL DEFAULT 1," +
+                            "description VARCHAR(500)," +
+                            "create_time DATETIME," +
+                            "update_time DATETIME" +
+                            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+                    stmt.execute(createSql);
+                    log.info("Created table workflow_template successfully.");
+                } else {
+                    stmt.execute("ALTER TABLE workflow_template MODIFY COLUMN default_execution_mode VARCHAR(255);");
+                    try {
+                        stmt.execute("ALTER TABLE workflow_template ADD COLUMN condition_dimension VARCHAR(50) DEFAULT 'AFFECT_ROWS';");
+                    } catch (Exception ignored) {}
+                    try {
+                        stmt.execute("ALTER TABLE workflow_template ADD COLUMN affect_rows_threshold INT DEFAULT 1000;");
+                    } catch (Exception ignored) {}
+                    try {
+                        stmt.execute("ALTER TABLE workflow_template ADD COLUMN high_risk_role VARCHAR(50) DEFAULT 'DBA';");
+                    } catch (Exception ignored) {}
+                    try {
+                        stmt.execute("ALTER TABLE workflow_template ADD COLUMN low_risk_role VARCHAR(50) DEFAULT 'DEV_LEAD';");
+                    } catch (Exception ignored) {}
+                    try {
+                        stmt.execute("ALTER TABLE workflow_template ADD COLUMN spel_expression VARCHAR(255) DEFAULT '#{affectRows > 1000}';");
+                    } catch (Exception ignored) {}
+                    try {
+                        stmt.execute("ALTER TABLE workflow_template ADD COLUMN target_databases TEXT;");
+                    } catch (Exception ignored) {}
+                }
+            }
+
+            Date now = new Date();
+            List<WorkflowTemplate> defaults = List.of(
+                    WorkflowTemplate.builder()
+                            .tenantId("1")
+                            .templateName("DML 影响行数智能条件分支审批流")
+                            .flowType("DML_CHANGE")
+                            .resourceGroups("[\"车险承保资源组\",\"销管系统资源组\",\"水险财产险1000条以下\",\"默认核心业务资源组\",\"全部业务资源组通用\"]")
+                            .nodeConfig("[{\"step\":1,\"nodeName\":\"影响行数智能排他网关判定\",\"role\":\"GATEWAY\",\"condition\":\"affect_rows > 1000 ? DBA : OPS\",\"branches\":[{\"condition\":\"影响行数 > 1000\",\"targetNode\":\"核心DBA安全复核\",\"role\":\"DBA\"},{\"condition\":\"影响行数 <= 1000\",\"targetNode\":\"运维/开发组长初审\",\"role\":\"DEV_LEAD\"}]},{\"step\":2,\"nodeName\":\"JDBC流式安全执行\",\"role\":\"SERVICE\"}]")
+                            .triggerCondition("影响行数 > 1000 需核心 DBA 审核；影响行数 ≤ 1000 由运维/开发组长审核")
+                            .defaultExecutionMode("[\"IMMEDIATE\",\"SCHEDULED\",\"CANARY_BATCH\"]")
+                            .status(1)
+                            .description("根据 SQL 预执行检测的影响行数自动触发智能排他网关分流：大于 1000 行由核心 DBA 终审，小于等于 1000 行由运维初审")
+                            .createTime(now)
+                            .updateTime(now)
+                            .build(),
+                    WorkflowTemplate.builder()
+                            .tenantId("1")
+                            .templateName("标准 DML 常规两级审批流")
+                            .flowType("DML_CHANGE")
+                            .resourceGroups("[\"车险承保资源组\",\"销管系统资源组\",\"水险财产险1000条以下\",\"默认核心业务资源组\"]")
+                            .nodeConfig("[{\"step\":1,\"nodeName\":\"开发组长初审\",\"role\":\"DEV_LEAD\"},{\"step\":2,\"nodeName\":\"核心DBA安全复审\",\"role\":\"DBA\"}]")
+                            .triggerCondition("常规 UPDATE / INSERT / DELETE 变更")
+                            .defaultExecutionMode("[\"IMMEDIATE\",\"SCHEDULED\",\"CANARY_BATCH\"]")
+                            .status(1)
+                            .description("适用于常规业务数据订正与日常 DML 发布上线")
+                            .createTime(now)
+                            .updateTime(now)
+                            .build(),
+                    WorkflowTemplate.builder()
+                            .tenantId("1")
+                            .templateName("高危 DDL 结构变更三级严格审批流")
+                            .flowType("DDL_CHANGE")
+                            .resourceGroups("[\"车险承保资源组\",\"销管系统资源组\",\"农险理赔资源组\",\"核心账务资源组\"]")
+                            .nodeConfig("[{\"step\":1,\"nodeName\":\"开发组长初审\",\"role\":\"DEV_LEAD\"},{\"step\":2,\"nodeName\":\"核心DBA技术复审\",\"role\":\"DBA\"},{\"step\":3,\"nodeName\":\"系统管理员终审\",\"role\":\"ADMIN\"}]")
+                            .triggerCondition("包含 CREATE TABLE / ALTER TABLE / DROP 等结构定义变更")
+                            .defaultExecutionMode("[\"SCHEDULED\",\"MANUAL_DBA\"]")
+                            .status(1)
+                            .description("针对可能引起锁表或高危风险的 DDL 操作进行三级强管控")
+                            .createTime(now)
+                            .updateTime(now)
+                            .build(),
+                    WorkflowTemplate.builder()
+                            .tenantId("1")
+                            .templateName("只读数据查询特权极速审批流")
+                            .flowType("DATA_QUERY")
+                            .resourceGroups("[\"测试系统-测试团队-测试用途\",\"风勘中心资源组\"]")
+                            .nodeConfig("[{\"step\":1,\"nodeName\":\"业务组长极速初审\",\"role\":\"DEV_LEAD\"}]")
+                            .triggerCondition("申请临时只读查询分析大结果集")
+                            .defaultExecutionMode("[\"IMMEDIATE\",\"DRY_RUN_ONLY\"]")
+                            .status(1)
+                            .description("研发人员申请测试或分析环境单次查询特权")
+                            .createTime(now)
+                            .updateTime(now)
+                            .build(),
+                    WorkflowTemplate.builder()
+                            .tenantId("1")
+                            .templateName("生产故障紧急变更直通流")
+                            .flowType("SQL_AUDIT")
+                            .resourceGroups("[\"全部业务资源组通用\"]")
+                            .nodeConfig("[{\"step\":1,\"nodeName\":\"核心DBA特权终审\",\"role\":\"DBA\"}]")
+                            .triggerCondition("重大 P1/P2 故障止损紧急变更")
+                            .defaultExecutionMode("[\"IMMEDIATE\",\"SCHEDULED\",\"MANUAL_DBA\",\"CANARY_BATCH\"]")
+                            .status(1)
+                            .description("绕过常规多级审批，由核心 DBA 快速复核并支持多种策略下发执行")
+                            .createTime(now)
+                            .updateTime(now)
+                            .build()
+            );
+
+            for (WorkflowTemplate tpl : defaults) {
+                Long existsCount = workflowTemplateMapper.selectCount(new QueryWrapper<WorkflowTemplate>().eq("template_name", tpl.getTemplateName()));
+                if (existsCount == 0) {
+                    try {
+                        workflowTemplateMapper.insert(tpl);
+                        log.info("Inserted default workflow template: {}", tpl.getTemplateName());
+                    } catch (Exception ignored) {}
+                }
+            }
+            log.info("Initialized default workflow templates successfully.");
+        } catch (Exception e) {
+            log.warn("Init workflow_template table exception: {}", e.getMessage());
+        }
+    }
+
+    public List<WorkflowTemplate> listTemplates(String keyword) {
+        QueryWrapper<WorkflowTemplate> qw = new QueryWrapper<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            qw.like("template_name", keyword.trim())
+                    .or()
+                    .like("flow_type", keyword.trim())
+                    .or()
+                    .like("resource_groups", keyword.trim());
+        }
+        qw.orderByDesc("id");
+        return workflowTemplateMapper.selectList(qw);
+    }
+
+    public com.wmdb.model.PageResultDTO<WorkflowTemplate> pageTemplates(int page, int size, String keyword, String flowType) {
+        QueryWrapper<WorkflowTemplate> qw = new QueryWrapper<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim();
+            qw.and(w -> w.like("template_name", kw)
+                    .or().like("flow_type", kw)
+                    .or().like("resource_groups", kw)
+                    .or().like("description", kw));
+        }
+        if (flowType != null && !flowType.trim().isEmpty()) {
+            qw.eq("flow_type", flowType.trim());
+        }
+        qw.orderByDesc("id");
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<WorkflowTemplate> mpPage =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page > 0 ? page : 1, size > 0 ? size : 10);
+        workflowTemplateMapper.selectPage(mpPage, qw);
+        return com.wmdb.model.PageResultDTO.from(mpPage);
+    }
+
+    public void saveTemplate(WorkflowTemplate template) {
+        if (template.getTemplateName() == null || template.getTemplateName().trim().isEmpty()) {
+            throw new BusinessException("A0400", "流程模板名称不能为空");
+        }
+        if (template.getTenantId() == null || template.getTenantId().isEmpty()) {
+            template.setTenantId("1");
+        }
+        if (template.getStatus() == null) {
+            template.setStatus(1);
+        }
+        if (template.getDefaultExecutionMode() == null) {
+            template.setDefaultExecutionMode("IMMEDIATE");
+        }
+        if (template.getAffectRowsThreshold() == null || template.getAffectRowsThreshold() <= 0) {
+            template.setAffectRowsThreshold(1000);
+        }
+        if (template.getConditionDimension() == null || template.getConditionDimension().isEmpty()) {
+            template.setConditionDimension("AFFECT_ROWS");
+        }
+        if (template.getHighRiskRole() == null || template.getHighRiskRole().isEmpty()) {
+            template.setHighRiskRole("DBA");
+        }
+        if (template.getLowRiskRole() == null || template.getLowRiskRole().isEmpty()) {
+            template.setLowRiskRole("DEV_LEAD");
+        }
+        if (template.getSpelExpression() == null || template.getSpelExpression().trim().isEmpty()) {
+            int th = template.getAffectRowsThreshold() != null ? template.getAffectRowsThreshold() : 1000;
+            String dim = template.getConditionDimension() != null ? template.getConditionDimension() : "AFFECT_ROWS";
+            if ("CHANGE_TYPE".equalsIgnoreCase(dim)) {
+                template.setSpelExpression("#{hasDdl == true}");
+            } else if ("COMPOSITE".equalsIgnoreCase(dim)) {
+                template.setSpelExpression("#{affectRows > " + th + " || hasDdl == true}");
+            } else {
+                template.setSpelExpression("#{affectRows > " + th + "}");
+            }
+        }
+
+        Date now = new Date();
+        template.setUpdateTime(now);
+
+        if (template.getId() == null) {
+            template.setCreateTime(now);
+            workflowTemplateMapper.insert(template);
+        } else {
+            workflowTemplateMapper.updateById(template);
+        }
+    }
+
+    public void deleteTemplate(Long id) {
+        workflowTemplateMapper.deleteById(id);
+    }
+
+    public void toggleStatus(Long id) {
+        WorkflowTemplate template = workflowTemplateMapper.selectById(id);
+        if (template != null) {
+            template.setStatus(template.getStatus() != null && template.getStatus() == 1 ? 0 : 1);
+            template.setUpdateTime(new Date());
+            workflowTemplateMapper.updateById(template);
+        }
+    }
+
+    /**
+     * 根据工单创建参数预估路由唯一的审批流模板与节点链路
+     */
+    public RoutingPreviewDTO previewRouting(RoutingPreviewRequestDTO request) {
+        if (request == null) {
+            request = new RoutingPreviewRequestDTO();
+        }
+
+        DbInstance instance = request.getInstanceId() != null ? dbInstanceMapper.selectById(request.getInstanceId()) : null;
+        String resourceGroup = request.getResourceGroup() != null ? request.getResourceGroup().trim() : "";
+        String dbName = request.getDbName() != null ? request.getDbName().trim() : "";
+        String ticketType = request.getTicketType() != null ? request.getTicketType().trim() : "SQL_AUDIT";
+        int expectedRows = request.getExpectedRows() != null ? request.getExpectedRows() : 1;
+
+        // 解析资源组的安全策略与专库审批流映射
+        boolean enforceDryRun = true;
+        boolean enableStep3Rollback = true;
+        boolean enableStep4DryRun = true;
+        String customDbWorkflowName = null;
+
+        if (!resourceGroup.isEmpty()) {
+            List<com.wmdb.model.ResourceGroup> rgList = resourceGroupMapper.selectList(
+                    new QueryWrapper<com.wmdb.model.ResourceGroup>().eq("group_name", resourceGroup).last("LIMIT 1")
+            );
+            if (rgList != null && !rgList.isEmpty()) {
+                com.wmdb.model.ResourceGroup rg = rgList.get(0);
+                if (rg.getFormConfig() != null && !rg.getFormConfig().trim().isEmpty()) {
+                    try {
+                        com.fasterxml.jackson.databind.JsonNode rootNode = objectMapper.readTree(rg.getFormConfig());
+                        if (rootNode.has("enforceDryRun")) {
+                            enforceDryRun = rootNode.get("enforceDryRun").asBoolean(true);
+                        }
+                        if (rootNode.has("enableStep3Rollback")) {
+                            enableStep3Rollback = rootNode.get("enableStep3Rollback").asBoolean(true);
+                        }
+                        if (rootNode.has("enableStep4DryRun")) {
+                            enableStep4DryRun = rootNode.get("enableStep4DryRun").asBoolean(true);
+                        }
+                        if (rootNode.has("dbWorkflowMappings") && rootNode.get("dbWorkflowMappings").isObject() && !dbName.isEmpty()) {
+                            com.fasterxml.jackson.databind.JsonNode mappings = rootNode.get("dbWorkflowMappings");
+                            String exactKey = (request.getInstanceId() != null ? request.getInstanceId() : "") + ":" + dbName;
+                            if (mappings.has(exactKey) && !mappings.get(exactKey).asText().trim().isEmpty()) {
+                                customDbWorkflowName = mappings.get(exactKey).asText().trim();
+                            } else if (mappings.has(dbName) && !mappings.get(dbName).asText().trim().isEmpty()) {
+                                customDbWorkflowName = mappings.get(dbName).asText().trim();
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+
+        // 1. 优先判定：资源组中为具体数据库配置的专属审批流
+        if (customDbWorkflowName != null && !customDbWorkflowName.isEmpty() && !"DEFAULT".equalsIgnoreCase(customDbWorkflowName)) {
+            List<WorkflowTemplate> matchedList = workflowTemplateMapper.selectList(
+                    new QueryWrapper<WorkflowTemplate>().eq("template_name", customDbWorkflowName).last("LIMIT 1")
+            );
+            if (matchedList != null && !matchedList.isEmpty()) {
+                WorkflowTemplate dbTpl = matchedList.get(0);
+                String reason = "业务资源组【" + resourceGroup + "】已为目标数据库【" + dbName + "】绑定专属审批流【" + dbTpl.getTemplateName() + "】";
+                RoutingPreviewDTO dto = buildRoutingPreviewDTO(dbTpl, true, reason, expectedRows, ticketType, request.getSqlSnippet());
+                dto.setEnforceDryRun(enforceDryRun);
+                dto.setEnableStep3Rollback(enableStep3Rollback);
+                dto.setEnableStep4DryRun(enableStep4DryRun);
+                return dto;
+            }
+        }
+
+        // 2. 实例级专属固定审批流 (Pinned / Fixed Workflow Template)
+        if (instance != null && instance.getFixedWorkflowTemplateId() != null && instance.getFixedWorkflowTemplateId() > 0) {
+            WorkflowTemplate pinnedTpl = workflowTemplateMapper.selectById(instance.getFixedWorkflowTemplateId());
+            if (pinnedTpl != null && (pinnedTpl.getStatus() == null || pinnedTpl.getStatus() == 1)) {
+                String reason = "目标实例【" + instance.getName() + "】已配置专属固定审批流，跳过综合决策强制生效";
+                RoutingPreviewDTO dto = buildRoutingPreviewDTO(pinnedTpl, true, reason, expectedRows, ticketType, request.getSqlSnippet());
+                dto.setEnforceDryRun(enforceDryRun);
+                dto.setEnableStep3Rollback(enableStep3Rollback);
+                dto.setEnableStep4DryRun(enableStep4DryRun);
+                return dto;
+            }
+        }
+
+        // 3. 动态综合智能决策 (Dynamic Multi-Dimensional Decision)
+        List<WorkflowTemplate> allTemplates = workflowTemplateMapper.selectList(
+                new QueryWrapper<WorkflowTemplate>().eq("status", 1).orderByDesc("id")
+        );
+
+        WorkflowTemplate bestMatch = null;
+        int highestScore = -1;
+        String matchDetail = "";
+
+        for (WorkflowTemplate tpl : allTemplates) {
+            int score = 0;
+            String rgs = tpl.getResourceGroups() != null ? tpl.getResourceGroups() : "";
+            String flowType = tpl.getFlowType() != null ? tpl.getFlowType() : "ALL";
+
+            // 变更类型匹配判定
+            boolean typeMatched = "ALL".equalsIgnoreCase(flowType) || flowType.equalsIgnoreCase(ticketType) ||
+                    ("SQL_AUDIT".equalsIgnoreCase(ticketType) && ("DML_CHANGE".equalsIgnoreCase(flowType) || "DDL_CHANGE".equalsIgnoreCase(flowType)));
+            if (!typeMatched) {
+                continue;
+            }
+            if (flowType.equalsIgnoreCase(ticketType)) {
+                score += 40;
+            } else {
+                score += 20;
+            }
+
+            // 资源组匹配判定
+            if (!resourceGroup.isEmpty()) {
+                if (rgs.contains(resourceGroup)) {
+                    score += 40;
+                } else if (rgs.contains("全部业务资源组通用") || rgs.contains("默认核心业务资源组")) {
+                    score += 15;
+                }
+            } else {
+                score += 10;
+            }
+
+            // 实例标签与条件判定
+            if (instance != null && instance.getTags() != null) {
+                String tags = instance.getTags();
+                if (tags.contains("核心") || tags.contains("生产")) {
+                    if (tpl.getTemplateName().contains("智能") || tpl.getTemplateName().contains("严格") || tpl.getTemplateName().contains("高危")) {
+                        score += 30;
+                    }
+                }
+                if (tags.contains("测试") && tpl.getTemplateName().contains("测试")) {
+                    score += 35;
+                }
+            }
+
+            // 阈值与条件判定加权
+            int threshold = tpl.getAffectRowsThreshold() != null && tpl.getAffectRowsThreshold() > 0 ? tpl.getAffectRowsThreshold() : 1000;
+            String dimension = tpl.getConditionDimension() != null ? tpl.getConditionDimension() : "AFFECT_ROWS";
+            boolean hasDdl = "DDL_CHANGE".equalsIgnoreCase(ticketType) || (request.getSqlSnippet() != null && (request.getSqlSnippet().toUpperCase().contains("CREATE") || request.getSqlSnippet().toUpperCase().contains("ALTER") || request.getSqlSnippet().toUpperCase().contains("DROP") || request.getSqlSnippet().toUpperCase().contains("TRUNCATE")));
+            boolean isHighRisk = "CHANGE_TYPE".equalsIgnoreCase(dimension) ? hasDdl : ("COMPOSITE".equalsIgnoreCase(dimension) ? (expectedRows > threshold || hasDdl) : expectedRows > threshold);
+
+            if (isHighRisk && (tpl.getTemplateName().contains("智能") || tpl.getTemplateName().contains("网关") || tpl.getTemplateName().contains("严格"))) {
+                score += 25;
+            }
+
+            if (score > highestScore) {
+                highestScore = score;
+                bestMatch = tpl;
+                matchDetail = "综合决策自动命中：资源组【" + (resourceGroup.isEmpty() ? "通用" : resourceGroup) + "】+ 变更类型【" + ticketType + "】" +
+                        (instance != null && instance.getTags() != null ? " + 实例标签" + instance.getTags() : "") +
+                        (isHighRisk ? "（触发高危条件阈值 > " + threshold + " 行）" : "（符合常规低危阈值 ≤ " + threshold + " 行）");
+            }
+        }
+
+        if (bestMatch == null) {
+            if (!allTemplates.isEmpty()) {
+                bestMatch = allTemplates.get(0);
+                matchDetail = "默认兜底审批流";
+            } else {
+                RoutingPreviewDTO fallback = buildDefaultFallbackPreview();
+                fallback.setEnforceDryRun(enforceDryRun);
+                fallback.setEnableStep3Rollback(enableStep3Rollback);
+                fallback.setEnableStep4DryRun(enableStep4DryRun);
+                return fallback;
+            }
+        }
+
+        RoutingPreviewDTO dto = buildRoutingPreviewDTO(bestMatch, false, matchDetail, expectedRows, ticketType, request.getSqlSnippet());
+        dto.setEnforceDryRun(enforceDryRun);
+        dto.setEnableStep3Rollback(enableStep3Rollback);
+        dto.setEnableStep4DryRun(enableStep4DryRun);
+        return dto;
+    }
+
+    private RoutingPreviewDTO buildRoutingPreviewDTO(WorkflowTemplate tpl, boolean isPinned, String reason, int affectRows, String ticketType, String sqlSnippet) {
+        int threshold = tpl.getAffectRowsThreshold() != null && tpl.getAffectRowsThreshold() > 0 ? tpl.getAffectRowsThreshold() : 1000;
+        String dimension = tpl.getConditionDimension() != null ? tpl.getConditionDimension() : "AFFECT_ROWS";
+        String highRiskRole = tpl.getHighRiskRole() != null && !tpl.getHighRiskRole().isEmpty() ? tpl.getHighRiskRole() : "DBA";
+        String lowRiskRole = tpl.getLowRiskRole() != null && !tpl.getLowRiskRole().isEmpty() ? tpl.getLowRiskRole() : "DEV_LEAD";
+
+        boolean hasDdl = "DDL_CHANGE".equalsIgnoreCase(ticketType) || (sqlSnippet != null && (sqlSnippet.toUpperCase().contains("CREATE") || sqlSnippet.toUpperCase().contains("ALTER") || sqlSnippet.toUpperCase().contains("DROP") || sqlSnippet.toUpperCase().contains("TRUNCATE")));
+        boolean isHighRisk = "CHANGE_TYPE".equalsIgnoreCase(dimension) ? hasDdl : ("COMPOSITE".equalsIgnoreCase(dimension) ? (affectRows > threshold || hasDdl) : affectRows > threshold);
+
+        List<RoutingPreviewDTO.PreviewNodeDTO> nodes = new ArrayList<>();
+        // 节点 1: 申请人发起
+        nodes.add(RoutingPreviewDTO.PreviewNodeDTO.builder()
+                .step(1)
+                .nodeName("申请人发起工单")
+                .role("START")
+                .approverRole("工单发起人")
+                .eligibleApprovers(List.of("当前登录申请人"))
+                .condition("提交工单并触发审批流")
+                .build());
+
+        boolean isGatewayTemplate = (tpl.getNodeConfig() != null && tpl.getNodeConfig().contains("GATEWAY")) ||
+                (tpl.getTemplateName() != null && tpl.getTemplateName().contains("智能条件分支"));
+
+        if (isGatewayTemplate) {
+            // 条件网关节点
+            String gatewayCond = "AFFECT_ROWS".equalsIgnoreCase(dimension)
+                    ? "affect_rows > " + threshold + " ? " + highRiskRole + " : " + lowRiskRole
+                    : ("CHANGE_TYPE".equalsIgnoreCase(dimension)
+                    ? "has_ddl ? " + highRiskRole + " : " + lowRiskRole
+                    : "(affect_rows > " + threshold + " || has_ddl) ? " + highRiskRole + " : " + lowRiskRole);
+
+            nodes.add(RoutingPreviewDTO.PreviewNodeDTO.builder()
+                    .step(2)
+                    .nodeName("智能排他网关判定 (" + ("AFFECT_ROWS".equalsIgnoreCase(dimension) ? "行数阈值 " + threshold : ("CHANGE_TYPE".equalsIgnoreCase(dimension) ? "DDL变更判定" : "复合判定")) + ")")
+                    .role("GATEWAY")
+                    .approverRole("BPMN 智能排他网关")
+                    .eligibleApprovers(List.of("系统智能自动判定"))
+                    .condition(gatewayCond)
+                    .build());
+
+            // 动态分流目标节点
+            String targetRole = isHighRisk ? highRiskRole : lowRiskRole;
+            String nodeName = isHighRisk
+                    ? ("DBA".equalsIgnoreCase(highRiskRole) ? "核心DBA安全复核 (高危分支)" : ("ADMIN".equalsIgnoreCase(highRiskRole) ? "系统管理员终审 (高危分支)" : "双人联合复审 (高危分支)"))
+                    : ("DEV_LEAD".equalsIgnoreCase(lowRiskRole) ? "业务开发组长初审 (常规分支)" : "业务运维初审 (常规分支)");
+
+            String approverRole = "DBA".equalsIgnoreCase(targetRole) ? "核心数据库管理员 (DBA)" : ("ADMIN".equalsIgnoreCase(targetRole) ? "系统超级管理员 (ADMIN)" : ("DEV_LEAD".equalsIgnoreCase(targetRole) ? "业务开发组长 (DEV_LEAD)" : "运维管理员 (OPS)"));
+            List<String> eligible = "DBA".equalsIgnoreCase(targetRole) ? List.of("核心 DBA (DBA)", "管理员 (admin)") : ("ADMIN".equalsIgnoreCase(targetRole) ? List.of("超级管理员 (ADMIN)") : List.of("开发组长 (DEV_LEAD)", "管理员 (admin)"));
+
+            nodes.add(RoutingPreviewDTO.PreviewNodeDTO.builder()
+                    .step(3)
+                    .nodeName(nodeName)
+                    .role(targetRole)
+                    .approverRole(approverRole)
+                    .eligibleApprovers(eligible)
+                    .condition(isHighRisk ? "判定命中高危管控规则" : "判定命中常规放行规则")
+                    .build());
+
+            nodes.add(RoutingPreviewDTO.PreviewNodeDTO.builder()
+                    .step(4)
+                    .nodeName("JDBC流式安全执行")
+                    .role("SERVICE")
+                    .approverRole("JDBC 引擎自动化流式执行")
+                    .eligibleApprovers(List.of("系统引擎全自动发布"))
+                    .condition("审批通过后自动执行")
+                    .build());
+        } else {
+            // 标准顺序节点解析
+            if (tpl.getNodeConfig() != null && !tpl.getNodeConfig().trim().isEmpty()) {
+                try {
+                    List<Map<String, Object>> list = objectMapper.readValue(tpl.getNodeConfig(), new TypeReference<List<Map<String, Object>>>() {});
+                    int stepCounter = 2;
+                    for (Map<String, Object> map : list) {
+                        String nodeName = (String) map.getOrDefault("nodeName", "审批节点");
+                        String role = (String) map.getOrDefault("role", "DEV_LEAD");
+                        String condition = (String) map.getOrDefault("condition", "");
+
+                        String approverRole = "业务开发组长";
+                        List<String> eligible = List.of("开发组长 (DEV_LEAD)", "管理员 (admin)");
+                        if ("DBA".equalsIgnoreCase(role)) {
+                            approverRole = "核心数据库管理员 (DBA)";
+                            eligible = List.of("核心 DBA (DBA)", "管理员 (admin)");
+                        } else if ("ADMIN".equalsIgnoreCase(role)) {
+                            approverRole = "系统超级管理员 (ADMIN)";
+                            eligible = List.of("超级管理员 (ADMIN)");
+                        } else if ("SERVICE".equalsIgnoreCase(role)) {
+                            approverRole = "JDBC 引擎自动化流式执行";
+                            eligible = List.of("系统引擎全自动发布");
+                        }
+
+                        nodes.add(RoutingPreviewDTO.PreviewNodeDTO.builder()
+                                .step(stepCounter++)
+                                .nodeName(nodeName)
+                                .role(role)
+                                .approverRole(approverRole)
+                                .eligibleApprovers(eligible)
+                                .condition(condition)
+                                .build());
+                    }
+                } catch (Exception e) {
+                    log.warn("Parse nodeConfig failed: {}", e.getMessage());
+                }
+            }
+
+            if (nodes.size() == 1) {
+                nodes.add(RoutingPreviewDTO.PreviewNodeDTO.builder()
+                        .step(2)
+                        .nodeName("开发组长初审")
+                        .role("DEV_LEAD")
+                        .approverRole("业务开发组长")
+                        .eligibleApprovers(List.of("业务开发组长", "系统管理员"))
+                        .build());
+                nodes.add(RoutingPreviewDTO.PreviewNodeDTO.builder()
+                        .step(3)
+                        .nodeName("核心DBA安全复审")
+                        .role("DBA")
+                        .approverRole("核心数据库管理员")
+                        .eligibleApprovers(List.of("核心数据库管理员", "系统管理员"))
+                        .build());
+            }
+        }
+
+        String spel = tpl.getSpelExpression() != null && !tpl.getSpelExpression().isEmpty()
+                ? tpl.getSpelExpression()
+                : ("CHANGE_TYPE".equalsIgnoreCase(dimension)
+                ? "#{hasDdl == true}"
+                : ("COMPOSITE".equalsIgnoreCase(dimension)
+                ? "#{affectRows > " + threshold + " || hasDdl == true}"
+                : "#{affectRows > " + threshold + "}"));
+
+        return RoutingPreviewDTO.builder()
+                .templateId(tpl.getId())
+                .templateName(tpl.getTemplateName())
+                .isPinned(isPinned)
+                .flowType(tpl.getFlowType())
+                .routingReason(reason)
+                .triggerCondition(tpl.getTriggerCondition())
+                .defaultExecutionMode(tpl.getDefaultExecutionMode())
+                .conditionDimension(dimension)
+                .affectRowsThreshold(threshold)
+                .isHighRisk(isHighRisk)
+                .highRiskRole(highRiskRole)
+                .lowRiskRole(lowRiskRole)
+                .spelExpression(spel)
+                .nodes(nodes)
+                .build();
+    }
+
+    private RoutingPreviewDTO buildDefaultFallbackPreview() {
+        return RoutingPreviewDTO.builder()
+                .templateId(0L)
+                .templateName("标准生产变更两级审批流")
+                .isPinned(false)
+                .flowType("SQL_AUDIT")
+                .routingReason("默认通用审批流")
+                .triggerCondition("通用 SQL 变更")
+                .defaultExecutionMode("[\"IMMEDIATE\"]")
+                .affectRowsThreshold(1000)
+                .conditionDimension("AFFECT_ROWS")
+                .spelExpression("#{affectRows > 1000}")
+                .isHighRisk(false)
+                .highRiskRole("DBA")
+                .lowRiskRole("DEV_LEAD")
+                .nodes(List.of(
+                        RoutingPreviewDTO.PreviewNodeDTO.builder()
+                                .step(1)
+                                .nodeName("申请人发起工单")
+                                .role("START")
+                                .approverRole("工单申请人")
+                                .eligibleApprovers(List.of("当前登录申请人"))
+                                .build(),
+                        RoutingPreviewDTO.PreviewNodeDTO.builder()
+                                .step(2)
+                                .nodeName("开发组长初审")
+                                .role("DEV_LEAD")
+                                .approverRole("业务开发组长")
+                                .eligibleApprovers(List.of("业务开发组长", "系统管理员"))
+                                .build(),
+                        RoutingPreviewDTO.PreviewNodeDTO.builder()
+                                .step(3)
+                                .nodeName("核心DBA安全复核")
+                                .role("DBA")
+                                .approverRole("核心数据库管理员")
+                                .eligibleApprovers(List.of("核心数据库管理员", "系统管理员"))
+                                .build()
+                ))
+                .build();
+    }
+
+    /**
+     * 在线 SpEL 规则沙箱测试与求值
+     */
+    public com.wmdb.model.SpelEvaluationResultDTO evaluateSpel(com.wmdb.model.SpelEvaluationRequestDTO request) {
+        if (request == null || request.getSpelExpression() == null || request.getSpelExpression().trim().isEmpty()) {
+            return com.wmdb.model.SpelEvaluationResultDTO.builder()
+                    .syntaxValid(false)
+                    .matched(false)
+                    .errorMessage("SpEL 表达式不可为空")
+                    .explanation("❌ 请输入有效的 SpEL 条件表达式")
+                    .build();
+        }
+
+        String rawExpr = request.getSpelExpression().trim();
+        if (rawExpr.startsWith("#{") && rawExpr.endsWith("}")) {
+            rawExpr = rawExpr.substring(2, rawExpr.length() - 1).trim();
+        }
+
+        try {
+            org.springframework.expression.ExpressionParser parser = new org.springframework.expression.spel.standard.SpelExpressionParser();
+            org.springframework.expression.Expression expression = parser.parseExpression(rawExpr);
+            org.springframework.expression.spel.support.StandardEvaluationContext context = new org.springframework.expression.spel.support.StandardEvaluationContext();
+            context.addPropertyAccessor(new org.springframework.context.expression.MapAccessor());
+
+            if (request.getContext() != null) {
+                context.setRootObject(request.getContext());
+                for (Map.Entry<String, Object> entry : request.getContext().entrySet()) {
+                    context.setVariable(entry.getKey(), entry.getValue());
+                }
+            }
+
+            Object evaluated = expression.getValue(context);
+            boolean isMatched = false;
+            if (evaluated instanceof Boolean b) {
+                isMatched = b;
+            } else if (evaluated != null) {
+                isMatched = true;
+            }
+
+            String explanation = isMatched
+                    ? "✅ SpEL 表达式计算结果为 true（判定命中高危管控分支）"
+                    : "⚡ SpEL 表达式计算结果为 false（判定命中常规低危分支）";
+
+            return com.wmdb.model.SpelEvaluationResultDTO.builder()
+                    .syntaxValid(true)
+                    .matched(isMatched)
+                    .result(evaluated)
+                    .explanation(explanation)
+                    .build();
+        } catch (Exception e) {
+            return com.wmdb.model.SpelEvaluationResultDTO.builder()
+                    .syntaxValid(false)
+                    .matched(false)
+                    .errorMessage("SpEL 语法解析或求值异常: " + e.getMessage())
+                    .explanation("❌ 表达式语法错误或变量缺失")
+                    .build();
+        }
+    }
+}

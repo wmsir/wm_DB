@@ -5,3 +5,7 @@ dist-ssr/
 .npm
 .DS_Store
 backend/target/
+.idea/
+*.log
+backend/scratch/
+

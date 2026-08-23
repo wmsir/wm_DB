@@ -3,7 +3,7 @@ import { createI18n } from 'vue-i18n'
 const messages = {
   zh: {
     menu: {
-      dashboard: '大盘总览',
+      dashboard: '平台总览',
       ticketList: '工单中心',
       workflowDesigner: '流程设计器',
       license: '商业授权 (License)',

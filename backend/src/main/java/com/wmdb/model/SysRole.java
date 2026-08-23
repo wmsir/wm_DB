@@ -40,4 +40,9 @@ public class SysRole {
      * 角色描述
      */
     private String description;
+
+    /**
+     * 允许访问的系统页签与功能权限列表（JSON 字符串格式，存储路由路径列表如 ["/dashboard", "/ticket-list", ...]）
+     */
+    private String permissions;
 }

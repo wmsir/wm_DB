@@ -6,7 +6,7 @@ import router from '../router'
 // 创建 axios 实例
 const request = axios.create({
   baseURL: '/api',
-  timeout: 10000 // 请求超时时间
+  timeout: 30000 // 请求超时时间增加至 30 秒（适应 SQL 执行、AI 分析与多库探测）
 })
 
 // request 拦截器
@@ -15,6 +15,11 @@ request.interceptors.request.use(
     const userStore = useUserStore()
     if (userStore.token) {
       config.headers['Authorization'] = `Bearer ${userStore.token}` // 让每个请求携带自定义 token
+    }
+
+    // 规范化 URL，防止重复添加 /api 前缀导致 404
+    if (config.url && config.url.startsWith('/api/')) {
+      config.url = config.url.substring(4)
     }
 
     // 注入多租户上下文，生产环境应从登录信息或域名解析中动态获取
@@ -34,6 +39,15 @@ request.interceptors.response.use(
   response => {
     const res = response.data
 
+    // 如果返回的 code 是 A0220 或 A0200，说明登录失效
+    if (res.code === 'A0220' || res.code === 'A0200') {
+      const userStore = useUserStore()
+      userStore.logout()
+      ElMessage.error(res.message || '登录身份已过期，请重新登录')
+      router.push('/login')
+      return Promise.reject(new Error(res.message || '登录已过期'))
+    }
+
     // 如果返回的 code 不是 00000 或 200，说明业务接口有异常
     if (res.code && res.code !== 200 && res.code !== '00000') {
       ElMessage({
@@ -48,18 +62,27 @@ request.interceptors.response.use(
     }
   },
   error => {
-    console.error('Response interceptor error:', error) // for debug
+    console.error('Response interceptor error:', error)
 
     let message = error.message
-    if (error.response) {
+    if (error.code === 'ECONNABORTED' || (error.message && error.message.includes('timeout'))) {
+      message = '网络请求超时（>30s），请检查后端服务运行状态或目标数据库连通性'
+    } else if (error.response) {
       const status = error.response.status
       if (status === 401) {
-        message = '认证失败或 Token 已过期，请重新登录'
+        message = '登录身份已失效或未登录，请重新登录'
         const userStore = useUserStore()
         userStore.logout()
         router.push('/login')
       } else if (status === 403) {
-        message = '权限不足，拒绝访问'
+        const userStore = useUserStore()
+        if (!userStore.isAuthenticated) {
+          message = '未登录或登录已失效，请重新登录'
+          userStore.logout()
+          router.push('/login')
+        } else {
+          message = error.response.data?.message || '当前账号权限不足，拒绝访问'
+        }
       } else if (status === 500) {
         message = error.response.data?.message || '系统内部异常'
       }
@@ -68,7 +91,7 @@ request.interceptors.response.use(
     ElMessage({
       message: message,
       type: 'error',
-      duration: 5 * 1000
+      duration: 4 * 1000
     })
     return Promise.reject(error)
   }

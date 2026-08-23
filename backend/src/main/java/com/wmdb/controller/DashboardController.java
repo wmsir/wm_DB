@@ -28,13 +28,17 @@ public class DashboardController {
     }
 
     /**
-     * 获取大盘统计数据
+     * 获取大盘统计数据（按当前用户权限与资源组维度真实聚合计算）
      *
      * @return 统计数据
      */
     @GetMapping("/stats")
     public Result<Map<String, Object>> getStats() {
-        return Result.success(dashboardService.getDashboardStats());
+        String currentIdCard = null;
+        try {
+            currentIdCard = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        } catch (Exception ignored) {}
+        return Result.success(dashboardService.getDashboardStats(currentIdCard));
     }
 
     /**
@@ -44,6 +48,10 @@ public class DashboardController {
      */
     @GetMapping("/monitor")
     public Result<Map<String, Object>> getMonitorStats() {
-        return Result.success(dashboardService.getDatabaseMonitorStats());
+        String currentIdCard = null;
+        try {
+            currentIdCard = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        } catch (Exception ignored) {}
+        return Result.success(dashboardService.getDatabaseMonitorStats(currentIdCard));
     }
 }

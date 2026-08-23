@@ -1,14 +1,16 @@
 <template>
-  <div class="license-container">
-    <h2>商业授权状态 (License)</h2>
+  <div class="license-container page-container">
+    <h2 class="page-title">商业授权状态 (License)</h2>
     <el-card shadow="hover" v-loading="loading">
       <el-result v-if="licenseData.valid" icon="success" title="授权有效" sub-title="您的商业授权处于有效状态">
         <template #extra>
-          <el-descriptions :column="1" border>
-            <el-descriptions-item label="版本信息">{{ licenseData.edition }}</el-descriptions-item>
-            <el-descriptions-item label="到期时间">{{ licenseData.expiresAt }}</el-descriptions-item>
-            <el-descriptions-item label="当前机器码">{{ licenseData.machineCode }}</el-descriptions-item>
-          </el-descriptions>
+          <div class="descriptions-wrapper">
+            <el-descriptions :column="1" border style="width: 100%;">
+              <el-descriptions-item label="版本信息">{{ licenseData.edition }}</el-descriptions-item>
+              <el-descriptions-item label="到期时间">{{ licenseData.expiresAt }}</el-descriptions-item>
+              <el-descriptions-item label="当前机器码">{{ licenseData.machineCode }}</el-descriptions-item>
+            </el-descriptions>
+          </div>
         </template>
       </el-result>
       <el-result v-else icon="error" title="授权无效或已过期" sub-title="请联系管理员或商务获取新的商业授权">
@@ -51,6 +53,12 @@ onMounted(() => {
 
 <style scoped>
 .license-container {
-  padding: 20px;
+  width: 100%;
+}
+
+.descriptions-wrapper {
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: left;
 }
 </style>

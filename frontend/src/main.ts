@@ -10,6 +10,7 @@ import router from './router'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import { watermark } from './directives/watermark'
 import i18n from './i18n'
 
@@ -21,8 +22,10 @@ app.use(createPinia())
 // 挂载路由模块
 app.use(router)
 
-// 挂载 Element Plus 组件库
-app.use(ElementPlus)
+// 挂载 Element Plus 组件库 (配置全量中文语言包)
+app.use(ElementPlus, {
+  locale: zhCn
+})
 
 // 挂载 i18n 国际化
 app.use(i18n)

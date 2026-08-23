@@ -16,7 +16,7 @@ import java.util.ArrayList;
  * JWT 鉴权过滤器
  * <p>
  * 拦截每次请求，从 Authorization 请求头提取并校验 Token。
- * 如果有效，将用户信息封装存入 SecurityContextHolder。
+ * 如果有效，将用户信息封装存入 SecurityContextHolder；如果携带无效/过期 Token，直接响应 401。
  * </p>
  *
  * @author wm
@@ -62,22 +62,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String idCard = jwtUtils.extractIdCard(jwt);
                 String realName = jwtUtils.extractRealName(jwt);
 
-                // In a real app, you might want to load UserDetails and authorities here.
-                // For simplicity, we just set the principal to the ID card.
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         idCard, null, new ArrayList<>());
 
-                // You could store realName in details or context if needed.
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+                filterChain.doFilter(request, response);
+            } else {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":\"A0220\", \"message\":\"登录身份已过期或无效，请重新登录\"}");
             }
         } catch (Exception e) {
-            // Token is invalid, return standard JSON response
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":\"A0220\", \"message\":\"用户身份验证未通过，请重新登录\"}");
-            return;
+            response.getWriter().write("{\"code\":\"A0220\", \"message\":\"登录身份验证未通过，请重新登录\"}");
         }
-
-        filterChain.doFilter(request, response);
     }
 }

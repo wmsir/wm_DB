@@ -3,6 +3,8 @@ package com.wmdb.model;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 /**
@@ -24,11 +26,13 @@ public class SqlTicketDetail {
      * 主键 ID
      */
     @TableId(type = IdType.INPUT)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
      * 关联的工单主表 ID
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long ticketId;
 
     /**
@@ -45,4 +49,19 @@ public class SqlTicketDetail {
      * 预计影响行数（通过 AST 分析得出）
      */
     private Integer affectRowsEstimate;
+
+    /**
+     * 数据回滚 / 备份 SQL 脚本内容
+     */
+    private String rollbackSqlText;
+
+    /**
+     * 数据回滚 / 备份附件在 MinIO/OSS 中的 Key
+     */
+    private String rollbackOssKey;
+
+    /**
+     * 业务资源组自定义工单扩展字段值 (JSON 字符串，如上线版本号、年月日、执行窗口等)
+     */
+    private String customFieldValues;
 }

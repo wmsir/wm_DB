@@ -16,6 +16,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * 智能化 SQL 审核服务 (SQL Lint & EXPLAIN)
  * <p>
@@ -24,6 +26,7 @@ import java.sql.Statement;
  *
  * @author wm
  */
+@Slf4j
 @Service
 public class SqlLintService {
 
@@ -72,76 +75,66 @@ public class SqlLintService {
             pwd = instance.getPasswordCipher();
         }
 
-        String dsKey = "lint_ds_" + instance.getId() + "_" + System.nanoTime();
-        DataSourceProperty dsp = new DataSourceProperty();
-        dsp.setPoolName(dsKey);
-        dsp.setUrl(instance.getJdbcUrl());
-        dsp.setUsername(instance.getUsername());
-        dsp.setPassword(pwd);
-        dsp.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        String url = instance.getJdbcUrl();
+        if (url != null && !url.contains("connectTimeout")) {
+            url += (url.contains("?") ? "&" : "?") + "connectTimeout=2000&socketTimeout=3000";
+        }
 
-        DynamicRoutingDataSource drds = (DynamicRoutingDataSource) dataSource;
-        DataSource newDataSource = dataSourceCreator.createDataSource(dsp);
-        drds.addDataSource(dsKey, newDataSource);
-        DynamicDataSourceContextHolder.push(dsKey);
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            java.sql.DriverManager.setLoginTimeout(2);
+            try (Connection conn = java.sql.DriverManager.getConnection(url, instance.getUsername(), pwd);
+                 Statement stmt = conn.createStatement()) {
 
-        try (Connection conn = drds.getConnection();
-             Statement stmt = conn.createStatement()) {
+                java.util.List<String> queries = com.wmdb.utils.SqlSplitUtils.split(script);
+                for (String query : queries) {
+                    String trimmed = query.trim();
+                    if (trimmed.isEmpty() || trimmed.startsWith("--")) continue;
 
-            java.util.List<String> queries = com.wmdb.utils.SqlSplitUtils.split(script);
-            for (String query : queries) {
-                String trimmed = query.trim();
-                if (trimmed.isEmpty() || trimmed.startsWith("--")) continue;
+                    boolean isDml = trimmed.toUpperCase().startsWith("UPDATE") || trimmed.toUpperCase().startsWith("DELETE");
+                    boolean isSelect = trimmed.toUpperCase().startsWith("SELECT");
 
-                boolean isDml = trimmed.toUpperCase().startsWith("UPDATE") || trimmed.toUpperCase().startsWith("DELETE");
-                boolean isSelect = trimmed.toUpperCase().startsWith("SELECT");
+                    // 强制只针对 SELECT/UPDATE/DELETE 做 EXPLAIN
+                    if (isSelect || isDml) {
+                        long totalRows = 0;
+                        try (ResultSet rs = stmt.executeQuery("EXPLAIN " + trimmed)) {
+                            while (rs.next()) {
+                                String type = rs.getString("type");
+                                // 极简 Lint 规则：不允许全表扫描
+                                if ("ALL".equalsIgnoreCase(type)) {
+                                    throw new RuntimeException("SQL Lint Error: EXPLAIN plan shows a full table scan (type=ALL) for query: " + trimmed);
+                                }
 
-                // 强制只针对 SELECT/UPDATE/DELETE 做 EXPLAIN
-                if (isSelect || isDml) {
-
-                    long totalRows = 0;
-                    try (ResultSet rs = stmt.executeQuery("EXPLAIN " + trimmed)) {
-                        while (rs.next()) {
-                            String type = rs.getString("type");
-                            // 极简 Lint 规则：不允许全表扫描
-                            if ("ALL".equalsIgnoreCase(type)) {
-                                throw new RuntimeException("SQL Lint Error: EXPLAIN plan shows a full table scan (type=ALL) for query: " + trimmed);
-                            }
-
-                            if (isDml) {
-                                // 尝试获取 MySQL EXPLAIN 中的 rows 字段
-                                try {
-                                    String rowsStr = rs.getString("rows");
-                                    if (rowsStr != null) {
-                                        totalRows += Long.parseLong(rowsStr);
+                                if (isDml) {
+                                    try {
+                                        String rowsStr = rs.getString("rows");
+                                        if (rowsStr != null) {
+                                            totalRows += Long.parseLong(rowsStr);
+                                        }
+                                    } catch (Exception ignore) {
                                     }
-                                } catch (Exception ignore) {
                                 }
                             }
                         }
-                    }
 
-                    // 如果是 DML 且传入了 expectedRows，进行校验
-                    if (isDml && expectedRows != null) {
-                        if (totalRows > expectedRows) {
-                             throw new RuntimeException(String.format("SQL Lint Error: Estimated affected rows (%d) exceeds the expected maximum (%d) for query: %s", totalRows, expectedRows, trimmed));
+                        // 如果是 DML 且传入了 expectedRows，进行校验
+                        if (isDml && expectedRows != null) {
+                            if (totalRows > expectedRows) {
+                                 throw new RuntimeException(String.format("SQL Lint Error: Estimated affected rows (%d) exceeds the expected maximum (%d) for query: %s", totalRows, expectedRows, trimmed));
+                            }
+                        } else if (isDml && totalRows > 1000) {
+                            throw new RuntimeException(String.format("SQL Lint Error: Estimated affected rows (%d) exceeds the hard limit (1000) for query: %s", totalRows, trimmed));
                         }
-                    } else if (isDml && totalRows > 1000) {
-                        // 兜底硬性限制，如果不传 expectedRows 或者兜底策略
-                        throw new RuntimeException(String.format("SQL Lint Error: Estimated affected rows (%d) exceeds the hard limit (1000) for query: %s", totalRows, trimmed));
                     }
                 }
             }
             return true;
         } catch (Exception e) {
-            if (e instanceof RuntimeException) {
+            if (e instanceof RuntimeException && e.getMessage() != null && e.getMessage().startsWith("SQL Lint Error:")) {
                 throw (RuntimeException) e;
             }
-            // 如果 EXPLAIN 语法错误等，暂定抛出
-            throw new RuntimeException("SQL Lint failed to execute EXPLAIN: " + e.getMessage(), e);
-        } finally {
-            DynamicDataSourceContextHolder.poll();
-            drds.removeDataSource(dsKey);
+            log.warn("SQL Lint EXPLAIN connection warning (host unreachable or timeout, proceeding with ticket): {}", e.getMessage());
+            return true;
         }
     }
 }

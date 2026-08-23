@@ -141,6 +141,13 @@
             <artifactId>bcprov-jdk15to18</artifactId>
             <version>1.72</version>
         </dependency>
+
+        <!-- Swagger / OpenAPI 3 for Spring Boot 3 -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.3.0</version>
+        </dependency>
     </dependencies>
 
     <build>

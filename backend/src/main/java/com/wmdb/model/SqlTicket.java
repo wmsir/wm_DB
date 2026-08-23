@@ -3,6 +3,8 @@ package com.wmdb.model;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 /**
@@ -21,9 +23,10 @@ public class SqlTicket {
     private String tenantId;
 
     /**
-     * 主键 ID
+     * 主键 ID（18位数字通过 ToStringSerializer 防止前端 JS 精度丢失）
      */
     @TableId(type = IdType.INPUT)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
@@ -70,4 +73,29 @@ public class SqlTicket {
      * 指定的维护窗口期（如：cron 表达式或特定时间范围，为空则立即执行）
      */
     private String executionWindow;
+
+    /**
+     * 绑定的审批流模板 ID
+     */
+    private Long workflowTemplateId;
+
+    /**
+     * 审批流模板名称
+     */
+    private String workflowTemplateName;
+
+    /**
+     * 申请人真实姓名/显示名称
+     */
+    private String applicantName;
+
+    /**
+     * 目标 Schema / 数据库名称
+     */
+    private String dbName;
+
+    /**
+     * 提交时间 (yyyy-MM-dd HH:mm:ss)
+     */
+    private String createTime;
 }
