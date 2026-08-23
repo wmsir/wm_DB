@@ -755,9 +755,12 @@
                 <div class="branch-route-detail">
                   <span class="route-role-label">审批流转角色：</span>
                   <el-select v-model="form.highRiskRole" size="small" style="width: 260px;" @change="updateTriggerConditionFromGateway">
-                    <el-option label="DBA (核心数据库管理员安全复核)" value="DBA" />
-                    <el-option label="ADMIN (系统超级管理员终审)" value="ADMIN" />
-                    <el-option label="AUDITOR (合规安全审计员核查)" value="AUDITOR" />
+                    <el-option
+                      v-for="r in paletteRoles"
+                      :key="r.key"
+                      :label="`${r.roleName} (${r.key})`"
+                      :value="r.key"
+                    />
                   </el-select>
                 </div>
               </div>
@@ -773,8 +776,12 @@
                 <div class="branch-route-detail">
                   <span class="route-role-label">审批流转角色：</span>
                   <el-select v-model="form.lowRiskRole" size="small" style="width: 260px;" @change="updateTriggerConditionFromGateway">
-                    <el-option label="DEV_LEAD (业务开发组长初审)" value="DEV_LEAD" />
-                    <el-option label="OPS (业务运维管理员初审)" value="OPS" />
+                    <el-option
+                      v-for="r in paletteRoles"
+                      :key="r.key"
+                      :label="`${r.roleName} (${r.key})`"
+                      :value="r.key"
+                    />
                   </el-select>
                 </div>
               </div>
@@ -797,10 +804,13 @@
                 style="width: 160px; margin-right: 8px;"
               />
               <el-select v-model="node.role" placeholder="审批角色" style="width: 170px; margin-right: 8px;">
-                <el-option label="DEV_LEAD (业务组长初审)" value="DEV_LEAD" />
-                <el-option label="DBA (核心DBA技术复审)" value="DBA" />
-                <el-option label="ADMIN (系统管理员终审)" value="ADMIN" />
-                <el-option label="AUDITOR (安全审计员核查)" value="AUDITOR" />
+                <el-option
+                  v-for="r in paletteRoles"
+                  :key="r.key"
+                  :label="`${r.roleName} (${r.key})`"
+                  :value="r.key"
+                />
+                <el-option label="SYSTEM (系统自动审批)" value="SYSTEM" />
               </el-select>
               <el-select v-model="node.approvalMode" placeholder="审批模式" style="width: 140px; margin-right: 8px;">
                 <el-option label="或签 (任一通过)" value="ORSIGN" />
@@ -1093,10 +1103,17 @@
         </el-checkbox-group>
       </div>
       <template #footer>
-        <el-button @click="roleMemberModalVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saveRoleMembersLoading" @click="handleSaveRoleMembers">
-          保存成员配置
-        </el-button>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <el-button size="small" type="warning" plain @click="router.push('/roles')">
+            ⚙️ 前往「系统角色与权限管理」大盘
+          </el-button>
+          <div>
+            <el-button @click="roleMemberModalVisible = false">取消</el-button>
+            <el-button type="primary" :loading="saveRoleMembersLoading" @click="handleSaveRoleMembers">
+              保存成员配置
+            </el-button>
+          </div>
+        </div>
       </template>
     </el-dialog>
   </div>
@@ -1104,6 +1121,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import {
@@ -1140,6 +1158,8 @@ import 'bpmn-js/dist/assets/bpmn-js.css'
 import 'bpmn-js/dist/assets/bpmn-font/css/bpmn-embedded.css'
 import request from '../utils/request'
 
+const router = useRouter()
+
 // ==================== 全量系统用户与角色数据联动 ====================
 const allUsers = ref<any[]>([])
 const availableInstancesList = ref<any[]>([])
@@ -1149,6 +1169,60 @@ const resourceGroupPage = ref(1)
 const resourceGroupPageSize = 10
 const focusedResourceGroup = ref<string>('车险承保资源组')
 const focusedDatabases = ref<string[]>(['car_prod_mysql/car_insurance_db', 'car_prod_mysql/car_claim_db'])
+
+export interface PaletteRoleItem {
+  key: string
+  label: string
+  roleName: string
+  color: string
+  description?: string
+  permissions?: string
+}
+
+const DEFAULT_PALETTE_ROLES: PaletteRoleItem[] = [
+  { key: 'ADMIN', label: '超级管理员终审 (ADMIN)', roleName: '超级管理员', color: '#f59e0b', description: '拥有平台最高特权，具备全量功能页签与全权审批' },
+  { key: 'DBA', label: '核心DBA安全复核 (DBA)', roleName: '核心数据库管理员', color: '#ef4444', description: '负责高危工单终审、实例纳管与 BPMN 流程编排' },
+  { key: 'DEV_LEAD', label: '直属开发组长初审 (DEV_LEAD)', roleName: '业务开发组长', color: '#3b82f6', description: '负责业务工单初审、DML 审核与团队日常变更管控' },
+  { key: 'DEV', label: '研发工程师 (DEV)', roleName: '研发工程师', color: '#06b6d4', description: '工单发起与 SQL 开发自测' },
+  { key: 'AUDITOR', label: '安全合规审计员 (AUDITOR)', roleName: '安全合规审计员', color: '#8b5cf6', description: '负责安全大盘监控、数据脱敏配置与合规审计' },
+  { key: 'OPS', label: '业务系统运维初审 (OPS)', roleName: '业务系统运维', color: '#10b981', description: '日常运维调度与生产巡检放行' },
+  { key: 'SECURITY', label: '数据安全官 (SECURITY)', roleName: '数据安全官', color: '#ec4899', description: '全平台敏感数据资产保护与合规管控' }
+]
+
+const paletteRoles = ref<PaletteRoleItem[]>([...DEFAULT_PALETTE_ROLES])
+
+const ROLE_COLOR_MAP: Record<string, string> = {
+  ADMIN: '#f59e0b',
+  DBA: '#ef4444',
+  DEV_LEAD: '#3b82f6',
+  DEV: '#06b6d4',
+  AUDITOR: '#8b5cf6',
+  OPS: '#10b981',
+  SECURITY: '#ec4899'
+}
+
+const fetchRoles = async () => {
+  try {
+    const res: any = await request.get('/v1/role/list')
+    if (Array.isArray(res.data) && res.data.length > 0) {
+      paletteRoles.value = res.data.map((r: any) => {
+        const code = r.roleCode || r.code || ''
+        const name = r.roleName || r.name || code
+        const color = ROLE_COLOR_MAP[code] || '#6366f1'
+        return {
+          key: code,
+          label: `${name} (${code})`,
+          roleName: name,
+          color: color,
+          description: r.description || '',
+          permissions: r.permissions || ''
+        }
+      })
+    }
+  } catch (e) {
+    console.warn('Fetch roles failed, fallback to defaults', e)
+  }
+}
 
 const fetchUsers = async () => {
   try {
@@ -1178,7 +1252,14 @@ const currentStepIndex = computed(() => {
 })
 
 const getRoleMembers = (roleKey: string) => {
-  return allUsers.value.filter(u => u.role === roleKey && u.status === 1)
+  if (!allUsers.value || !roleKey) return []
+  return allUsers.value.filter(u => {
+    if (!u || (u.status !== 1 && u.status !== '1')) return false
+    const r = u.role || ''
+    if (r === roleKey) return true
+    const roles = r.split(',').map((s: string) => s.trim())
+    return roles.includes(roleKey)
+  })
 }
 
 const getRoleMemberNames = (roleKey: string) => {
@@ -1207,9 +1288,7 @@ const filteredAllUsers = computed(() => {
 const handleOpenRoleMemberEditor = (roleItem: any) => {
   currentEditingRole.value = roleItem
   memberSearchKeyword.value = ''
-  selectedRoleUserIds.value = allUsers.value
-    .filter(u => u.role === roleItem.key)
-    .map(u => u.id)
+  selectedRoleUserIds.value = getRoleMembers(roleItem.key).map(u => u.id)
   roleMemberModalVisible.value = true
 }
 
@@ -1220,13 +1299,17 @@ const handleSaveRoleMembers = async () => {
   try {
     for (const user of allUsers.value) {
       const isSelected = selectedRoleUserIds.value.includes(user.id)
-      const currentHasRole = user.role === roleKey
+      const userRoles = (user.role || '').split(',').map((s: string) => s.trim()).filter(Boolean)
+      const currentHasRole = userRoles.includes(roleKey)
       if (isSelected && !currentHasRole) {
         // 分配到新角色
-        await request.post('/v1/user/save', { ...user, role: roleKey })
+        userRoles.push(roleKey)
+        await request.post('/v1/user/save', { ...user, role: userRoles.join(',') })
       } else if (!isSelected && currentHasRole) {
-        // 从当前角色移出为普通 DEV
-        await request.post('/v1/user/save', { ...user, role: 'DEV' })
+        // 从当前角色移出
+        const updatedRoles = userRoles.filter((r: string) => r !== roleKey)
+        const finalRole = updatedRoles.length > 0 ? updatedRoles.join(',') : 'DEV'
+        await request.post('/v1/user/save', { ...user, role: finalRole })
       }
     }
     ElMessage.success(`【${currentEditingRole.value.label}】角色组成员已成功更新！`)
@@ -1242,14 +1325,6 @@ const handleSaveRoleMembers = async () => {
 // ==================== BPMN 权限组与审批角色资产库 ====================
 const paletteSearchKeyword = ref('')
 const draggedItem = ref<any>(null)
-
-const PALETTE_ROLES = [
-  { key: 'DEV_LEAD', label: '直属开发组长初审 (DEV_LEAD)', color: '#3b82f6' },
-  { key: 'DBA', label: '核心DBA安全复核 (DBA)', color: '#ef4444' },
-  { key: 'AUDITOR', label: '数据安全合规官审计 (AUDITOR)', color: '#8b5cf6' },
-  { key: 'ADMIN', label: '超级管理员终审 (ADMIN)', color: '#f59e0b' },
-  { key: 'OPS', label: '业务系统运维初审 (OPS)', color: '#10b981' }
-]
 
 const filteredPaletteResourceGroups = computed(() => {
   const kw = paletteSearchKeyword.value.trim().toLowerCase()
@@ -1267,10 +1342,10 @@ const paginatedPaletteResourceGroups = computed(() => {
 
 const filteredPaletteRoles = computed(() => {
   const kw = paletteSearchKeyword.value.trim().toLowerCase()
-  if (!kw) return PALETTE_ROLES
-  return PALETTE_ROLES.filter(r => {
+  if (!kw) return paletteRoles.value
+  return paletteRoles.value.filter(r => {
     const memberNames = getRoleMemberNames(r.key).toLowerCase()
-    return r.label.toLowerCase().includes(kw) || r.key.toLowerCase().includes(kw) || memberNames.includes(kw)
+    return r.label.toLowerCase().includes(kw) || r.key.toLowerCase().includes(kw) || (r.description && r.description.toLowerCase().includes(kw)) || memberNames.includes(kw)
   })
 })
 
@@ -2638,6 +2713,7 @@ const terminateProcess = async () => {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
+  fetchRoles()
   fetchTemplates()
   fetchResourceGroups()
   fetchResourceGroupDetails()

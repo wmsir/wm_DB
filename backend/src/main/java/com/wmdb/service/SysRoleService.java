@@ -55,8 +55,10 @@ public class SysRoleService {
             insertOrUpdateRole("DEV_LEAD", "业务开发组长", "负责业务工单初审、DML 审核、资源组分配与团队日常变更管控", PERM_DEV_LEAD);
             insertOrUpdateRole("DEV", "研发工程师", "拥有 SQL 工单提交、事务预执行校验、AI 智能审核与数据查询控制台权限", PERM_DEV);
             insertOrUpdateRole("AUDITOR", "安全合规审计员", "负责安全大盘监控、数据动态脱敏配置、审计日志核查与合规报表查看", PERM_AUDITOR);
+            insertOrUpdateRole("OPS", "业务系统运维", "负责系统日常运维、实例监控调度与基础设施巡检", PERM_DEV_LEAD);
+            insertOrUpdateRole("SECURITY", "数据安全官", "负责全平台敏感数据资产保护、动态脱敏算法与最高安全合规管控", PERM_AUDITOR);
 
-            log.info("Initialized system roles and default tab permissions successfully.");
+            log.info("Initialized system roles (7 roles) and default tab permissions successfully.");
         } catch (Exception e) {
             log.warn("初始化默认角色及页签权限异常: {}", e.getMessage());
         }
