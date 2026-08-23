@@ -164,6 +164,32 @@ public class WorkflowTemplateService {
                             .description("绕过常规多级审批，由核心 DBA 快速复核并支持多种策略下发执行")
                             .createTime(now)
                             .updateTime(now)
+                            .build(),
+                    WorkflowTemplate.builder()
+                            .tenantId("1")
+                            .templateName("四级递进混合审批流 (节点一自动审批+后置三级人工)")
+                            .flowType("SQL_AUDIT")
+                            .resourceGroups("[\"车险承保资源组\",\"销管系统资源组\",\"农险理赔资源组\",\"默认核心业务资源组\",\"全部业务资源组通用\"]")
+                            .nodeConfig("[{\"step\":1,\"nodeName\":\"SQL语法与安全预检网关 (系统自动审批)\",\"role\":\"SYSTEM\",\"condition\":\"auto_pass\"},{\"step\":2,\"nodeName\":\"业务开发组长初审\",\"role\":\"DEV_LEAD\"},{\"step\":3,\"nodeName\":\"核心DBA安全复核\",\"role\":\"DBA\"},{\"step\":4,\"nodeName\":\"运维安全总监终审\",\"role\":\"ADMIN\"}]")
+                            .triggerCondition("第 1 节点由系统预检网关自动审批放行，第 2/3/4 节点依次由开发组长、核心 DBA、运维总监人工逐级审核")
+                            .defaultExecutionMode("[\"IMMEDIATE\",\"SCHEDULED\",\"CANARY_BATCH\"]")
+                            .status(1)
+                            .description("包含 4 级递进审核：节点一由系统预检网关智能自动放行，节点二/三/四需人工逐级复核，适用于混合模式测试与多级管控")
+                            .createTime(now)
+                            .updateTime(now)
+                            .build(),
+                    WorkflowTemplate.builder()
+                            .tenantId("1")
+                            .templateName("测试环境全自动直通免审审批流")
+                            .flowType("ALL")
+                            .resourceGroups("[\"测试系统-测试团队-测试用途\",\"全部业务资源组通用\",\"默认核心业务资源组\"]")
+                            .nodeConfig("[{\"step\":1,\"nodeName\":\"测试环境SQL预校验 (系统自动审批)\",\"role\":\"SYSTEM\",\"condition\":\"auto_pass\"},{\"step\":2,\"nodeName\":\"测试环境免审直通放行 (系统自动审批)\",\"role\":\"SYSTEM\",\"condition\":\"auto_pass\"},{\"step\":3,\"nodeName\":\"JDBC流式执行与防篡改归档\",\"role\":\"SERVICE\"}]")
+                            .triggerCondition("测试与开发环境专属：提交预校验通过后全自动免审放行并立即触发流式执行与归档")
+                            .defaultExecutionMode("[\"IMMEDIATE\"]")
+                            .status(1)
+                            .description("专为测试与研发自测环境设计的极速审批流：预校验通过后系统全自动放行并直接执行，零人工等待")
+                            .createTime(now)
+                            .updateTime(now)
                             .build()
             );
 
@@ -554,7 +580,10 @@ public class WorkflowTemplateService {
 
                         String approverRole = "业务开发组长";
                         List<String> eligible = List.of("开发组长 (DEV_LEAD)", "管理员 (admin)");
-                        if ("DBA".equalsIgnoreCase(role)) {
+                        if ("SYSTEM".equalsIgnoreCase(role)) {
+                            approverRole = "系统自动化预检引擎 (自动审批)";
+                            eligible = List.of("静态语法与事务预检引擎", "系统免审直通网关");
+                        } else if ("DBA".equalsIgnoreCase(role)) {
                             approverRole = "核心数据库管理员 (DBA)";
                             eligible = List.of("核心 DBA (DBA)", "管理员 (admin)");
                         } else if ("ADMIN".equalsIgnoreCase(role)) {

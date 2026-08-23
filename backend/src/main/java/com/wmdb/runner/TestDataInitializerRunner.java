@@ -36,6 +36,7 @@ public class TestDataInitializerRunner implements CommandLineRunner {
     private final SqlTicketDetailMapper sqlTicketDetailMapper;
     private final SqlAuditLogMapper sqlAuditLogMapper;
     private final DbInstanceMapper dbInstanceMapper;
+    private final WorkflowTemplateMapper workflowTemplateMapper;
 
     // 默认标准密码 123456 的 BCrypt 哈希
     private static final String DEFAULT_PWD_HASH = "$2a$10$f1pqjyVOHcJWgUGQCmz.B.QXefiemDBivlwLMAZpBNppJdsfM4RuW";
@@ -44,6 +45,7 @@ public class TestDataInitializerRunner implements CommandLineRunner {
     public void run(String... args) {
         log.info("====== 开始初始化全系统真实业务测试数据与审批节点角色账号 ======");
         initTestAccounts();
+        initTestInstances();
         initRealisticTickets();
         log.info("====== 全系统真实业务测试数据与角色账号初始化完成 ======");
     }
@@ -205,6 +207,66 @@ public class TestDataInitializerRunner implements CommandLineRunner {
                 0,
                 "[驳回原因: 严禁提交无 WHERE 范围条件的全表更新语句，存在重大生产事故风险！]"
         );
+    }
+
+    /**
+     * 初始化用于测试环境免审直通与四级混合审批演练的数据库实例
+     */
+    private void initTestInstances() {
+        try {
+            // 1. 测试环境免审直通数据库实例
+            DbInstance testInst = dbInstanceMapper.selectOne(new QueryWrapper<DbInstance>().eq("name", "敏捷自测与集成测试数据库 (测试环境直通)"));
+            if (testInst == null) {
+                testInst = new DbInstance();
+                testInst.setTenantId("1");
+                testInst.setName("敏捷自测与集成测试数据库 (测试环境直通)");
+                testInst.setDbType("MYSQL");
+                testInst.setHost("127.0.0.1");
+                testInst.setPort(3306);
+                testInst.setUsername("root");
+                testInst.setPasswordCipher(SmUtils.sm4Encrypt("root", "1234567890abcdef1234567890abcdef"));
+                testInst.setDatabaseName("huiqitong_erp");
+                testInst.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/huiqitong_erp?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowMultiQueries=true");
+                testInst.setEnv("TEST");
+                testInst.setStatus("APPROVED");
+                testInst.setResourceGroups("[\"测试系统-测试团队-测试用途\",\"全部业务资源组通用\",\"默认核心业务资源组\"]");
+                testInst.setTags("[\"敏捷自测\",\"测试环境\",\"免审直通\"]");
+                testInst.setSupportedOps("[\"支持上线\",\"支持查询\",\"支持DML变更\",\"支持DDL结构变更\",\"支持事务预执行\",\"支持数据导出\",\"支持历史回滚\"]");
+                testInst.setConnectionTunnel("DIRECT");
+                dbInstanceMapper.insert(testInst);
+                log.info("Initialized test environment db instance: {}", testInst.getName());
+            }
+
+            // 2. 四级审批演练专属数据库实例
+            DbInstance hybridInst = dbInstanceMapper.selectOne(new QueryWrapper<DbInstance>().eq("name", "核心业务四级混合审批演练专属库"));
+            if (hybridInst == null) {
+                WorkflowTemplate tpl4 = workflowTemplateMapper.selectOne(new QueryWrapper<WorkflowTemplate>().eq("template_name", "四级递进混合审批流 (节点一自动审批+后置三级人工)"));
+                hybridInst = new DbInstance();
+                hybridInst.setTenantId("1");
+                hybridInst.setName("核心业务四级混合审批演练专属库");
+                hybridInst.setDbType("MYSQL");
+                hybridInst.setHost("127.0.0.1");
+                hybridInst.setPort(3306);
+                hybridInst.setUsername("root");
+                hybridInst.setPasswordCipher(SmUtils.sm4Encrypt("root", "1234567890abcdef1234567890abcdef"));
+                hybridInst.setDatabaseName("huiqitong_erp");
+                hybridInst.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/huiqitong_erp?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowMultiQueries=true");
+                hybridInst.setEnv("PROD");
+                hybridInst.setStatus("APPROVED");
+                hybridInst.setResourceGroups("[\"车险承保资源组\",\"销管系统资源组\",\"全部业务资源组通用\",\"默认核心业务资源组\"]");
+                hybridInst.setTags("[\"核心业务\",\"四级审批\",\"严格合规\"]");
+                hybridInst.setSupportedOps("[\"支持上线\",\"支持查询\",\"支持DML变更\",\"支持DDL结构变更\",\"支持事务预执行\",\"支持数据脱敏\",\"支持历史回滚\"]");
+                hybridInst.setConnectionTunnel("DIRECT");
+                if (tpl4 != null) {
+                    hybridInst.setFixedWorkflowTemplateId(tpl4.getId());
+                    hybridInst.setFixedWorkflowTemplateName(tpl4.getTemplateName());
+                }
+                dbInstanceMapper.insert(hybridInst);
+                log.info("Initialized hybrid approval db instance: {}", hybridInst.getName());
+            }
+        } catch (Exception e) {
+            log.warn("initTestInstances exception: {}", e.getMessage());
+        }
     }
 
     private SqlTicket createTicketIfNotExist(Long ticketId, String applicantIdCard, Long instanceId, String type,

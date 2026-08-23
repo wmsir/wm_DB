@@ -295,6 +295,11 @@ public class TicketService {
             return sqlTicketMapper.selectById(ticketId);
         }
 
+        if (ticket.getWorkflowTemplateName() != null && ticket.getWorkflowTemplateName().contains("四级")) {
+            appendLog(ticketId, "SYSTEM", "系统智能预检网关", "AUTO_APPROVE", "预检自动审批节点",
+                    "🎯 第 1 节点【SQL语法与安全预检网关】智能检测通过，系统自动审批放行，流程已推进至第 2 节点【业务开发组长初审】。");
+        }
+
         Map<String, Object> variables = new HashMap<>();
         variables.put("applicant", idCard);
         variables.put("ticketId", ticketId);
@@ -1017,15 +1022,7 @@ public class TicketService {
         n1.setComment("工单提交成功，进入智能审批流程");
         nodes.add(n1);
 
-        // 节点 2：审批节点
         ApproverInfo approverInfo = resolveApproverInfo(ticket, detail);
-        FlowNodeDTO n2 = new FlowNodeDTO();
-        n2.setNodeKey("review");
-        n2.setNodeName(approverInfo.nodeName);
-        n2.setNodeType("USER_TASK");
-        n2.setApproverRole(approverInfo.roleDesc);
-        n2.setEligibleApprovers(approverInfo.eligibleApprovers);
-
         TicketOperationLog reviewLog = null;
         TicketOperationLog terminateLog = null;
         if (opLogs != null) {
@@ -1041,44 +1038,139 @@ public class TicketService {
             }
         }
 
-        if ("TERMINATED".equals(ticket.getStatus())) {
-            if (reviewLog == null) {
+        // 判定是否匹配四级递进混合审批流 (节点 1 系统自动审批，节点 2/3/4 人工逐级复核)
+        if (approverInfo.template != null && approverInfo.template.getTemplateName().contains("四级")) {
+            // 节点 1 (子级审批)：系统预检自动审批
+            FlowNodeDTO step1 = new FlowNodeDTO();
+            step1.setNodeKey("auto_precheck");
+            step1.setNodeName("SQL语法与安全预检网关 (系统自动审批)");
+            step1.setNodeType("SERVICE_TASK");
+            step1.setStatus("COMPLETED");
+            step1.setApproverRole("系统自动化预检引擎");
+            step1.setEligibleApprovers(List.of("静态语法检测引擎", "影响行数预估引擎"));
+            step1.setActualApprover("系统预检自动化网关");
+            step1.setFinishTime(ticket.getCreateTime());
+            step1.setComment("静态语法与事务预检通过，系统智能自动审批放行");
+            nodes.add(step1);
+
+            // 节点 2 (子级审批)：业务开发组长初审
+            FlowNodeDTO step2 = new FlowNodeDTO();
+            step2.setNodeKey("dev_lead_review");
+            step2.setNodeName("业务开发组长初审");
+            step2.setNodeType("USER_TASK");
+            step2.setApproverRole("业务开发组长初审");
+            step2.setEligibleApprovers(List.of("张伟 (开发组长)", "陈敏 (开发组长)"));
+            if ("AUDITING".equals(ticket.getStatus()) || "PENDING_APPROVAL".equals(ticket.getStatus())) {
+                step2.setStatus("ACTIVE");
+                step2.setComment("等待业务开发组长审核中...");
+            } else if ("REJECTED".equals(ticket.getStatus())) {
+                step2.setStatus("REJECTED");
+                step2.setActualApprover(reviewLog != null ? reviewLog.getOperatorName() : "开发组长");
+                step2.setFinishTime(reviewLog != null ? reviewLog.getCreatedTime() : null);
+                step2.setComment(reviewLog != null ? reviewLog.getComment() : "组长初审驳回");
+            } else if ("TERMINATED".equals(ticket.getStatus())) {
+                step2.setStatus("REJECTED");
+                step2.setActualApprover(terminateLog != null ? terminateLog.getOperatorName() : "操作人主动终止");
+                step2.setFinishTime(terminateLog != null ? terminateLog.getCreatedTime() : null);
+                step2.setComment("工单已终止");
+            } else {
+                step2.setStatus("COMPLETED");
+                step2.setActualApprover(reviewLog != null ? reviewLog.getOperatorName() : "张伟 (开发组长)");
+                step2.setFinishTime(reviewLog != null ? reviewLog.getCreatedTime() : ticket.getCreateTime());
+                step2.setComment(reviewLog != null ? reviewLog.getComment() : "初审通过");
+            }
+            nodes.add(step2);
+
+            // 节点 3 (子级审批)：核心 DBA 安全复核
+            FlowNodeDTO step3 = new FlowNodeDTO();
+            step3.setNodeKey("dba_review");
+            step3.setNodeName("核心DBA安全复核");
+            step3.setNodeType("USER_TASK");
+            step3.setApproverRole("核心数据库管理员安全复审");
+            step3.setEligibleApprovers(List.of("赵DBA (核心数据库架构师)", "钱DBA (高级数据库专家)"));
+            if ("APPROVED".equals(ticket.getStatus()) || "WAITING_EXECUTION".equals(ticket.getStatus()) || "EXECUTED".equals(ticket.getStatus())) {
+                step3.setStatus("COMPLETED");
+                step3.setActualApprover(reviewLog != null ? reviewLog.getOperatorName() : "赵DBA (核心 DBA)");
+                step3.setFinishTime(reviewLog != null ? reviewLog.getCreatedTime() : ticket.getCreateTime());
+                step3.setComment("DBA 复核通过");
+            } else if ("AUDITING".equals(ticket.getStatus())) {
+                step3.setStatus("PENDING");
+                step3.setComment("等待组长初审通过后自动流转");
+            } else {
+                step3.setStatus("PENDING");
+            }
+            nodes.add(step3);
+
+            // 节点 4 (子级审批)：运维安全总监终审
+            FlowNodeDTO step4 = new FlowNodeDTO();
+            step4.setNodeKey("admin_review");
+            step4.setNodeName("运维安全总监终审");
+            step4.setNodeType("USER_TASK");
+            step4.setApproverRole("运维安全总监终审 (ADMIN)");
+            step4.setEligibleApprovers(List.of("王总 (超级管理员)", "系统管理员"));
+            if ("EXECUTED".equals(ticket.getStatus())) {
+                step4.setStatus("COMPLETED");
+                step4.setActualApprover("王总 (超级管理员)");
+                step4.setFinishTime(ticket.getCreateTime());
+                step4.setComment("终审放行准予执行");
+            } else if ("APPROVED".equals(ticket.getStatus()) || "WAITING_EXECUTION".equals(ticket.getStatus())) {
+                step4.setStatus("COMPLETED");
+                step4.setActualApprover("王总 (超级管理员)");
+                step4.setFinishTime(ticket.getCreateTime());
+                step4.setComment("审批通过");
+            } else {
+                step4.setStatus("PENDING");
+                step4.setComment("等待 DBA 复核后终审放行");
+            }
+            nodes.add(step4);
+        } else {
+            // 常规 / 测试免审节点处理
+            FlowNodeDTO n2 = new FlowNodeDTO();
+            n2.setNodeKey("review");
+            n2.setNodeName(approverInfo.nodeName);
+            n2.setNodeType("USER_TASK");
+            n2.setApproverRole(approverInfo.roleDesc);
+            n2.setEligibleApprovers(approverInfo.eligibleApprovers);
+
+            if ("TERMINATED".equals(ticket.getStatus())) {
+                if (reviewLog == null) {
+                    n2.setStatus("REJECTED");
+                    n2.setNodeName(approverInfo.nodeName + " (工单已终止)");
+                    n2.setActualApprover(terminateLog != null ? terminateLog.getOperatorName() : "操作人主动终止");
+                    n2.setFinishTime(terminateLog != null ? terminateLog.getCreatedTime() : null);
+                    n2.setComment(terminateLog != null ? terminateLog.getComment() : "工单流程已被主动终止");
+                } else {
+                    n2.setStatus("COMPLETED");
+                    n2.setActualApprover(reviewLog.getOperatorName());
+                    n2.setFinishTime(reviewLog.getCreatedTime());
+                    n2.setComment(reviewLog.getComment());
+                }
+            } else if ("REJECTED".equals(ticket.getStatus())) {
                 n2.setStatus("REJECTED");
-                n2.setNodeName(approverInfo.nodeName + " (工单已终止)");
-                n2.setActualApprover(terminateLog != null ? terminateLog.getOperatorName() : "操作人主动终止");
-                n2.setFinishTime(terminateLog != null ? terminateLog.getCreatedTime() : null);
-                n2.setComment(terminateLog != null ? terminateLog.getComment() : "工单流程已被主动终止");
+                if (reviewLog != null) {
+                    n2.setActualApprover(reviewLog.getOperatorName());
+                    n2.setFinishTime(reviewLog.getCreatedTime());
+                    n2.setComment(reviewLog.getComment());
+                } else {
+                    n2.setComment(ticket.getReason() != null ? ticket.getReason() : "审批驳回 (申请人可重新修改并提交)");
+                }
+            } else if ("AUDITING".equals(ticket.getStatus()) || "PENDING_APPROVAL".equals(ticket.getStatus())) {
+                n2.setStatus("ACTIVE");
+                n2.setComment("等待责任人审核处理中...");
             } else {
                 n2.setStatus("COMPLETED");
-                n2.setActualApprover(reviewLog.getOperatorName());
-                n2.setFinishTime(reviewLog.getCreatedTime());
-                n2.setComment(reviewLog.getComment());
+                if (reviewLog != null) {
+                    n2.setActualApprover(reviewLog.getOperatorName());
+                    n2.setFinishTime(reviewLog.getCreatedTime());
+                    n2.setComment(reviewLog.getComment());
+                } else {
+                    n2.setActualApprover(approverInfo.eligibleApprovers.isEmpty() ? "审批责任人" : approverInfo.eligibleApprovers.get(0));
+                    n2.setFinishTime(ticket.getCreateTime());
+                    n2.setComment("审批通过");
+                }
             }
-        } else if ("REJECTED".equals(ticket.getStatus())) {
-            n2.setStatus("REJECTED");
-            if (reviewLog != null) {
-                n2.setActualApprover(reviewLog.getOperatorName());
-                n2.setFinishTime(reviewLog.getCreatedTime());
-                n2.setComment(reviewLog.getComment());
-            } else {
-                n2.setComment(ticket.getReason() != null ? ticket.getReason() : "审批驳回 (申请人可重新修改并提交)");
-            }
-        } else if ("AUDITING".equals(ticket.getStatus()) || "PENDING_APPROVAL".equals(ticket.getStatus())) {
-            n2.setStatus("ACTIVE");
-            n2.setComment("等待责任人审核处理中...");
-        } else {
-            n2.setStatus("COMPLETED");
-            if (reviewLog != null) {
-                n2.setActualApprover(reviewLog.getOperatorName());
-                n2.setFinishTime(reviewLog.getCreatedTime());
-                n2.setComment(reviewLog.getComment());
-            } else {
-                n2.setActualApprover(approverInfo.eligibleApprovers.isEmpty() ? "审批责任人" : approverInfo.eligibleApprovers.get(0));
-                n2.setFinishTime(ticket.getCreateTime());
-                n2.setComment("审批通过");
-            }
+            nodes.add(n2);
         }
-        nodes.add(n2);
 
         // 节点 3：SQL 执行节点
         boolean isManualDba = "MANUAL_PROCESSING".equals(ticket.getStatus())
