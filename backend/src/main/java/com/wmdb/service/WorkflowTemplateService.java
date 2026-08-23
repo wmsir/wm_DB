@@ -35,6 +35,7 @@ public class WorkflowTemplateService {
     private final WorkflowTemplateMapper workflowTemplateMapper;
     private final DbInstanceMapper dbInstanceMapper;
     private final com.wmdb.mapper.ResourceGroupMapper resourceGroupMapper;
+    private final WorkflowService workflowService;
     private final DataSource dataSource;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -372,7 +373,50 @@ public class WorkflowTemplateService {
             return testDto;
         }
 
-        // 1. 优先判定：资源组中为具体数据库配置的专属审批流
+        List<WorkflowTemplate> allTemplates = workflowTemplateMapper.selectList(
+                new QueryWrapper<WorkflowTemplate>().eq("status", 1).orderByDesc("id")
+        );
+
+        // 1. 优先判定：BPMN 设计器细化绑定的生效目标数据库/实例 (Custom Target Databases)
+        for (WorkflowTemplate tpl : allTemplates) {
+            if (tpl.getTargetDatabases() != null && !tpl.getTargetDatabases().isEmpty()
+                    && !tpl.getTargetDatabases().equals("[\"ALL\"]") && !tpl.getTargetDatabases().equals("[]")) {
+                String td = tpl.getTargetDatabases();
+                String fullDbKey = (instance != null ? instance.getName() : "") + "/" + dbName;
+                boolean dbMatched = (dbName != null && !dbName.isEmpty() && td.contains(dbName)) ||
+                        (instance != null && instance.getName() != null && td.contains(instance.getName())) ||
+                        td.contains(fullDbKey);
+                if (dbMatched) {
+                    String reason = "目标实例/数据库已细化绑定专属 BPMN 流程【" + tpl.getTemplateName() + "】";
+                    RoutingPreviewDTO dto = buildRoutingPreviewDTO(tpl, true, reason, expectedRows, ticketType, request.getSqlSnippet());
+                    dto.setEnforceDryRun(enforceDryRun);
+                    dto.setEnableStep3Rollback(enableStep3Rollback);
+                    dto.setEnableStep4DryRun(enableStep4DryRun);
+                    return dto;
+                }
+            }
+        }
+
+        // 2. 次优先判定：Flowable 引擎当前已挂载并部署生效的 BPMN 2.0 流程 (Active Deployed Flowable Process)
+        String activeDeployed = workflowService != null ? workflowService.getLatestActiveDeployedProcessName() : null;
+        if (activeDeployed != null && !activeDeployed.isEmpty()) {
+            for (WorkflowTemplate tpl : allTemplates) {
+                if (activeDeployed.contains(tpl.getTemplateName()) || tpl.getTemplateName().contains(activeDeployed)) {
+                    String rgs = tpl.getResourceGroups() != null ? tpl.getResourceGroups() : "";
+                    boolean rgMatch = resourceGroup.isEmpty() || rgs.contains(resourceGroup) || rgs.contains("全部业务资源组通用") || rgs.contains("默认核心业务资源组");
+                    if (rgMatch) {
+                        String reason = "⚡ Flowable 引擎已挂载并部署生效专属 BPMN 2.0 流程【" + tpl.getTemplateName() + "】";
+                        RoutingPreviewDTO dto = buildRoutingPreviewDTO(tpl, true, reason, expectedRows, ticketType, request.getSqlSnippet());
+                        dto.setEnforceDryRun(enforceDryRun);
+                        dto.setEnableStep3Rollback(enableStep3Rollback);
+                        dto.setEnableStep4DryRun(enableStep4DryRun);
+                        return dto;
+                    }
+                }
+            }
+        }
+
+        // 3. 资源组中为具体数据库配置的专属审批流
         if (customDbWorkflowName != null && !customDbWorkflowName.isEmpty() && !"DEFAULT".equalsIgnoreCase(customDbWorkflowName)) {
             List<WorkflowTemplate> matchedList = workflowTemplateMapper.selectList(
                     new QueryWrapper<WorkflowTemplate>().eq("template_name", customDbWorkflowName).last("LIMIT 1")
@@ -388,7 +432,7 @@ public class WorkflowTemplateService {
             }
         }
 
-        // 2. 实例级专属固定审批流 (Pinned / Fixed Workflow Template)
+        // 4. 实例级专属固定审批流 (Pinned / Fixed Workflow Template)
         if (instance != null && instance.getFixedWorkflowTemplateId() != null && instance.getFixedWorkflowTemplateId() > 0) {
             WorkflowTemplate pinnedTpl = workflowTemplateMapper.selectById(instance.getFixedWorkflowTemplateId());
             if (pinnedTpl != null && (pinnedTpl.getStatus() == null || pinnedTpl.getStatus() == 1)) {
@@ -401,10 +445,7 @@ public class WorkflowTemplateService {
             }
         }
 
-        // 3. 动态综合智能决策 (Dynamic Multi-Dimensional Decision)
-        List<WorkflowTemplate> allTemplates = workflowTemplateMapper.selectList(
-                new QueryWrapper<WorkflowTemplate>().eq("status", 1).orderByDesc("id")
-        );
+        // 5. 动态综合智能决策 (Dynamic Multi-Dimensional Decision)
 
         WorkflowTemplate bestMatch = null;
         int highestScore = -1;

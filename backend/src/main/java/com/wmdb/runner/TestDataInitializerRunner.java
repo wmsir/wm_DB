@@ -264,6 +264,14 @@ public class TestDataInitializerRunner implements CommandLineRunner {
                 dbInstanceMapper.insert(hybridInst);
                 log.info("Initialized hybrid approval db instance: {}", hybridInst.getName());
             }
+
+            // 确保生产主库未被固定死历史模板，以便优先遵循 BPMN 细化绑定与 Flowable 部署
+            DbInstance prodMainInst = dbInstanceMapper.selectOne(new QueryWrapper<DbInstance>().eq("name", "阿里云RDS-车险与销管核心生产库"));
+            if (prodMainInst != null && prodMainInst.getFixedWorkflowTemplateId() != null) {
+                prodMainInst.setFixedWorkflowTemplateId(null);
+                prodMainInst.setFixedWorkflowTemplateName(null);
+                dbInstanceMapper.updateById(prodMainInst);
+            }
         } catch (Exception e) {
             log.warn("initTestInstances exception: {}", e.getMessage());
         }

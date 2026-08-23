@@ -412,4 +412,26 @@ public class WorkflowService {
         fallback.put("status", "DRAFT");
         return fallback;
     }
+
+    /**
+     * 获取最新处于激活部署状态的 BPMN 流程名称
+     */
+    public String getLatestActiveDeployedProcessName() {
+        for (java.util.Map.Entry<String, java.util.Map<String, Object>> entry : DEPLOYMENT_CACHE.entrySet()) {
+            if (entry.getValue() != null && Boolean.TRUE.equals(entry.getValue().get("isDeployed"))) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 判断指定流程是否在 Flowable 引擎处于生效部署状态
+     */
+    public boolean isProcessDeployed(String processName) {
+        if (processName == null || processName.trim().isEmpty()) return false;
+        String pName = processName.trim();
+        java.util.Map<String, Object> cached = DEPLOYMENT_CACHE.get(pName);
+        return cached != null && Boolean.TRUE.equals(cached.get("isDeployed"));
+    }
 }
