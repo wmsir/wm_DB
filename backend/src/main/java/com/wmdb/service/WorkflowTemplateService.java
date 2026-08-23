@@ -108,21 +108,13 @@ public class WorkflowTemplateService {
                             .nodeConfig("[{\"step\":1,\"nodeName\":\"影响行数智能排他网关判定\",\"role\":\"GATEWAY\",\"condition\":\"affect_rows > 1000 ? DBA : OPS\",\"branches\":[{\"condition\":\"影响行数 > 1000\",\"targetNode\":\"核心DBA安全复核\",\"role\":\"DBA\"},{\"condition\":\"影响行数 <= 1000\",\"targetNode\":\"运维/开发组长初审\",\"role\":\"DEV_LEAD\"}]},{\"step\":2,\"nodeName\":\"JDBC流式安全执行\",\"role\":\"SERVICE\"}]")
                             .triggerCondition("影响行数 > 1000 需核心 DBA 审核；影响行数 ≤ 1000 由运维/开发组长审核")
                             .defaultExecutionMode("[\"IMMEDIATE\",\"SCHEDULED\",\"CANARY_BATCH\"]")
+                            .affectRowsThreshold(1000)
+                            .conditionDimension("AFFECT_ROWS")
+                            .highRiskRole("DBA")
+                            .lowRiskRole("DEV_LEAD")
+                            .spelExpression("#{affectRows > 1000 || hasDdl == true}")
                             .status(1)
-                            .description("根据 SQL 预执行检测的影响行数自动触发智能排他网关分流：大于 1000 行由核心 DBA 终审，小于等于 1000 行由运维初审")
-                            .createTime(now)
-                            .updateTime(now)
-                            .build(),
-                    WorkflowTemplate.builder()
-                            .tenantId("1")
-                            .templateName("标准 DML 常规两级审批流")
-                            .flowType("DML_CHANGE")
-                            .resourceGroups("[\"车险承保资源组\",\"销管系统资源组\",\"水险财产险1000条以下\",\"默认核心业务资源组\"]")
-                            .nodeConfig("[{\"step\":1,\"nodeName\":\"开发组长初审\",\"role\":\"DEV_LEAD\"},{\"step\":2,\"nodeName\":\"核心DBA安全复审\",\"role\":\"DBA\"}]")
-                            .triggerCondition("常规 UPDATE / INSERT / DELETE 变更")
-                            .defaultExecutionMode("[\"IMMEDIATE\",\"SCHEDULED\",\"CANARY_BATCH\"]")
-                            .status(1)
-                            .description("适用于常规业务数据订正与日常 DML 发布上线")
+                            .description("根据 SQL 预执行检测的影响行数自动触发智能排他网关分流：大于 1000 行由核心 DBA 终审，小于等于 1000 行由运维/开发组长初审")
                             .createTime(now)
                             .updateTime(now)
                             .build(),
@@ -130,38 +122,12 @@ public class WorkflowTemplateService {
                             .tenantId("1")
                             .templateName("高危 DDL 结构变更三级严格审批流")
                             .flowType("DDL_CHANGE")
-                            .resourceGroups("[\"车险承保资源组\",\"销管系统资源组\",\"农险理赔资源组\",\"核心账务资源组\"]")
+                            .resourceGroups("[\"车险承保资源组\",\"销管系统资源组\",\"农险理赔资源组\",\"核心账务资源组\",\"全部业务资源组通用\"]")
                             .nodeConfig("[{\"step\":1,\"nodeName\":\"开发组长初审\",\"role\":\"DEV_LEAD\"},{\"step\":2,\"nodeName\":\"核心DBA技术复审\",\"role\":\"DBA\"},{\"step\":3,\"nodeName\":\"系统管理员终审\",\"role\":\"ADMIN\"}]")
                             .triggerCondition("包含 CREATE TABLE / ALTER TABLE / DROP 等结构定义变更")
                             .defaultExecutionMode("[\"SCHEDULED\",\"MANUAL_DBA\"]")
                             .status(1)
-                            .description("针对可能引起锁表或高危风险的 DDL 操作进行三级强管控")
-                            .createTime(now)
-                            .updateTime(now)
-                            .build(),
-                    WorkflowTemplate.builder()
-                            .tenantId("1")
-                            .templateName("只读数据查询特权极速审批流")
-                            .flowType("DATA_QUERY")
-                            .resourceGroups("[\"测试系统-测试团队-测试用途\",\"风勘中心资源组\"]")
-                            .nodeConfig("[{\"step\":1,\"nodeName\":\"业务组长极速初审\",\"role\":\"DEV_LEAD\"}]")
-                            .triggerCondition("申请临时只读查询分析大结果集")
-                            .defaultExecutionMode("[\"IMMEDIATE\",\"DRY_RUN_ONLY\"]")
-                            .status(1)
-                            .description("研发人员申请测试或分析环境单次查询特权")
-                            .createTime(now)
-                            .updateTime(now)
-                            .build(),
-                    WorkflowTemplate.builder()
-                            .tenantId("1")
-                            .templateName("生产故障紧急变更直通流")
-                            .flowType("SQL_AUDIT")
-                            .resourceGroups("[\"全部业务资源组通用\"]")
-                            .nodeConfig("[{\"step\":1,\"nodeName\":\"核心DBA特权终审\",\"role\":\"DBA\"}]")
-                            .triggerCondition("重大 P1/P2 故障止损紧急变更")
-                            .defaultExecutionMode("[\"IMMEDIATE\",\"SCHEDULED\",\"MANUAL_DBA\",\"CANARY_BATCH\"]")
-                            .status(1)
-                            .description("绕过常规多级审批，由核心 DBA 快速复核并支持多种策略下发执行")
+                            .description("针对可能引起锁表或高危风险的 DDL 操作进行三级强管控，需开发组长、核心 DBA、管理员逐级终审")
                             .createTime(now)
                             .updateTime(now)
                             .build(),
@@ -193,16 +159,39 @@ public class WorkflowTemplateService {
                             .build()
             );
 
+            // 清理删除所有不再使用的多余历史模板，仅保留这 4 个正在使用的模板
+            List<String> retainedNames = defaults.stream().map(WorkflowTemplate::getTemplateName).toList();
+            try {
+                workflowTemplateMapper.delete(new QueryWrapper<WorkflowTemplate>().notIn("template_name", retainedNames));
+                log.info("Cleaned obsolete workflow templates, retaining 4 active templates: {}", retainedNames);
+            } catch (Exception e) {
+                log.warn("Clean obsolete workflow templates exception: {}", e.getMessage());
+            }
+
             for (WorkflowTemplate tpl : defaults) {
-                Long existsCount = workflowTemplateMapper.selectCount(new QueryWrapper<WorkflowTemplate>().eq("template_name", tpl.getTemplateName()));
-                if (existsCount == 0) {
+                WorkflowTemplate exist = workflowTemplateMapper.selectOne(new QueryWrapper<WorkflowTemplate>().eq("template_name", tpl.getTemplateName()));
+                if (exist == null) {
                     try {
                         workflowTemplateMapper.insert(tpl);
                         log.info("Inserted default workflow template: {}", tpl.getTemplateName());
                     } catch (Exception ignored) {}
+                } else {
+                    exist.setFlowType(tpl.getFlowType());
+                    exist.setNodeConfig(tpl.getNodeConfig());
+                    exist.setTriggerCondition(tpl.getTriggerCondition());
+                    exist.setDefaultExecutionMode(tpl.getDefaultExecutionMode());
+                    exist.setResourceGroups(tpl.getResourceGroups());
+                    exist.setDescription(tpl.getDescription());
+                    exist.setStatus(1);
+                    exist.setAffectRowsThreshold(tpl.getAffectRowsThreshold());
+                    exist.setConditionDimension(tpl.getConditionDimension());
+                    exist.setHighRiskRole(tpl.getHighRiskRole());
+                    exist.setLowRiskRole(tpl.getLowRiskRole());
+                    exist.setSpelExpression(tpl.getSpelExpression());
+                    workflowTemplateMapper.updateById(exist);
                 }
             }
-            log.info("Initialized default workflow templates successfully.");
+            log.info("Initialized exactly 4 active default workflow templates successfully.");
         } catch (Exception e) {
             log.warn("Init workflow_template table exception: {}", e.getMessage());
         }
