@@ -47,4 +47,40 @@ public class SysRoleController {
         sysRoleService.deleteRole(id);
         return Result.success(null);
     }
+
+    @GetMapping("/{roleCode}/users")
+    public Result<com.wmdb.model.PageResultDTO<com.wmdb.model.SysUserDTO>> getRoleUsers(
+            @PathVariable("roleCode") String roleCode,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "keyword", required = false) String keyword) {
+        return Result.success(sysRoleService.getRoleUsers(roleCode, keyword, page, size));
+    }
+
+    @GetMapping("/{roleCode}/candidate-users")
+    public Result<com.wmdb.model.PageResultDTO<com.wmdb.model.SysUserDTO>> getCandidateUsersForRole(
+            @PathVariable("roleCode") String roleCode,
+            @RequestParam(value = "page", defaultValue = "1") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size,
+            @RequestParam(value = "keyword", required = false) String keyword) {
+        return Result.success(sysRoleService.getCandidateUsersForRole(roleCode, keyword, page, size));
+    }
+
+    @PostMapping("/{roleCode}/users/add")
+    public Result<Void> addUsersToRole(
+            @PathVariable("roleCode") String roleCode,
+            @RequestBody java.util.Map<String, java.util.List<Long>> body) {
+        java.util.List<Long> userIds = body != null ? body.get("userIds") : java.util.Collections.emptyList();
+        sysRoleService.addUsersToRole(roleCode, userIds);
+        return Result.success(null);
+    }
+
+    @PostMapping("/{roleCode}/users/remove")
+    public Result<Void> removeUsersFromRole(
+            @PathVariable("roleCode") String roleCode,
+            @RequestBody java.util.Map<String, java.util.List<Long>> body) {
+        java.util.List<Long> userIds = body != null ? body.get("userIds") : java.util.Collections.emptyList();
+        sysRoleService.removeUsersFromRole(roleCode, userIds);
+        return Result.success(null);
+    }
 }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 角色与页签功能权限管理服务
@@ -223,6 +224,133 @@ public class SysRoleService {
             return mapper.readValue(permJson, new com.fasterxml.jackson.core.type.TypeReference<List<String>>() {});
         } catch (Exception e) {
             return List.of("/dashboard", "/ticket-list", "/ticket-create", "/data-query");
+        }
+    }
+
+    /**
+     * 获取指定角色的成员用户列表（带同名消歧与分页、搜索）
+     */
+    public com.wmdb.model.PageResultDTO<com.wmdb.model.SysUserDTO> getRoleUsers(String roleCode, String keyword, int page, int size) {
+        List<com.wmdb.model.SysUser> allUsers = sysUserMapper.selectList(new QueryWrapper<com.wmdb.model.SysUser>().orderByDesc("id"));
+        String kw = keyword != null ? keyword.trim().toLowerCase() : null;
+
+        List<com.wmdb.model.SysUser> matchedUsers = allUsers.stream().filter(u -> {
+            List<String> uRoles = userDisplayNameService.parseRoles(u.getRole());
+            boolean matched = uRoles.contains(roleCode);
+            if (!matched && "ADMIN".equalsIgnoreCase(roleCode)) {
+                matched = "admin".equalsIgnoreCase(u.getUsername()) || "testadmin1".equalsIgnoreCase(u.getUsername());
+            }
+            if (!matched) return false;
+
+            if (kw != null && !kw.isEmpty()) {
+                boolean kwMatch = (u.getUsername() != null && u.getUsername().toLowerCase().contains(kw))
+                        || (u.getRealName() != null && u.getRealName().toLowerCase().contains(kw))
+                        || (u.getPhone() != null && u.getPhone().contains(kw))
+                        || (u.getIdCard() != null && u.getIdCard().contains(kw))
+                        || (u.getResourceGroup() != null && u.getResourceGroup().toLowerCase().contains(kw))
+                        || (u.getDepartment() != null && u.getDepartment().toLowerCase().contains(kw));
+                if (!kwMatch) return false;
+            }
+            return true;
+        }).collect(Collectors.toList());
+
+        int total = matchedUsers.size();
+        int pageIndex = page > 0 ? page : 1;
+        int pageSize = size > 0 ? size : 10;
+        int fromIndex = Math.min((pageIndex - 1) * pageSize, total);
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        List<com.wmdb.model.SysUser> pageSubList = matchedUsers.subList(fromIndex, toIndex);
+
+        List<com.wmdb.model.SysUserDTO> dtos = userDisplayNameService.formatUserList(pageSubList);
+        return com.wmdb.model.PageResultDTO.of(dtos, (long) total, (long) pageIndex, (long) pageSize);
+    }
+
+    /**
+     * 获取可分配到指定角色的候选用户列表（排除已属于该角色的用户）
+     */
+    public com.wmdb.model.PageResultDTO<com.wmdb.model.SysUserDTO> getCandidateUsersForRole(String roleCode, String keyword, int page, int size) {
+        List<com.wmdb.model.SysUser> allUsers = sysUserMapper.selectList(new QueryWrapper<com.wmdb.model.SysUser>().orderByDesc("id"));
+        String kw = keyword != null ? keyword.trim().toLowerCase() : null;
+
+        List<com.wmdb.model.SysUser> candidateUsers = allUsers.stream().filter(u -> {
+            List<String> uRoles = userDisplayNameService.parseRoles(u.getRole());
+            boolean hasRole = uRoles.contains(roleCode);
+            if (!hasRole && "ADMIN".equalsIgnoreCase(roleCode)) {
+                hasRole = "admin".equalsIgnoreCase(u.getUsername()) || "testadmin1".equalsIgnoreCase(u.getUsername());
+            }
+            if (hasRole) return false;
+
+            if (kw != null && !kw.isEmpty()) {
+                boolean kwMatch = (u.getUsername() != null && u.getUsername().toLowerCase().contains(kw))
+                        || (u.getRealName() != null && u.getRealName().toLowerCase().contains(kw))
+                        || (u.getPhone() != null && u.getPhone().contains(kw))
+                        || (u.getIdCard() != null && u.getIdCard().contains(kw))
+                        || (u.getResourceGroup() != null && u.getResourceGroup().toLowerCase().contains(kw))
+                        || (u.getDepartment() != null && u.getDepartment().toLowerCase().contains(kw));
+                if (!kwMatch) return false;
+            }
+            return true;
+        }).collect(Collectors.toList());
+
+        int total = candidateUsers.size();
+        int pageIndex = page > 0 ? page : 1;
+        int pageSize = size > 0 ? size : 10;
+        int fromIndex = Math.min((pageIndex - 1) * pageSize, total);
+        int toIndex = Math.min(fromIndex + pageSize, total);
+        List<com.wmdb.model.SysUser> pageSubList = candidateUsers.subList(fromIndex, toIndex);
+
+        List<com.wmdb.model.SysUserDTO> dtos = userDisplayNameService.formatUserList(pageSubList);
+        return com.wmdb.model.PageResultDTO.of(dtos, (long) total, (long) pageIndex, (long) pageSize);
+    }
+
+    /**
+     * 批量为指定角色添加用户成员
+     */
+    public void addUsersToRole(String roleCode, List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty() || roleCode == null || roleCode.trim().isEmpty()) {
+            return;
+        }
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        for (Long uid : userIds) {
+            com.wmdb.model.SysUser user = sysUserMapper.selectById(uid);
+            if (user != null) {
+                List<String> roles = new ArrayList<>(userDisplayNameService.parseRoles(user.getRole()));
+                if (!roles.contains(roleCode)) {
+                    roles.add(roleCode);
+                    try {
+                        user.setRole(mapper.writeValueAsString(roles));
+                    } catch (Exception e) {
+                        user.setRole(String.join(",", roles));
+                    }
+                    sysUserMapper.updateById(user);
+                }
+            }
+        }
+    }
+
+    /**
+     * 批量从指定角色移除用户成员
+     */
+    public void removeUsersFromRole(String roleCode, List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty() || roleCode == null || roleCode.trim().isEmpty()) {
+            return;
+        }
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+        for (Long uid : userIds) {
+            com.wmdb.model.SysUser user = sysUserMapper.selectById(uid);
+            if (user != null) {
+                List<String> roles = new ArrayList<>(userDisplayNameService.parseRoles(user.getRole()));
+                roles.remove(roleCode);
+                if (roles.isEmpty()) {
+                    roles.add("DEV");
+                }
+                try {
+                    user.setRole(mapper.writeValueAsString(roles));
+                } catch (Exception e) {
+                    user.setRole(String.join(",", roles));
+                }
+                sysUserMapper.updateById(user);
+            }
         }
     }
 }

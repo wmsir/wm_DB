@@ -93,7 +93,7 @@
                       link
                       size="default"
                       class="member-count-link-btn"
-                      @click="handleNavigateToUsers(scope.row.roleCode)"
+                      @click="handleOpenMemberManage(scope.row)"
                     >
                       <el-icon style="margin-right: 4px; font-size: 15px; color: #3b82f6;"><UserFilled /></el-icon>
                       <span class="member-count-num">{{ scope.row.memberCount !== undefined ? scope.row.memberCount : (scope.row.memberNames ? scope.row.memberNames.length : 0) }}</span>
@@ -106,8 +106,11 @@
 
               <el-table-column prop="description" label="角色定位与权限说明" min-width="220" show-overflow-tooltip></el-table-column>
 
-              <el-table-column label="操作" width="200" fixed="right" align="center">
+              <el-table-column label="操作" width="280" fixed="right" align="center">
                 <template #default="scope">
+                  <el-button size="small" type="success" plain :icon="UserFilled" @click="handleOpenMemberManage(scope.row)">
+                    成员管理
+                  </el-button>
                   <el-button size="small" type="primary" plain :icon="Lock" @click="handleOpenEditTab(scope.row)">
                     配置页签权限
                   </el-button>
@@ -350,6 +353,214 @@
         </div>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- 1. 角色所属成员管理弹窗 (Role Members Dialog) -->
+    <el-dialog
+      v-model="memberDialogVisible"
+      :title="`👥 角色成员管理 - 【${currentManageRole?.roleName || currentManageRole?.roleCode}】`"
+      width="900px"
+      top="7vh"
+      destroy-on-close
+      class="role-members-dialog"
+    >
+      <div class="member-dialog-header">
+        <div class="role-badge-desc">
+          <el-tag :type="getRoleTagType(currentManageRole?.roleCode || '')" effect="dark" size="default">
+            {{ currentManageRole?.roleCode }}
+          </el-tag>
+          <span class="role-desc-text">{{ currentManageRole?.description }}</span>
+        </div>
+        <div class="member-header-actions">
+          <el-input
+            v-model="memberSearchKey"
+            placeholder="搜索当前组内姓名/用户名/手机号/资源组..."
+            clearable
+            style="width: 260px;"
+            :prefix-icon="Search"
+            @clear="fetchRoleMembers"
+            @keyup.enter="fetchRoleMembers"
+          />
+          <el-button type="primary" :icon="Plus" @click="handleOpenAddMemberModal">
+            添加用户到此角色
+          </el-button>
+          <el-button
+            type="danger"
+            plain
+            :icon="Delete"
+            :disabled="selectedMemberIds.length === 0"
+            @click="handleBatchRemoveMembers"
+          >
+            批量移除 ({{ selectedMemberIds.length }})
+          </el-button>
+          <el-button :icon="Refresh" @click="fetchRoleMembers" circle />
+          <el-button type="info" plain size="small" @click="handleNavigateToUsers(currentManageRole?.roleCode)">
+            打开用户列表 ➔
+          </el-button>
+        </div>
+      </div>
+
+      <div class="member-table-wrapper" style="margin-top: 14px;">
+        <el-table
+          :data="roleMembers"
+          border
+          stripe
+          v-loading="memberLoading"
+          style="width: 100%"
+          @selection-change="handleMemberSelectionChange"
+        >
+          <el-table-column type="selection" width="48" align="center" />
+          <el-table-column prop="id" label="ID" width="60" align="center" />
+          <el-table-column label="真实姓名 (同名消歧)" min-width="150">
+            <template #default="scope">
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <span style="font-weight: 600; color: #1e293b;">{{ scope.row.realName || scope.row.username }}</span>
+                <el-tag
+                  v-if="scope.row.displayName && scope.row.displayName !== scope.row.realName"
+                  size="small"
+                  type="danger"
+                  effect="light"
+                  style="font-size: 11px; font-weight: 500;"
+                >
+                  {{ scope.row.displayName.replace(scope.row.realName, '').trim() }}
+                </el-tag>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="username" label="登录用户名" width="130">
+            <template #default="scope">
+              <span style="font-family: monospace; font-weight: 500;">{{ scope.row.username }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="resourceGroup" label="归属资源组" min-width="140" show-overflow-tooltip>
+            <template #default="scope">
+              <el-tag size="small" type="warning" effect="plain">
+                {{ scope.row.resourceGroup || '车险承保资源组' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="phone" label="手机号码" width="125">
+            <template #default="scope">
+              <span>{{ scope.row.phone || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="85" align="center">
+            <template #default="scope">
+              <el-tag :type="scope.row.status === 1 ? 'success' : 'danger'" size="small">
+                {{ scope.row.status === 1 ? '启用' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="110" align="center" fixed="right">
+            <template #default="scope">
+              <el-button
+                size="small"
+                type="danger"
+                link
+                @click="handleRemoveSingleMember(scope.row)"
+              >
+                移除此角色
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+          <el-pagination
+            v-model:current-page="memberPage.current"
+            v-model:page-size="memberPage.size"
+            :page-sizes="[10, 20, 50]"
+            :total="memberPage.total"
+            layout="total, sizes, prev, pager, next"
+            background
+            @size-change="fetchRoleMembers"
+            @current-change="fetchRoleMembers"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="memberDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 2. 选择待添加候选用户弹窗 (Add Candidate Users Modal) -->
+    <el-dialog
+      v-model="addUserModalVisible"
+      :title="`➕ 选择用户添加到【${currentManageRole?.roleName}】`"
+      width="750px"
+      append-to-body
+      destroy-on-close
+    >
+      <div class="add-user-modal-header" style="margin-bottom: 12px; display: flex; gap: 10px;">
+        <el-input
+          v-model="candidateSearchKey"
+          placeholder="搜索待分配的姓名/用户名/手机号/资源组..."
+          clearable
+          :prefix-icon="Search"
+          @clear="fetchCandidateUsers"
+          @keyup.enter="fetchCandidateUsers"
+        />
+        <el-button :icon="Refresh" @click="fetchCandidateUsers">刷新</el-button>
+      </div>
+
+      <el-table
+        :data="candidateUsers"
+        border
+        stripe
+        v-loading="candidateLoading"
+        style="width: 100%"
+        @selection-change="handleCandidateSelectionChange"
+      >
+        <el-table-column type="selection" width="48" align="center" />
+        <el-table-column prop="id" label="ID" width="60" align="center" />
+        <el-table-column label="姓名" min-width="130">
+          <template #default="scope">
+            <span style="font-weight: 600;">{{ scope.row.realName || scope.row.username }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="username" label="登录用户名" width="120" />
+        <el-table-column label="现有角色" min-width="160">
+          <template #default="scope">
+            <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+              <el-tag
+                v-for="r in parseRoles(scope.row.role || scope.row.roles)"
+                :key="r"
+                size="small"
+                :type="getRoleTagType(r)"
+                effect="plain"
+              >
+                {{ r }}
+              </el-tag>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="resourceGroup" label="资源组" min-width="130" show-overflow-tooltip />
+      </el-table>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+        <el-pagination
+          v-model:current-page="candidatePage.current"
+          v-model:page-size="candidatePage.size"
+          :page-sizes="[10, 20, 50]"
+          :total="candidatePage.total"
+          layout="total, prev, pager, next"
+          background
+          @size-change="fetchCandidateUsers"
+          @current-change="fetchCandidateUsers"
+        />
+      </div>
+
+      <template #footer>
+        <el-button @click="addUserModalVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="addMemberSubmitLoading"
+          :disabled="selectedCandidateIds.length === 0"
+          @click="handleSubmitAddMembers"
+        >
+          确认添加已选 ({{ selectedCandidateIds.length }}) 位用户
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -367,6 +578,7 @@ import {
   ArrowRight,
   Check,
   UserFilled,
+  Delete,
   CloseBold
 } from '@element-plus/icons-vue'
 import request from '../utils/request'
@@ -403,6 +615,176 @@ const router = useRouter()
 const roles = ref<RoleItem[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
+
+// ==================== 角色所属成员管理 (Role Members Management) ====================
+const memberDialogVisible = ref(false)
+const memberLoading = ref(false)
+const currentManageRole = ref<RoleItem | null>(null)
+const memberSearchKey = ref('')
+const roleMembers = ref<any[]>([])
+const selectedMemberIds = ref<number[]>([])
+const memberPage = ref({
+  current: 1,
+  size: 10,
+  total: 0
+})
+
+const addUserModalVisible = ref(false)
+const candidateLoading = ref(false)
+const candidateSearchKey = ref('')
+const candidateUsers = ref<any[]>([])
+const selectedCandidateIds = ref<number[]>([])
+const addMemberSubmitLoading = ref(false)
+const candidatePage = ref({
+  current: 1,
+  size: 10,
+  total: 0
+})
+
+const parseRoles = (rolesRaw?: string | string[]): string[] => {
+  if (!rolesRaw) return []
+  if (Array.isArray(rolesRaw)) return rolesRaw
+  try {
+    const arr = JSON.parse(rolesRaw)
+    if (Array.isArray(arr)) return arr
+  } catch (e) {}
+  return rolesRaw.split(/[,，]/).map(s => s.trim()).filter(Boolean)
+}
+
+const handleOpenMemberManage = (role: RoleItem) => {
+  currentManageRole.value = role
+  memberSearchKey.value = ''
+  memberPage.value.current = 1
+  selectedMemberIds.value = []
+  memberDialogVisible.value = true
+  fetchRoleMembers()
+}
+
+const fetchRoleMembers = async () => {
+  if (!currentManageRole.value?.roleCode) return
+  memberLoading.value = true
+  try {
+    const res: any = await request.get(`/v1/role/${currentManageRole.value.roleCode}/users`, {
+      params: {
+        page: memberPage.value.current,
+        size: memberPage.value.size,
+        keyword: memberSearchKey.value
+      }
+    })
+    if (res.data) {
+      roleMembers.value = Array.isArray(res.data.records) ? res.data.records : []
+      memberPage.value.total = res.data.total || roleMembers.value.length
+    }
+  } catch (err) {
+    console.error('Fetch role members error', err)
+  } finally {
+    memberLoading.value = false
+  }
+}
+
+const handleMemberSelectionChange = (selection: any[]) => {
+  selectedMemberIds.value = selection.map(item => item.id)
+}
+
+const handleRemoveSingleMember = async (row: any) => {
+  if (!currentManageRole.value) return
+  try {
+    await ElMessageBox.confirm(
+      `确认从角色【${currentManageRole.value.roleName}】中移除用户【${row.realName || row.username}】吗？`,
+      '确认移除',
+      {
+        type: 'warning',
+        confirmButtonText: '确认移除',
+        cancelButtonText: '取消'
+      }
+    )
+    await request.post(`/v1/role/${currentManageRole.value.roleCode}/users/remove`, {
+      userIds: [row.id]
+    })
+    ElMessage.success(`已成功从角色【${currentManageRole.value.roleName}】中移除用户【${row.realName || row.username}】`)
+    fetchRoleMembers()
+    fetchRoles()
+  } catch (e) {
+    if (e !== 'cancel') console.error('Remove member error', e)
+  }
+}
+
+const handleBatchRemoveMembers = async () => {
+  if (!currentManageRole.value || selectedMemberIds.value.length === 0) return
+  try {
+    await ElMessageBox.confirm(
+      `确认从角色【${currentManageRole.value.roleName}】中批量移除选中的 ${selectedMemberIds.value.length} 位用户吗？`,
+      '批量移除确认',
+      {
+        type: 'warning',
+        confirmButtonText: '确认移除',
+        cancelButtonText: '取消'
+      }
+    )
+    await request.post(`/v1/role/${currentManageRole.value.roleCode}/users/remove`, {
+      userIds: selectedMemberIds.value
+    })
+    ElMessage.success(`已成功批量移除 ${selectedMemberIds.value.length} 位用户`)
+    selectedMemberIds.value = []
+    fetchRoleMembers()
+    fetchRoles()
+  } catch (e) {
+    if (e !== 'cancel') console.error('Batch remove members error', e)
+  }
+}
+
+const handleOpenAddMemberModal = () => {
+  candidateSearchKey.value = ''
+  candidatePage.value.current = 1
+  selectedCandidateIds.value = []
+  addUserModalVisible.value = true
+  fetchCandidateUsers()
+}
+
+const fetchCandidateUsers = async () => {
+  if (!currentManageRole.value?.roleCode) return
+  candidateLoading.value = true
+  try {
+    const res: any = await request.get(`/v1/role/${currentManageRole.value.roleCode}/candidate-users`, {
+      params: {
+        page: candidatePage.value.current,
+        size: candidatePage.value.size,
+        keyword: candidateSearchKey.value
+      }
+    })
+    if (res.data) {
+      candidateUsers.value = Array.isArray(res.data.records) ? res.data.records : []
+      candidatePage.value.total = res.data.total || candidateUsers.value.length
+    }
+  } catch (err) {
+    console.error('Fetch candidate users error', err)
+  } finally {
+    candidateLoading.value = false
+  }
+}
+
+const handleCandidateSelectionChange = (selection: any[]) => {
+  selectedCandidateIds.value = selection.map(item => item.id)
+}
+
+const handleSubmitAddMembers = async () => {
+  if (!currentManageRole.value || selectedCandidateIds.value.length === 0) return
+  addMemberSubmitLoading.value = true
+  try {
+    await request.post(`/v1/role/${currentManageRole.value.roleCode}/users/add`, {
+      userIds: selectedCandidateIds.value
+    })
+    ElMessage.success(`已成功为角色【${currentManageRole.value.roleName}】添加 ${selectedCandidateIds.value.length} 位用户成员`)
+    addUserModalVisible.value = false
+    selectedCandidateIds.value = []
+    fetchRoleMembers()
+    fetchRoles()
+  } catch (err: any) {
+    ElMessage.error(err.response?.data?.message || err.message || '添加成员失败')
+  } finally {
+    addMemberSubmitLoading.value = false
+  }
+}
 
 const handleNavigateToUsers = (roleCode?: string) => {
   if (!roleCode) {
@@ -1012,5 +1394,35 @@ onMounted(() => {
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   margin-top: 10px;
+}
+
+/* ==================== 角色成员管理弹窗样式 ==================== */
+.member-dialog-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.role-badge-desc {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-desc-text {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.member-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 </style>
