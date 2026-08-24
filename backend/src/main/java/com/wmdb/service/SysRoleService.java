@@ -76,11 +76,23 @@ public class SysRoleService {
             role.setDescription(desc);
             role.setPermissions(defaultPermissions);
             sysRoleMapper.insert(role);
-        } else if (existing.getPermissions() == null || existing.getPermissions().trim().isEmpty()) {
-            existing.setPermissions(defaultPermissions);
-            existing.setRoleName(name);
-            existing.setDescription(desc);
-            sysRoleMapper.updateById(existing);
+        } else {
+            boolean changed = false;
+            if (existing.getRoleName() == null || !existing.getRoleName().equals(name)) {
+                existing.setRoleName(name);
+                changed = true;
+            }
+            if (existing.getDescription() == null || existing.getDescription().isEmpty() || !existing.getDescription().equals(desc)) {
+                existing.setDescription(desc);
+                changed = true;
+            }
+            if (existing.getPermissions() == null || existing.getPermissions().trim().isEmpty()) {
+                existing.setPermissions(defaultPermissions);
+                changed = true;
+            }
+            if (changed) {
+                sysRoleMapper.updateById(existing);
+            }
         }
     }
 
@@ -98,9 +110,15 @@ public class SysRoleService {
         QueryWrapper<SysRole> qw = new QueryWrapper<>();
         if (keyword != null && !keyword.trim().isEmpty()) {
             String kw = keyword.trim();
-            qw.and(w -> w.like("role_name", kw)
-                    .or().like("role_code", kw)
-                    .or().like("description", kw));
+            String roleAlias = mapRoleAlias(kw);
+            qw.and(w -> {
+                w.like("role_name", kw)
+                        .or().like("role_code", kw)
+                        .or().like("description", kw);
+                if (roleAlias != null) {
+                    w.or().like("role_code", roleAlias);
+                }
+            });
         }
         qw.orderByAsc("id");
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysRole> mpPage =
@@ -108,6 +126,19 @@ public class SysRoleService {
         sysRoleMapper.selectPage(mpPage, qw);
         enrichRoleMembers(mpPage.getRecords());
         return com.wmdb.model.PageResultDTO.from(mpPage);
+    }
+
+    private String mapRoleAlias(String kw) {
+        if (kw == null) return null;
+        String lower = kw.toLowerCase().trim();
+        if (lower.contains("研发") || lower.contains("开发人员") || lower.contains("工程师") || lower.contains("研发工程师")) return "DEV";
+        if (lower.contains("组长") || lower.contains("主管") || lower.contains("dev_lead")) return "DEV_LEAD";
+        if (lower.contains("管理员") || lower.contains("超管") || lower.contains("admin")) return "ADMIN";
+        if (lower.contains("dba") || lower.contains("数据库管理员") || lower.contains("架构师")) return "DBA";
+        if (lower.contains("审计") || lower.contains("合规") || lower.contains("auditor")) return "AUDITOR";
+        if (lower.contains("运维") || lower.contains("ops")) return "OPS";
+        if (lower.contains("安全") || lower.contains("cso") || lower.contains("security")) return "SECURITY";
+        return null;
     }
 
     private void enrichRoleMembers(List<SysRole> roles) {

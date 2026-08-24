@@ -560,7 +560,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   Plus, Edit, Delete, Refresh, Search, Key, User, UserFilled,
   Lock, Suitcase, Tickets, ArrowLeft, Check, CloseBold
@@ -609,6 +610,7 @@ interface DynamicTabItem {
   selectedTabPermissions: string[]
 }
 
+const route = useRoute()
 const activeTab = ref('list')
 const dynamicTabs = ref<DynamicTabItem[]>([])
 
@@ -1060,9 +1062,26 @@ const handleDelete = async (row: UserItem) => {
 }
 
 onMounted(() => {
+  if (route.query.role) {
+    searchKeyword.value = String(route.query.role)
+  } else if (route.query.keyword) {
+    searchKeyword.value = String(route.query.keyword)
+  }
   fetchRoles()
   fetchResourceGroups()
   fetchUsers()
+})
+
+watch(() => route.query, (q) => {
+  if (q.role) {
+    searchKeyword.value = String(q.role)
+    pagination.value.current = 1
+    fetchUsers()
+  } else if (q.keyword) {
+    searchKeyword.value = String(q.keyword)
+    pagination.value.current = 1
+    fetchUsers()
+  }
 })
 </script>
 

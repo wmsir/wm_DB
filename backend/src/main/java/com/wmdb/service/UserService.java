@@ -236,17 +236,29 @@ public class UserService {
         QueryWrapper<SysUser> qw = new QueryWrapper<>();
         if (keyword != null && !keyword.trim().isEmpty()) {
             String kw = keyword.trim();
-            qw.and(w -> w.like("username", kw)
-                    .or().like("real_name", kw)
-                    .or().like("phone", kw)
-                    .or().like("id_card", kw)
-                    .or().like("role", kw)
-                    .or().like("department", kw)
-                    .or().like("job_no", kw)
-                    .or().like("resource_group", kw));
+            String roleAlias = mapRoleAlias(kw);
+            qw.and(w -> {
+                w.like("username", kw)
+                        .or().like("real_name", kw)
+                        .or().like("phone", kw)
+                        .or().like("id_card", kw)
+                        .or().like("role", kw)
+                        .or().like("department", kw)
+                        .or().like("job_no", kw)
+                        .or().like("resource_group", kw);
+                if (roleAlias != null && !roleAlias.isEmpty()) {
+                    w.or().like("role", roleAlias);
+                }
+            });
         }
         if (role != null && !role.trim().isEmpty()) {
-            qw.like("role", role.trim());
+            String r = role.trim();
+            String roleAlias = mapRoleAlias(r);
+            if (roleAlias != null) {
+                qw.and(w -> w.like("role", r).or().like("role", roleAlias));
+            } else {
+                qw.like("role", r);
+            }
         }
         if (status != null) {
             qw.eq("status", status);
@@ -259,6 +271,19 @@ public class UserService {
 
         List<SysUserDTO> dtos = userDisplayNameService.formatUserList(mpPage.getRecords());
         return com.wmdb.model.PageResultDTO.of(dtos, mpPage.getTotal(), mpPage.getCurrent(), mpPage.getSize());
+    }
+
+    private String mapRoleAlias(String kw) {
+        if (kw == null) return null;
+        String lower = kw.toLowerCase().trim();
+        if (lower.contains("研发") || lower.contains("开发人员") || lower.contains("工程师") || lower.contains("研发工程师")) return "DEV";
+        if (lower.contains("组长") || lower.contains("主管") || lower.contains("dev_lead")) return "DEV_LEAD";
+        if (lower.contains("管理员") || lower.contains("超管") || lower.contains("admin")) return "ADMIN";
+        if (lower.contains("dba") || lower.contains("数据库管理员") || lower.contains("架构师")) return "DBA";
+        if (lower.contains("审计") || lower.contains("合规") || lower.contains("auditor")) return "AUDITOR";
+        if (lower.contains("运维") || lower.contains("ops")) return "OPS";
+        if (lower.contains("安全") || lower.contains("cso") || lower.contains("security")) return "SECURITY";
+        return null;
     }
 
     public void saveUser(SysUser user) {

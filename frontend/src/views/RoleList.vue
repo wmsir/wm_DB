@@ -85,34 +85,21 @@
                 </template>
               </el-table-column>
 
-              <el-table-column label="当前组内成员 / 人员列表 (Members)" min-width="260">
+              <el-table-column label="当前组内成员 (Members)" width="180" align="center">
                 <template #default="scope">
-                  <div class="role-members-container">
-                    <template v-if="scope.row.memberNames && scope.row.memberNames.length > 0">
-                      <div style="margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
-                        <el-tag size="small" type="success" effect="dark" round style="font-weight: 600;">
-                          ● 共 {{ scope.row.memberNames.length }} 位成员
-                        </el-tag>
-                      </div>
-                      <div class="member-tags-wrap">
-                        <el-tag
-                          v-for="name in scope.row.memberNames"
-                          :key="name"
-                          size="small"
-                          type="info"
-                          effect="plain"
-                          class="member-pill-tag"
-                        >
-                          <el-icon style="margin-right: 3px; font-size: 11px; color: #409eff;"><User /></el-icon>
-                          <span>{{ name }}</span>
-                        </el-tag>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <el-tag size="small" type="info" effect="plain" style="color: #94a3b8; border-color: #e2e8f0;">
-                        暂无分配成员 (0)
-                      </el-tag>
-                    </template>
+                  <div class="role-member-btn-wrap">
+                    <el-button
+                      type="primary"
+                      link
+                      size="default"
+                      class="member-count-link-btn"
+                      @click="handleNavigateToUsers(scope.row.roleCode)"
+                    >
+                      <el-icon style="margin-right: 4px; font-size: 15px; color: #3b82f6;"><UserFilled /></el-icon>
+                      <span class="member-count-num">{{ scope.row.memberCount !== undefined ? scope.row.memberCount : (scope.row.memberNames ? scope.row.memberNames.length : 0) }}</span>
+                      <span class="member-count-unit">位成员</span>
+                      <el-icon style="margin-left: 4px; font-size: 12px; color: #94a3b8;"><ArrowRight /></el-icon>
+                    </el-button>
                   </div>
                 </template>
               </el-table-column>
@@ -368,6 +355,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
 import {
@@ -376,9 +364,9 @@ import {
   Plus,
   Lock,
   ArrowLeft,
+  ArrowRight,
   Check,
   UserFilled,
-  User,
   CloseBold
 } from '@element-plus/icons-vue'
 import request from '../utils/request'
@@ -411,9 +399,21 @@ interface DynamicRoleTabItem {
   selectedPermissions: string[]
 }
 
+const router = useRouter()
 const roles = ref<RoleItem[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
+
+const handleNavigateToUsers = (roleCode?: string) => {
+  if (!roleCode) {
+    router.push('/user-list')
+    return
+  }
+  router.push({
+    path: '/user-list',
+    query: { role: roleCode }
+  })
+}
 
 // 多页签系统状态
 const activeTab = ref('list')
@@ -450,13 +450,32 @@ const pageSize = ref(10)
 
 const filteredRoles = computed(() => {
   if (!searchQuery.value) return roles.value
-  const q = searchQuery.value.toLowerCase()
-  return roles.value.filter(item =>
-    (item.roleCode && item.roleCode.toLowerCase().includes(q)) ||
-    (item.roleName && item.roleName.toLowerCase().includes(q)) ||
-    (item.description && item.description.toLowerCase().includes(q)) ||
-    (item.permissions && item.permissions.toLowerCase().includes(q))
-  )
+  const q = searchQuery.value.toLowerCase().trim()
+  return roles.value.filter(item => {
+    const code = (item.roleCode || '').toLowerCase()
+    const name = (item.roleName || '').toLowerCase()
+    const desc = (item.description || '').toLowerCase()
+    const perms = (item.permissions || '').toLowerCase()
+
+    // 智能别名与语义模糊匹配 (例如搜索 "研发工程师"、"研发"、"开发" 均精准命中 DEV 与 DEV_LEAD)
+    const isDevMatch = (q.includes('研发') || q.includes('开发') || q.includes('工程师')) && (code.includes('dev') || name.includes('开发') || name.includes('研发'))
+    const isDbaMatch = (q.includes('dba') || q.includes('数据库')) && (code.includes('dba') || name.includes('dba') || name.includes('数据库'))
+    const isAdminMatch = (q.includes('admin') || q.includes('管理员') || q.includes('超管')) && (code.includes('admin') || name.includes('管理员'))
+    const isAuditorMatch = (q.includes('审计') || q.includes('合规')) && (code.includes('auditor') || name.includes('审计'))
+    const isSecurityMatch = (q.includes('安全') || q.includes('cso')) && (code.includes('security') || name.includes('安全'))
+    const isOpsMatch = (q.includes('运维') || q.includes('ops')) && (code.includes('ops') || name.includes('运维'))
+
+    return code.includes(q) ||
+      name.includes(q) ||
+      desc.includes(q) ||
+      perms.includes(q) ||
+      isDevMatch ||
+      isDbaMatch ||
+      isAdminMatch ||
+      isAuditorMatch ||
+      isSecurityMatch ||
+      isOpsMatch
+  })
 })
 
 const pagedRoles = computed(() => {
@@ -791,27 +810,34 @@ onMounted(() => {
   margin-left: 6px;
 }
 
-.role-members-container {
+.role-member-btn-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
 }
 
-.member-tags-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.member-pill-tag {
+.member-count-link-btn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
-  font-size: 11.5px;
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  color: #334155;
-  font-weight: 500;
-  border-radius: 4px;
+}
+
+.member-count-link-btn:hover {
+  background: #eff6ff;
+}
+
+.member-count-num {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2563eb;
+  margin-right: 2px;
+}
+
+.member-count-unit {
+  font-size: 12.5px;
+  color: #475569;
 }
 
 /* ==================== 编辑页签特有样式 (一体化极简吸顶导航) ==================== */
