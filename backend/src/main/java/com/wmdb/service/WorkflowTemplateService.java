@@ -473,14 +473,12 @@ public class WorkflowTemplateService {
             int score = 0;
             String rgs = tpl.getResourceGroups() != null ? tpl.getResourceGroups() : "";
             String flowType = tpl.getFlowType() != null ? tpl.getFlowType() : "ALL";
-
             // 变更类型匹配判定
-            boolean typeMatched = "ALL".equalsIgnoreCase(flowType) || flowType.equalsIgnoreCase(ticketType) ||
-                    ("SQL_AUDIT".equalsIgnoreCase(ticketType) && ("DML_CHANGE".equalsIgnoreCase(flowType) || "DDL_CHANGE".equalsIgnoreCase(flowType)));
+            boolean typeMatched = isFlowTypeMatched(flowType, ticketType);
             if (!typeMatched) {
                 continue;
             }
-            if (flowType.equalsIgnoreCase(ticketType)) {
+            if (flowType.contains(ticketType)) {
                 score += 40;
             } else {
                 score += 20;
@@ -715,7 +713,22 @@ public class WorkflowTemplateService {
             return true;
         }
         if ("SQL_AUDIT".equalsIgnoreCase(ticketType)) {
-            return ft.contains("DML_CHANGE") || ft.contains("DDL_CHANGE") || ft.contains("SQL_AUDIT");
+            return ft.contains("SQL_AUDIT") || ft.contains("DML_CHANGE") || ft.contains("DDL_CHANGE");
+        }
+        if ("DML_CHANGE".equalsIgnoreCase(ticketType)) {
+            return ft.contains("SQL_AUDIT") || ft.contains("DML_CHANGE");
+        }
+        if ("DDL_CHANGE".equalsIgnoreCase(ticketType)) {
+            return ft.contains("SQL_AUDIT") || ft.contains("DDL_CHANGE");
+        }
+        if ("PERMISSION".equalsIgnoreCase(ticketType)) {
+            return ft.contains("PERMISSION") || ft.contains("DATA_QUERY");
+        }
+        if ("DATA_QUERY".equalsIgnoreCase(ticketType)) {
+            return ft.contains("PERMISSION") || ft.contains("DATA_QUERY");
+        }
+        if ("DATA_RECOVERY".equalsIgnoreCase(ticketType)) {
+            return ft.contains("DATA_RECOVERY");
         }
         return false;
     }
@@ -729,6 +742,9 @@ public class WorkflowTemplateService {
             if (clean.isEmpty()) continue;
             if (sb.length() > 0) sb.append("、");
             switch (clean.toUpperCase()) {
+                case "SQL_AUDIT":
+                    sb.append("SQL 变更审核 (全量)");
+                    break;
                 case "DML_CHANGE":
                     sb.append("DML 数据变更");
                     break;
@@ -736,13 +752,16 @@ public class WorkflowTemplateService {
                     sb.append("DDL 结构变更");
                     break;
                 case "DATA_EXPORT":
-                    sb.append("数据导出与脱敏");
+                    sb.append("敏感数据导出");
+                    break;
+                case "PERMISSION":
+                    sb.append("权限与账号申请");
                     break;
                 case "DATA_QUERY":
                     sb.append("数据查询提权");
                     break;
-                case "SQL_AUDIT":
-                    sb.append("SQL 变更审核");
+                case "DATA_RECOVERY":
+                    sb.append("应急数据修复与恢复");
                     break;
                 default:
                     sb.append(clean);

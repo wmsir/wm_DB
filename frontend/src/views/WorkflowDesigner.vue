@@ -440,23 +440,12 @@
               </div>
             </div>
 
-            <!-- 右侧：BPMN 画布与浮动上下文仪表盘 (全屏及普通模式均可清晰展示) -->
+            <!-- 右侧：BPMN 画布与属性编辑工作区 (全屏及普通模式均可无遮挡绘制) -->
             <div
               class="canvas-wrapper"
               @dragover.prevent
               @drop="handleCanvasDrop"
             >
-              <!-- 浮动实时生效上下文指示牌 -->
-              <div class="floating-context-card">
-                <div class="context-pill">
-                  <span class="context-icon">🎯</span>
-                  <div class="context-content">
-                    <span class="context-title">当前 BPMN 审批流程生效范围</span>
-                    <span class="context-val">{{ currentTemplateDbScopeText }} · 【{{ currentTemplateFlowTypeText }}】</span>
-                  </div>
-                </div>
-              </div>
-
               <div ref="canvas" class="canvas"></div>
             </div>
           </div>
@@ -821,39 +810,90 @@
       </div>
 
       <el-form label-width="120px" size="default">
-        <!-- 1. 生效工单类型 -->
+        <!-- 1. 生效工单类型 (全面对齐创建工单大类与细分类型) -->
         <el-form-item label="生效工单类型">
           <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; width: 100%;">
             <el-button size="small" type="primary" plain :icon="Select" @click="handleSelectAllQuickBindTicketTypes">
-              🌐 一键全选所有类型 (4)
+              🌐 一键全选所有类型 (全部通用)
+            </el-button>
+            <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['SQL_AUDIT', 'DML_CHANGE', 'DDL_CHANGE']">
+              仅全量 SQL 变更
             </el-button>
             <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['DML_CHANGE']">
-              仅 DML 数据变更
+              细分：仅 DML 变更
             </el-button>
             <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['DDL_CHANGE']">
-              仅 DDL 结构变更
+              细分：仅 DDL 变更
             </el-button>
             <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['DATA_EXPORT']">
-              仅数据导出
+              仅敏感数据导出
+            </el-button>
+            <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['PERMISSION']">
+              仅权限申请
+            </el-button>
+            <el-button size="small" type="info" plain @click="quickBindTicketTypes = ['DATA_RECOVERY']">
+              仅应急数据修复
             </el-button>
             <el-button size="small" type="danger" plain :icon="CloseBold" @click="quickBindTicketTypes = []">
               清空
             </el-button>
           </div>
-          <el-checkbox-group v-model="quickBindTicketTypes" style="display: flex; flex-wrap: wrap; gap: 10px;">
-            <el-checkbox value="DML_CHANGE">
-              <el-tag size="small" type="primary" effect="dark">DML 数据变更 (INSERT / UPDATE / DELETE)</el-tag>
-            </el-checkbox>
-            <el-checkbox value="DDL_CHANGE">
-              <el-tag size="small" type="danger" effect="dark">DDL 结构变更 (CREATE / ALTER / DROP)</el-tag>
-            </el-checkbox>
-            <el-checkbox value="DATA_EXPORT">
-              <el-tag size="small" type="warning" effect="dark">DATA_EXPORT 敏感数据导出</el-tag>
-            </el-checkbox>
-            <el-checkbox value="DATA_QUERY">
-              <el-tag size="small" type="success" effect="dark">DATA_QUERY 数据查询提权</el-tag>
-            </el-checkbox>
-          </el-checkbox-group>
+
+          <div style="width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #fafbfc;">
+            <!-- 大类 1：SQL 变更审核 (含全量与细化分支) -->
+            <div style="margin-bottom: 12px;">
+              <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>🛠️ 1. SQL 变更审核 (支持全量通用与 DML/DDL 细化定制)：</span>
+              </div>
+              <el-checkbox-group v-model="quickBindTicketTypes" style="display: flex; flex-wrap: wrap; gap: 10px; margin-left: 8px;">
+                <el-checkbox value="SQL_AUDIT">
+                  <el-tag size="small" type="primary" effect="dark">SQL_AUDIT：全量 SQL 变更通用 (DML与DDL均适用)</el-tag>
+                </el-checkbox>
+                <el-checkbox value="DML_CHANGE">
+                  <el-tag size="small" type="success" effect="dark">DML_CHANGE：细化纯数据变更 (INSERT/UPDATE/DELETE)</el-tag>
+                </el-checkbox>
+                <el-checkbox value="DDL_CHANGE">
+                  <el-tag size="small" type="danger" effect="dark">DDL_CHANGE：细化库表结构变更 (CREATE/ALTER/DROP)</el-tag>
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+
+            <!-- 大类 2：敏感数据导出 -->
+            <div style="margin-bottom: 12px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+              <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>📤 2. 敏感数据导出申请：</span>
+              </div>
+              <el-checkbox-group v-model="quickBindTicketTypes" style="display: flex; flex-wrap: wrap; gap: 10px; margin-left: 8px;">
+                <el-checkbox value="DATA_EXPORT">
+                  <el-tag size="small" type="warning" effect="dark">DATA_EXPORT：敏感数据导出与脱敏申请</el-tag>
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+
+            <!-- 大类 3：权限与账号申请 -->
+            <div style="margin-bottom: 12px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+              <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>🔑 3. 权限与账号申请：</span>
+              </div>
+              <el-checkbox-group v-model="quickBindTicketTypes" style="display: flex; flex-wrap: wrap; gap: 10px; margin-left: 8px;">
+                <el-checkbox value="PERMISSION">
+                  <el-tag size="small" type="info" effect="dark">PERMISSION：数据库权限开通与临时查询提权</el-tag>
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+
+            <!-- 大类 4：应急数据修复与恢复 -->
+            <div style="border-top: 1px dashed #e2e8f0; padding-top: 8px;">
+              <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                <span>🚨 4. 应急数据修复与恢复：</span>
+              </div>
+              <el-checkbox-group v-model="quickBindTicketTypes" style="display: flex; flex-wrap: wrap; gap: 10px; margin-left: 8px;">
+                <el-checkbox value="DATA_RECOVERY">
+                  <el-tag size="small" type="danger" effect="plain" style="color: #b91c1c; border-color: #f87171; font-weight: 600;">DATA_RECOVERY：生产应急数据修复与故障恢复</el-tag>
+                </el-checkbox>
+              </el-checkbox-group>
+            </div>
+          </div>
         </el-form-item>
 
         <!-- 2. 生效业务资源组 -->
@@ -1416,14 +1456,18 @@ const currentTemplateFlowTypeText = computed(() => {
   return '全部工单类型通用'
 })
 
+const ALL_TICKET_TYPES = ['SQL_AUDIT', 'DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'PERMISSION', 'DATA_RECOVERY']
+
 const formatFlowTypeBadge = (flowType?: string) => {
   if (!flowType || flowType === 'ALL') return '全部工单类型通用 (ALL)'
   const map: Record<string, string> = {
+    SQL_AUDIT: 'SQL 变更审核 (全量)',
     DML_CHANGE: 'DML 数据变更',
     DDL_CHANGE: 'DDL 结构变更',
-    DATA_EXPORT: '数据导出与脱敏',
+    DATA_EXPORT: '敏感数据导出',
+    PERMISSION: '权限与账号申请',
     DATA_QUERY: '数据查询提权',
-    SQL_AUDIT: 'SQL 变更审核'
+    DATA_RECOVERY: '应急数据修复与恢复'
   }
   const parts = flowType.split(',').map(s => s.trim())
   const labels = parts.map(p => map[p] || p)
@@ -1576,14 +1620,14 @@ const currentDeployStatus = ref<{
 // 绑定生效范围弹窗状态
 const quickBindDialogVisible = ref(false)
 const quickBindLoading = ref(false)
-const quickBindTicketTypes = ref<string[]>(['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY'])
+const quickBindTicketTypes = ref<string[]>([...ALL_TICKET_TYPES])
 const quickBindResourceGroups = ref<string[]>([])
 const quickBindDbScopeMode = ref<'ALL' | 'CUSTOM'>('ALL')
 const quickBindSelectedDatabases = ref<string[]>([])
 
 const handleSelectAllQuickBindTicketTypes = () => {
-  quickBindTicketTypes.value = ['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY']
-  ElMessage.success('已全选所有 4 种工单变更类型')
+  quickBindTicketTypes.value = [...ALL_TICKET_TYPES]
+  ElMessage.success('已全选所有工单变更类型')
 }
 
 const handleQuickBindDbScopeChange = (mode: string) => {
@@ -2279,10 +2323,10 @@ const handleOpenQuickBindDialog = () => {
     if (found) {
       quickBindResourceGroups.value = parseResourceGroups(found.resourceGroups)
       if (!found.flowType || found.flowType === 'ALL') {
-        quickBindTicketTypes.value = ['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY']
+        quickBindTicketTypes.value = [...ALL_TICKET_TYPES]
       } else {
         const types = found.flowType.split(',').map((s: string) => s.trim()).filter(Boolean)
-        quickBindTicketTypes.value = types.length > 0 ? types : ['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY']
+        quickBindTicketTypes.value = types.length > 0 ? types : [...ALL_TICKET_TYPES]
       }
       if (found.targetDatabases && !found.targetDatabases.includes('ALL') && found.targetDatabases !== '[]') {
         try {
@@ -2308,7 +2352,7 @@ const handleOpenQuickBindDialog = () => {
   }
 
   // 默认使用当前选中的资源组与全量工单类型
-  quickBindTicketTypes.value = ['DML_CHANGE', 'DDL_CHANGE', 'DATA_EXPORT', 'DATA_QUERY']
+  quickBindTicketTypes.value = [...ALL_TICKET_TYPES]
   quickBindResourceGroups.value = ['车险承保资源组']
   quickBindDbScopeMode.value = 'ALL'
   quickBindSelectedDatabases.value = []
@@ -2338,7 +2382,7 @@ const handleExecuteQuickBind = async () => {
       existingTpl = templateList.value.find(t => t.id === tplId) as any
     }
 
-    const flowTypeVal = quickBindTicketTypes.value.length === 4 ? 'ALL' : quickBindTicketTypes.value.join(',')
+    const flowTypeVal = quickBindTicketTypes.value.length >= ALL_TICKET_TYPES.length ? 'ALL' : quickBindTicketTypes.value.join(',')
 
     const payload = {
       id: tplId,

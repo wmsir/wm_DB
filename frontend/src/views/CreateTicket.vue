@@ -173,7 +173,7 @@
                 </el-col>
 
                 <!-- 工单类型 (纯中文展示) -->
-                <el-col :xs="24" :sm="12">
+                <el-col :xs="24" :sm="form.type === 'SQL_AUDIT' ? 6 : 12">
                   <el-form-item label="工单类型" required>
                     <el-select v-model="form.type" placeholder="请选择工单类型" style="width: 100%;">
                       <el-option label="SQL 变更审核 (DML / DDL 变更)" value="SQL_AUDIT" />
@@ -182,7 +182,21 @@
                       <el-option label="应急数据修复与恢复" value="DATA_RECOVERY" />
                     </el-select>
                     <div class="field-hint">
-                      选择工单类型与数据库后，系统将自动计算并匹配对应的 BPMN 审批流程
+                      选择工单类型后系统将自动匹配审批流
+                    </div>
+                  </el-form-item>
+                </el-col>
+
+                <!-- SQL 变更细分类型 (仅在 SQL 变更审核时展示) -->
+                <el-col v-if="form.type === 'SQL_AUDIT'" :xs="24" :sm="6">
+                  <el-form-item label="SQL 细分类型">
+                    <el-select v-model="form.sqlSubtype" placeholder="请选择 SQL 细分类型" style="width: 100%;">
+                      <el-option label="🤖 自动智能检测" value="AUTO" />
+                      <el-option label="📝 纯 DML 数据变更" value="DML_CHANGE" />
+                      <el-option label="⚠️ 包含 DDL 结构变更" value="DDL_CHANGE" />
+                    </el-select>
+                    <div class="field-hint">
+                      {{ form.sqlSubtype === 'AUTO' ? '根据 SQL 内容自动判定 DML 或 DDL 流程' : (form.sqlSubtype === 'DML_CHANGE' ? '强制匹配 DML 数据变更专属流' : '强制匹配 DDL 结构变更专属流') }}
                     </div>
                   </el-form-item>
                 </el-col>
@@ -1069,6 +1083,7 @@ const form = ref({
   instanceId: '' as string | number,
   dbName: '',
   type: 'SQL_AUDIT',
+  sqlSubtype: 'AUTO' as 'AUTO' | 'DML_CHANGE' | 'DDL_CHANGE',
   reason: '',
   sqlText: '',
   file: null as File | null,
@@ -1659,11 +1674,28 @@ const fetchRoutingPreview = async () => {
   }
   routingLoading.value = true
   try {
+    let effectiveType = form.value.type
+    if (form.value.type === 'SQL_AUDIT') {
+      if (form.value.sqlSubtype === 'DML_CHANGE') {
+        effectiveType = 'DML_CHANGE'
+      } else if (form.value.sqlSubtype === 'DDL_CHANGE') {
+        effectiveType = 'DDL_CHANGE'
+      } else {
+        const sql = form.value.sqlText ? form.value.sqlText.toUpperCase() : ''
+        if (sql.includes('CREATE ') || sql.includes('ALTER ') || sql.includes('DROP ') || sql.includes('TRUNCATE ')) {
+          effectiveType = 'DDL_CHANGE'
+        } else {
+          effectiveType = 'SQL_AUDIT'
+        }
+      }
+    }
+
     const payload = {
       instanceId: form.value.instanceId,
       dbName: form.value.dbName,
       resourceGroup: form.value.resourceGroup,
-      ticketType: form.value.type,
+      ticketType: effectiveType,
+      sqlSnippet: form.value.sqlText,
       expectedRows: 1
     }
     const res: any = await request.post('/v1/workflow/template/preview-routing', payload)
@@ -1675,7 +1707,7 @@ const fetchRoutingPreview = async () => {
   }
 }
 
-watch(() => [form.value.instanceId, form.value.dbName, form.value.type, form.value.resourceGroup], () => {
+watch(() => [form.value.instanceId, form.value.dbName, form.value.type, form.value.sqlSubtype, form.value.resourceGroup], () => {
   if (form.value.instanceId) {
     fetchRoutingPreview()
   }
