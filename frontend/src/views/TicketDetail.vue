@@ -722,21 +722,41 @@
         <div class="approval-header">
           <div class="user-perm-info">
             <el-icon style="font-size: 18px; color: #E6A23C;"><Stamp /></el-icon>
-            <span class="perm-title">工单审批与执行决策面板</span>
-            <el-tag type="warning" effect="dark" size="small" style="margin-left: 8px;">
+            <span class="perm-title">{{ isFinalApprovalStep ? '工单终审与执行决策面板' : '工单阶段初审 / 复核面板' }}</span>
+            <el-tag :type="isFinalApprovalStep ? 'warning' : 'primary'" effect="dark" size="small" style="margin-left: 8px;">
               {{ currentOperatorDesc }}
             </el-tag>
           </div>
           <span class="perm-subtip">
-            💡 提示：审批通过时可灵活指定【立即执行】、【定时执行】或【转DBA工具手工执行】
+            {{ isFinalApprovalStep ? '💡 终审提示：审批通过时可灵活指定【立即执行】、【定时执行】或【转DBA工具手工执行】' : '💡 多级流转提示：中间阶段初审通过后将自动流转至下一级审批人，执行方式将在最后一步终审时统一指定' }}
           </span>
         </div>
       </template>
 
       <div class="approval-form-body">
+        <!-- 场景 A：中间人工审批阶段 (非最后一步) -> 提示并流转至下一阶段，隐藏执行方式选择 -->
+        <div v-if="!isFinalApprovalStep" class="intermediate-stage-banner">
+          <div class="stage-banner-header">
+            <div class="stage-icon-col">
+              <el-icon color="#2563eb" :size="22"><Operation /></el-icon>
+            </div>
+            <div class="stage-text-col">
+              <div class="stage-main-title">
+                当前审批节点：<b>{{ ticketDetail?.gatewayDecision?.targetNodeName || '初审/复核节点' }}</b>
+                <el-tag type="primary" effect="dark" size="small" style="margin-left: 8px;">
+                  阶段 {{ ticketDetail?.gatewayDecision?.currentStageNumber || 1 }} / {{ ticketDetail?.gatewayDecision?.totalManualStages || 3 }}
+                </el-tag>
+              </div>
+              <div class="stage-sub-desc">
+                📌 <b>多级审批流转说明</b>：当前处于多级审批流的中间初审/复核阶段。审批通过后将自动流转推进至下一节点【<b>{{ ticketDetail?.gatewayDecision?.nextStageName || '下一级审批人' }}</b>】进行复核；<b>最终执行方式（立即/定时/分批/转DBA）将在最后一步终审时由终审人员统一指定并下发</b>。
+              </div>
+            </div>
+          </div>
+        </div>
+
         <el-form label-position="top">
-          <!-- 执行模式现代化卡片选择 -->
-          <el-form-item label="审批通过后的执行方式：" required>
+          <!-- 场景 B：最后一步人工审批节点 (终审节点 / 后续为自动审批执行节点) -> 展示执行方式现代化卡片选择 -->
+          <el-form-item v-if="isFinalApprovalStep" label="审批通过后的执行方式：" required>
             <div class="exec-card-group-grid">
               <!-- 卡片 1: 立即流式执行 -->
               <div
@@ -812,50 +832,52 @@
             </div>
           </el-form-item>
 
-          <!-- 模式内联展开参数配置 -->
-          <div v-if="approvalExecutionMode === 'SCHEDULED'" class="inline-mode-config-box box-scheduled">
-            <div class="config-title-row">
-              <el-icon color="#e6a23c"><Clock /></el-icon>
-              <span>配置定时执行计划时间窗口：</span>
-            </div>
-            <div class="config-control-row">
-              <el-date-picker
-                v-model="approvalScheduledTime"
-                type="datetime"
-                placeholder="请选择预定执行时间（建议设为业务低峰期，如凌晨 02:00:00）"
-                format="YYYY-MM-DD HH:mm:ss"
-                value-format="YYYY-MM-DD HH:mm:ss"
-                style="width: 380px;"
-                size="default"
-              />
-              <span class="sub-hint">⏰ 到达预定时间后将由调度引擎自动执行并完成状态闭环</span>
-            </div>
-          </div>
-
-          <div v-else-if="approvalExecutionMode === 'CANARY_BATCH'" class="inline-mode-config-box box-batch">
-            <div class="config-title-row">
-              <el-icon color="#409eff"><DataLine /></el-icon>
-              <span>配置灰度分批执行调度参数：</span>
-            </div>
-            <div class="config-control-row">
-              <div class="control-item">
-                <span class="ctrl-label">单批处理行数 (Batch Size)：</span>
-                <el-input-number v-model="approvalBatchSize" :min="50" :max="5000" :step="100" size="default" style="width: 140px;" />
+          <!-- 模式内联展开参数配置 (仅最后一步终审时展开) -->
+          <template v-if="isFinalApprovalStep">
+            <div v-if="approvalExecutionMode === 'SCHEDULED'" class="inline-mode-config-box box-scheduled">
+              <div class="config-title-row">
+                <el-icon color="#e6a23c"><Clock /></el-icon>
+                <span>配置定时执行计划时间窗口：</span>
               </div>
-              <div class="control-item">
-                <span class="ctrl-label">批次间隔休眠时间 (ms)：</span>
-                <el-input-number v-model="approvalIntervalMs" :min="0" :max="3000" :step="50" size="default" style="width: 140px;" />
+              <div class="config-control-row">
+                <el-date-picker
+                  v-model="approvalScheduledTime"
+                  type="datetime"
+                  placeholder="请选择预定执行时间（建议设为业务低峰期，如凌晨 02:00:00）"
+                  format="YYYY-MM-DD HH:mm:ss"
+                  value-format="YYYY-MM-DD HH:mm:ss"
+                  style="width: 380px;"
+                  size="default"
+                />
+                <span class="sub-hint">⏰ 到达预定时间后将由调度引擎自动执行并完成状态闭环</span>
               </div>
-              <span class="sub-hint">🌊 分批平滑执行，有效防止长事务阻塞主库与从库延迟</span>
             </div>
-          </div>
 
-          <el-form-item label="审批意见 / 驳回说明" style="margin-top: 16px;">
+            <div v-else-if="approvalExecutionMode === 'CANARY_BATCH'" class="inline-mode-config-box box-batch">
+              <div class="config-title-row">
+                <el-icon color="#409eff"><DataLine /></el-icon>
+                <span>配置灰度分批执行调度参数：</span>
+              </div>
+              <div class="config-control-row">
+                <div class="control-item">
+                  <span class="ctrl-label">单批处理行数 (Batch Size)：</span>
+                  <el-input-number v-model="approvalBatchSize" :min="50" :max="5000" :step="100" size="default" style="width: 140px;" />
+                </div>
+                <div class="control-item">
+                  <span class="ctrl-label">批次间隔休眠时间 (ms)：</span>
+                  <el-input-number v-model="approvalIntervalMs" :min="0" :max="3000" :step="50" size="default" style="width: 140px;" />
+                </div>
+                <span class="sub-hint">🌊 分批平滑执行，有效防止长事务阻塞主库与从库延迟</span>
+              </div>
+            </div>
+          </template>
+
+          <el-form-item label="审批意见 / 批注说明" style="margin-top: 16px;">
             <el-input
               v-model="approvalComment"
               type="textarea"
               :rows="2"
-              placeholder="请输入审批意见（如：影响行数校验无误，同意上线发布）或驳回原因..."
+              :placeholder="isFinalApprovalStep ? '请输入终审意见（如：影响行数校验无误，同意上线发布）或驳回原因...' : '请输入初审意见（如：业务逻辑与变更范围核验通过，同意流转下一阶段）...'"
             />
           </el-form-item>
         </el-form>
@@ -879,7 +901,7 @@
             @click="handleApproveTicket"
             :disabled="!canApproveCurrentTicket"
           >
-            同意并通过审批 ({{ getExecModeBtnLabel(approvalExecutionMode) }})
+            {{ isFinalApprovalStep ? `同意并通过终审 (${getExecModeBtnLabel(approvalExecutionMode)})` : `同意并推进至【${ticketDetail?.gatewayDecision?.nextStageName || '下一阶段'}】` }}
           </el-button>
         </div>
       </div>
@@ -1573,6 +1595,16 @@ const canApproveCurrentTicket = computed(() => {
   return !!ticketDetail.value?.canApprove
 })
 
+const isFinalApprovalStep = computed(() => {
+  if (ticketDetail.value?.isFinalApprovalStep !== undefined) {
+    return !!ticketDetail.value.isFinalApprovalStep
+  }
+  if (ticketDetail.value?.gatewayDecision?.isFinalApprovalStep !== undefined) {
+    return !!ticketDetail.value.gatewayDecision.isFinalApprovalStep
+  }
+  return true
+})
+
 const currentUserName = computed(() => {
   return ticketDetail.value?.currentUserName || '当前用户'
 })
@@ -1592,34 +1624,43 @@ const getExecModeBtnLabel = (mode: string) => {
 }
 
 const handleApproveTicket = async () => {
-  if (approvalExecutionMode.value === 'SCHEDULED' && !approvalScheduledTime.value) {
+  if (isFinalApprovalStep.value && approvalExecutionMode.value === 'SCHEDULED' && !approvalScheduledTime.value) {
     ElMessage.warning('请选择计划执行时间')
     return
   }
 
   try {
-    let modeText = '【立即流式执行】'
-    if (approvalExecutionMode.value === 'SCHEDULED') {
-      modeText = `【定时计划执行：${approvalScheduledTime.value}】`
-    } else if (approvalExecutionMode.value === 'CANARY_BATCH') {
-      modeText = `【灰度分批执行：每批 ${approvalBatchSize.value} 行，间隔 ${approvalIntervalMs.value} ms】`
-    } else if (approvalExecutionMode.value === 'MANUAL_DBA') {
-      modeText = '【转由 DBA 工具线下执行并反馈结果】'
-    }
+    if (isFinalApprovalStep.value) {
+      let modeText = '【立即流式执行】'
+      if (approvalExecutionMode.value === 'SCHEDULED') {
+        modeText = `【定时计划执行：${approvalScheduledTime.value}】`
+      } else if (approvalExecutionMode.value === 'CANARY_BATCH') {
+        modeText = `【灰度分批执行：每批 ${approvalBatchSize.value} 行，间隔 ${approvalIntervalMs.value} ms】`
+      } else if (approvalExecutionMode.value === 'MANUAL_DBA') {
+        modeText = '【转由 DBA 工具线下执行并反馈结果】'
+      }
 
-    await ElMessageBox.confirm(`确认审批通过此工单？执行方式为：${modeText}`, '审批确认', {
-      confirmButtonText: '确认通过',
-      cancelButtonText: '取消',
-      type: 'success'
-    })
+      await ElMessageBox.confirm(`确认终审通过此工单？执行方式为：${modeText}`, '工单终审确认', {
+        confirmButtonText: '确认终审通过并下发',
+        cancelButtonText: '取消',
+        type: 'success'
+      })
+    } else {
+      const nextStage = ticketDetail.value?.gatewayDecision?.nextStageName || '下一级审批人'
+      await ElMessageBox.confirm(`确认初审通过此工单？审核通过后流程将流转推进至【${nextStage}】进行复核。`, '阶段初审确认', {
+        confirmButtonText: '确认推进',
+        cancelButtonText: '取消',
+        type: 'primary'
+      })
+    }
 
     approveLoading.value = true
     const id = route.params.id || '1'
     const res: any = await request.post(`/v1/ticket/${id}/approve`, {
-      executionMode: approvalExecutionMode.value,
-      scheduledTime: approvalScheduledTime.value,
-      batchSize: approvalBatchSize.value,
-      intervalMs: approvalIntervalMs.value,
+      executionMode: isFinalApprovalStep.value ? approvalExecutionMode.value : 'IMMEDIATE',
+      scheduledTime: isFinalApprovalStep.value ? approvalScheduledTime.value : null,
+      batchSize: isFinalApprovalStep.value ? approvalBatchSize.value : null,
+      intervalMs: isFinalApprovalStep.value ? approvalIntervalMs.value : null,
       comment: approvalComment.value
     })
 
@@ -3501,6 +3542,54 @@ onUnmounted(() => {
 }
 
 /* ==================== 现代化执行方式卡片单选网格 ==================== */
+.intermediate-stage-banner {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.06);
+}
+
+.stage-banner-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.stage-icon-col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.stage-text-col {
+  flex: 1;
+}
+
+.stage-main-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e3a8a;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.stage-sub-desc {
+  font-size: 12px;
+  color: #3b82f6;
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
 .exec-card-group-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

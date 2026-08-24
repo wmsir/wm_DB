@@ -628,6 +628,49 @@ public class TicketService {
         wfInfo.put("spelExpression", spel);
         result.put("workflowTemplateInfo", wfInfo);
 
+        List<TicketOperationLog> logs = ticketOperationLogMapper.selectList(
+                new QueryWrapper<TicketOperationLog>().eq("ticket_id", ticketId).orderByAsc("id")
+        );
+        int stageApprovedCount = 0;
+        if (logs != null) {
+            for (TicketOperationLog l : logs) {
+                if ("STAGE_APPROVE".equals(l.getOperationType())) {
+                    stageApprovedCount++;
+                }
+            }
+        }
+
+        String tplName = ticket.getWorkflowTemplateName() != null ? ticket.getWorkflowTemplateName() : "";
+        boolean is4Level = tplName.contains("四级");
+        boolean is3Level = tplName.contains("三级");
+
+        boolean isFinalApprovalStep = true;
+        int currentStageNumber = 1;
+        int totalManualStages = 1;
+        String nextStageName = "";
+
+        if (is4Level) {
+            totalManualStages = 3;
+            currentStageNumber = stageApprovedCount + 1;
+            if (stageApprovedCount == 0) {
+                isFinalApprovalStep = false;
+                nextStageName = "核心DBA安全复核";
+            } else if (stageApprovedCount == 1) {
+                isFinalApprovalStep = false;
+                nextStageName = "运维安全总监终审";
+            }
+        } else if (is3Level) {
+            totalManualStages = 3;
+            currentStageNumber = stageApprovedCount + 1;
+            if (stageApprovedCount == 0) {
+                isFinalApprovalStep = false;
+                nextStageName = "核心DBA技术复审";
+            } else if (stageApprovedCount == 1) {
+                isFinalApprovalStep = false;
+                nextStageName = "系统管理员终审";
+            }
+        }
+
         Map<String, Object> gwDecision = new HashMap<>();
         gwDecision.put("isHighRisk", isHighRisk);
         gwDecision.put("matchedRole", approverInfo.targetRole != null ? approverInfo.targetRole : (isHighRisk ? "DBA" : "DEV_LEAD"));
@@ -641,7 +684,13 @@ public class TicketService {
         gwDecision.put("targetApprover", approverInfo.eligibleApprovers.isEmpty() ? "全员" : String.join("、", approverInfo.eligibleApprovers));
         gwDecision.put("matchedRule", String.format("智能排他网关判定：预执行累计影响行数为 %d 行（判定阈值：%d 行，SpEL: %s） ➔ 路由至【%s】",
                 affectRows, threshold, spel, approverInfo.nodeName));
+        gwDecision.put("isFinalApprovalStep", isFinalApprovalStep);
+        gwDecision.put("stageApprovedCount", stageApprovedCount);
+        gwDecision.put("currentStageNumber", currentStageNumber);
+        gwDecision.put("totalManualStages", totalManualStages);
+        gwDecision.put("nextStageName", nextStageName);
         result.put("gatewayDecision", gwDecision);
+        result.put("isFinalApprovalStep", isFinalApprovalStep);
 
         List<TicketOperationLog> opLogs = getTicketLogs(ticketId);
         result.put("flowNodes", buildFlowNodes(ticket, detail, auditLogs, opLogs));
