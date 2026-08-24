@@ -306,12 +306,22 @@ public class SysRoleService {
     /**
      * 批量为指定角色添加用户成员
      */
-    public void addUsersToRole(String roleCode, List<Long> userIds) {
+    public void addUsersToRole(String roleCode, List<?> userIds) {
         if (userIds == null || userIds.isEmpty() || roleCode == null || roleCode.trim().isEmpty()) {
             return;
         }
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        for (Long uid : userIds) {
+        for (Object raw : userIds) {
+            Long uid = null;
+            if (raw instanceof Number num) {
+                uid = num.longValue();
+            } else if (raw != null) {
+                try {
+                    uid = Long.parseLong(raw.toString().trim());
+                } catch (Exception ignored) {}
+            }
+            if (uid == null) continue;
+
             com.wmdb.model.SysUser user = sysUserMapper.selectById(uid);
             if (user != null) {
                 List<String> roles = new ArrayList<>(userDisplayNameService.parseRoles(user.getRole()));
@@ -331,12 +341,22 @@ public class SysRoleService {
     /**
      * 批量从指定角色移除用户成员
      */
-    public void removeUsersFromRole(String roleCode, List<Long> userIds) {
+    public void removeUsersFromRole(String roleCode, List<?> userIds) {
         if (userIds == null || userIds.isEmpty() || roleCode == null || roleCode.trim().isEmpty()) {
             return;
         }
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        for (Long uid : userIds) {
+        for (Object raw : userIds) {
+            Long uid = null;
+            if (raw instanceof Number num) {
+                uid = num.longValue();
+            } else if (raw != null) {
+                try {
+                    uid = Long.parseLong(raw.toString().trim());
+                } catch (Exception ignored) {}
+            }
+            if (uid == null) continue;
+
             com.wmdb.model.SysUser user = sysUserMapper.selectById(uid);
             if (user != null) {
                 List<String> roles = new ArrayList<>(userDisplayNameService.parseRoles(user.getRole()));

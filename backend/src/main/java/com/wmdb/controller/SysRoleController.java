@@ -69,8 +69,8 @@ public class SysRoleController {
     @PostMapping("/{roleCode}/users/add")
     public Result<Void> addUsersToRole(
             @PathVariable("roleCode") String roleCode,
-            @RequestBody java.util.Map<String, java.util.List<Long>> body) {
-        java.util.List<Long> userIds = body != null ? body.get("userIds") : java.util.Collections.emptyList();
+            @RequestBody java.util.Map<String, Object> body) {
+        java.util.List<Long> userIds = extractUserIds(body);
         sysRoleService.addUsersToRole(roleCode, userIds);
         return Result.success(null);
     }
@@ -78,9 +78,29 @@ public class SysRoleController {
     @PostMapping("/{roleCode}/users/remove")
     public Result<Void> removeUsersFromRole(
             @PathVariable("roleCode") String roleCode,
-            @RequestBody java.util.Map<String, java.util.List<Long>> body) {
-        java.util.List<Long> userIds = body != null ? body.get("userIds") : java.util.Collections.emptyList();
+            @RequestBody java.util.Map<String, Object> body) {
+        java.util.List<Long> userIds = extractUserIds(body);
         sysRoleService.removeUsersFromRole(roleCode, userIds);
         return Result.success(null);
+    }
+
+    private java.util.List<Long> extractUserIds(java.util.Map<String, Object> body) {
+        java.util.List<Long> result = new java.util.ArrayList<>();
+        if (body == null || !body.containsKey("userIds")) {
+            return result;
+        }
+        Object raw = body.get("userIds");
+        if (raw instanceof java.util.Collection<?> col) {
+            for (Object item : col) {
+                if (item instanceof Number num) {
+                    result.add(num.longValue());
+                } else if (item != null) {
+                    try {
+                        result.add(Long.parseLong(item.toString().trim()));
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+        return result;
     }
 }
