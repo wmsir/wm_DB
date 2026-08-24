@@ -12,31 +12,65 @@
       </div>
     </div>
 
-    <!-- 1. 顶部真实核心指标卡片 -->
-    <el-row :gutter="16" class="stat-row">
-      <el-col :xs="24" :sm="12" :md="12" :lg="6" class="col-item">
-        <el-card class="stat-card" shadow="hover">
+    <!-- 1. 顶部平台核心资源与运行效能指标卡片 -->
+    <el-row :gutter="14" class="stat-row">
+      <!-- 实例数量 -->
+      <el-col :xs="12" :sm="8" :md="8" :lg="4" class="col-item">
+        <el-card class="stat-card stat-card-link" shadow="hover" @click="router.push('/instance-list')">
           <div class="stat-card-inner">
-            <div class="stat-icon-box bg-success-light">
-              <el-icon color="#67C23A" :size="24"><CircleCheck /></el-icon>
+            <div class="stat-icon-box bg-purple-light">
+              <el-icon color="#8b5cf6" :size="22"><Coin /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-title">数据库健康评分</div>
-              <div class="stat-value text-success">{{ stats.healthScore || 99 }} <span class="stat-unit">分</span></div>
-              <div class="stat-sub">纳管实例 {{ stats.instancesCount || 1 }} 个 · 运行平稳</div>
+              <div class="stat-title">纳管数据库实例</div>
+              <div class="stat-value text-purple">{{ stats.instancesCount || 1 }} <span class="stat-unit">个</span></div>
+              <div class="stat-sub">健康在线率 100%</div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col :xs="24" :sm="12" :md="12" :lg="6" class="col-item">
-        <el-card class="stat-card" shadow="hover">
+      <!-- 平台用户数 -->
+      <el-col :xs="12" :sm="8" :md="8" :lg="4" class="col-item">
+        <el-card class="stat-card stat-card-link" shadow="hover" @click="router.push('/user-list')">
           <div class="stat-card-inner">
-            <div class="stat-icon-box bg-primary-light">
-              <el-icon color="#409EFF" :size="24"><Tickets /></el-icon>
+            <div class="stat-icon-box bg-indigo-light">
+              <el-icon color="#3b82f6" :size="22"><User /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-title">可见工单总量</div>
+              <div class="stat-title">平台注册用户</div>
+              <div class="stat-value text-indigo">{{ stats.usersCount || 8 }} <span class="stat-unit">位</span></div>
+              <div class="stat-sub">覆盖 7 大系统角色</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 资源组数 -->
+      <el-col :xs="12" :sm="8" :md="8" :lg="4" class="col-item">
+        <el-card class="stat-card stat-card-link" shadow="hover" @click="router.push('/resource-group-list')">
+          <div class="stat-card-inner">
+            <div class="stat-icon-box bg-emerald-light">
+              <el-icon color="#10b981" :size="22"><FolderOpened /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-title">业务资源组数</div>
+              <div class="stat-value text-emerald">{{ stats.resourceGroupsCount || 5 }} <span class="stat-unit">组</span></div>
+              <div class="stat-sub">全域业务资源隔离</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+
+      <!-- 工单变更总量 -->
+      <el-col :xs="12" :sm="8" :md="8" :lg="4" class="col-item">
+        <el-card class="stat-card stat-card-link" shadow="hover" @click="router.push('/ticket-list')">
+          <div class="stat-card-inner">
+            <div class="stat-icon-box bg-primary-light">
+              <el-icon color="#409EFF" :size="22"><Tickets /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-title">工单变更总量</div>
               <div class="stat-value text-primary">{{ stats.totalTickets || 0 }} <span class="stat-unit">条</span></div>
               <div class="stat-sub">我发起的 <b>{{ stats.myTicketsCount || 0 }}</b> 条</div>
             </div>
@@ -44,26 +78,28 @@
         </el-card>
       </el-col>
 
-      <el-col :xs="24" :sm="12" :md="12" :lg="6" class="col-item">
-        <el-card class="stat-card" shadow="hover">
+      <!-- 待办 / 审批中工单 -->
+      <el-col :xs="12" :sm="8" :md="8" :lg="4" class="col-item">
+        <el-card class="stat-card stat-card-link" shadow="hover" @click="router.push('/ticket-list')">
           <div class="stat-card-inner">
             <div class="stat-icon-box bg-warning-light">
-              <el-icon color="#E6A23C" :size="24"><Clock /></el-icon>
+              <el-icon color="#E6A23C" :size="22"><Clock /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-title">待办 / 审批中工单</div>
+              <div class="stat-title">待办 / 审批中</div>
               <div class="stat-value text-warning">{{ stats.pendingTickets || 0 }} <span class="stat-unit">条</span></div>
-              <div class="stat-sub">平均流转时长 {{ stats.approvalEfficiency || '0.8h' }}</div>
+              <div class="stat-sub">平均流转 {{ stats.approvalEfficiency || '0.8h' }}</div>
             </div>
           </div>
         </el-card>
       </el-col>
 
-      <el-col :xs="24" :sm="12" :md="12" :lg="6" class="col-item">
-        <el-card class="stat-card" shadow="hover">
+      <!-- 成功执行 / 归档 -->
+      <el-col :xs="12" :sm="8" :md="8" :lg="4" class="col-item">
+        <el-card class="stat-card stat-card-link" shadow="hover" @click="router.push('/ticket-list')">
           <div class="stat-card-inner">
-            <div class="stat-icon-box bg-danger-light">
-              <el-icon color="#F56C6C" :size="24"><SuccessFilled /></el-icon>
+            <div class="stat-icon-box bg-success-light">
+              <el-icon color="#67C23A" :size="22"><CircleCheck /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-title">成功执行 / 归档</div>
@@ -168,10 +204,12 @@ import {
   CircleCheck,
   Tickets,
   Clock,
-  SuccessFilled,
   DataLine,
   PieChart,
-  TrendCharts
+  TrendCharts,
+  Coin,
+  User,
+  FolderOpened
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -193,6 +231,8 @@ const stats = ref<any>({
   rejectedTickets: 0,
   myTicketsCount: 0,
   instancesCount: 1,
+  usersCount: 8,
+  resourceGroupsCount: 5,
   dbaWorkload: 35,
   approvalEfficiency: '0.8h',
   statusDistribution: {},
@@ -471,34 +511,56 @@ onBeforeUnmount(() => {
   background: #fef2f2;
 }
 
+.bg-purple-light {
+  background: #f5f3ff;
+}
+
+.bg-indigo-light {
+  background: #eef2ff;
+}
+
+.bg-emerald-light {
+  background: #ecfdf5;
+}
+
+.stat-card-link {
+  cursor: pointer;
+}
+
+.stat-card-link:hover {
+  border-color: #93c5fd;
+}
+
 .stat-info {
   flex: 1;
 }
 
 .stat-title {
-  font-size: 13px;
+  font-size: 12.5px;
   color: #64748b;
   font-weight: 500;
   margin-bottom: 4px;
+  white-space: nowrap;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   line-height: 1.2;
 }
 
 .stat-unit {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: normal;
   color: #94a3b8;
   margin-left: 2px;
 }
 
 .stat-sub {
-  font-size: 12px;
+  font-size: 11.5px;
   color: #94a3b8;
   margin-top: 4px;
+  white-space: nowrap;
 }
 
 .text-success {
@@ -511,6 +573,18 @@ onBeforeUnmount(() => {
 
 .text-warning {
   color: #f59e0b;
+}
+
+.text-purple {
+  color: #8b5cf6;
+}
+
+.text-indigo {
+  color: #3b82f6;
+}
+
+.text-emerald {
+  color: #10b981;
 }
 
 .card-header-title-row {

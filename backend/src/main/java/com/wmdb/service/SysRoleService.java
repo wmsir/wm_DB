@@ -24,6 +24,8 @@ import java.util.List;
 public class SysRoleService {
 
     private final SysRoleMapper sysRoleMapper;
+    private final com.wmdb.mapper.SysUserMapper sysUserMapper;
+    private final UserDisplayNameService userDisplayNameService;
     private final JdbcTemplate jdbcTemplate;
 
     public static final String PERM_ALL = "[\"*\"]";
@@ -88,6 +90,7 @@ public class SysRoleService {
             initDefaultRoles();
             list = sysRoleMapper.selectList(new QueryWrapper<>());
         }
+        enrichRoleMembers(list);
         return list;
     }
 
@@ -103,7 +106,37 @@ public class SysRoleService {
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<SysRole> mpPage =
                 new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page > 0 ? page : 1, size > 0 ? size : 10);
         sysRoleMapper.selectPage(mpPage, qw);
+        enrichRoleMembers(mpPage.getRecords());
         return com.wmdb.model.PageResultDTO.from(mpPage);
+    }
+
+    private void enrichRoleMembers(List<SysRole> roles) {
+        if (roles == null || roles.isEmpty()) return;
+        List<com.wmdb.model.SysUser> users = sysUserMapper.selectList(new QueryWrapper<com.wmdb.model.SysUser>().eq("status", "1"));
+        for (SysRole role : roles) {
+            String code = role.getRoleCode();
+            List<String> memberNames = new ArrayList<>();
+            if (users != null) {
+                for (com.wmdb.model.SysUser u : users) {
+                    List<String> uRoles = userDisplayNameService.parseRoles(u.getRole());
+                    boolean matched = uRoles.contains(code);
+                    if (!matched && "ADMIN".equalsIgnoreCase(code)) {
+                        matched = "admin".equalsIgnoreCase(u.getUsername()) || "testadmin1".equalsIgnoreCase(u.getUsername());
+                    }
+                    if (matched) {
+                        String displayName = userDisplayNameService.getDisplayName(u);
+                        String label = (u.getUsername() != null && !u.getUsername().equalsIgnoreCase(displayName))
+                                ? displayName + " (" + u.getUsername() + ")"
+                                : displayName;
+                        if (!memberNames.contains(label)) {
+                            memberNames.add(label);
+                        }
+                    }
+                }
+            }
+            role.setMemberNames(memberNames);
+            role.setMemberCount(memberNames.size());
+        }
     }
 
     public void saveRole(SysRole role) {

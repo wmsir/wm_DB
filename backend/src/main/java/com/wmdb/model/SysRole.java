@@ -45,4 +45,16 @@ public class SysRole {
      * 允许访问的系统页签与功能权限列表（JSON 字符串格式，存储路由路径列表如 ["/dashboard", "/ticket-list", ...]）
      */
     private String permissions;
+
+    /**
+     * 当前角色包含的用户成员显示名称列表 (如 ["系统超级管理员 (admin)", "业务开发组长 (testadmin2)"])
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private java.util.List<String> memberNames;
+
+    /**
+     * 当前角色成员总数
+     */
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private Integer memberCount;
 }

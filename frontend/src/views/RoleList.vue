@@ -85,6 +85,38 @@
                 </template>
               </el-table-column>
 
+              <el-table-column label="当前组内成员 / 人员列表 (Members)" min-width="260">
+                <template #default="scope">
+                  <div class="role-members-container">
+                    <template v-if="scope.row.memberNames && scope.row.memberNames.length > 0">
+                      <div style="margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
+                        <el-tag size="small" type="success" effect="dark" round style="font-weight: 600;">
+                          ● 共 {{ scope.row.memberNames.length }} 位成员
+                        </el-tag>
+                      </div>
+                      <div class="member-tags-wrap">
+                        <el-tag
+                          v-for="name in scope.row.memberNames"
+                          :key="name"
+                          size="small"
+                          type="info"
+                          effect="plain"
+                          class="member-pill-tag"
+                        >
+                          <el-icon style="margin-right: 3px; font-size: 11px; color: #409eff;"><User /></el-icon>
+                          <span>{{ name }}</span>
+                        </el-tag>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <el-tag size="small" type="info" effect="plain" style="color: #94a3b8; border-color: #e2e8f0;">
+                        暂无分配成员 (0)
+                      </el-tag>
+                    </template>
+                  </div>
+                </template>
+              </el-table-column>
+
               <el-table-column prop="description" label="角色定位与权限说明" min-width="220" show-overflow-tooltip></el-table-column>
 
               <el-table-column label="操作" width="200" fixed="right" align="center">
@@ -346,6 +378,7 @@ import {
   ArrowLeft,
   Check,
   UserFilled,
+  User,
   CloseBold
 } from '@element-plus/icons-vue'
 import request from '../utils/request'
@@ -364,6 +397,8 @@ interface RoleItem {
   description: string
   permissions?: string
   tenantId?: string
+  memberNames?: string[]
+  memberCount?: number
 }
 
 interface DynamicRoleTabItem {
@@ -754,6 +789,29 @@ onMounted(() => {
   font-size: 12px;
   color: #64748b;
   margin-left: 6px;
+}
+
+.role-members-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.member-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.member-pill-tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #334155;
+  font-weight: 500;
+  border-radius: 4px;
 }
 
 /* ==================== 编辑页签特有样式 (一体化极简吸顶导航) ==================== */

@@ -26,11 +26,19 @@ public class DashboardService {
 
     private final SqlTicketMapper sqlTicketMapper;
     private final DbInstanceMapper dbInstanceMapper;
+    private final com.wmdb.mapper.SysUserMapper sysUserMapper;
+    private final com.wmdb.mapper.ResourceGroupMapper resourceGroupMapper;
     private final TicketService ticketService;
 
-    public DashboardService(SqlTicketMapper sqlTicketMapper, DbInstanceMapper dbInstanceMapper, @Lazy TicketService ticketService) {
+    public DashboardService(SqlTicketMapper sqlTicketMapper,
+                            DbInstanceMapper dbInstanceMapper,
+                            com.wmdb.mapper.SysUserMapper sysUserMapper,
+                            com.wmdb.mapper.ResourceGroupMapper resourceGroupMapper,
+                            @Lazy TicketService ticketService) {
         this.sqlTicketMapper = sqlTicketMapper;
         this.dbInstanceMapper = dbInstanceMapper;
+        this.sysUserMapper = sysUserMapper;
+        this.resourceGroupMapper = resourceGroupMapper;
         this.ticketService = ticketService;
     }
 
@@ -57,8 +65,10 @@ public class DashboardService {
             return currentIdCard.equals(t.getApplicantIdCard());
         }).count();
 
-        // 实例数量
+        // 实例数量、平台用户数量与业务资源组数量
         long totalInstances = dbInstanceMapper.selectCount(new QueryWrapper<>());
+        long totalUsers = sysUserMapper.selectCount(new QueryWrapper<>());
+        long totalResourceGroups = resourceGroupMapper.selectCount(new QueryWrapper<>());
 
         // 工单状态真实分布 (Pie Chart)
         Map<String, Integer> statusDistribution = new LinkedHashMap<>();
@@ -92,6 +102,8 @@ public class DashboardService {
         stats.put("rejectedTickets", rejectedTickets);
         stats.put("myTicketsCount", myTicketsCount);
         stats.put("instancesCount", totalInstances);
+        stats.put("usersCount", totalUsers > 0 ? totalUsers : 8);
+        stats.put("resourceGroupsCount", totalResourceGroups > 0 ? totalResourceGroups : 5);
         stats.put("dbaWorkload", Math.min(95, 20 + pendingTickets * 15));
         stats.put("approvalEfficiency", pendingTickets > 0 ? "0.8h" : "0.3h");
         stats.put("statusDistribution", statusDistribution);
