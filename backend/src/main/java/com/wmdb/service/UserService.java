@@ -57,6 +57,10 @@ public class UserService {
                         stmt.execute("ALTER TABLE sys_user MODIFY COLUMN resource_group VARCHAR(500);");
                     } catch (Exception ignored) {}
                 }
+                try {
+                    stmt.execute("ALTER TABLE sys_user MODIFY COLUMN role VARCHAR(1000);");
+                    log.info("Modified role column to VARCHAR(1000) on sys_user.");
+                } catch (Exception ignored) {}
                 if (!existingCols.contains("email")) {
                     stmt.execute("ALTER TABLE sys_user ADD COLUMN email VARCHAR(100);");
                     log.info("Added email column to sys_user.");

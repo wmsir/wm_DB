@@ -53,6 +53,12 @@ public class SysRoleService {
                 // Column already exists
             }
 
+            // 确保 sys_user 的 role 字段为 VARCHAR(1000) 支持多角色存储
+            try {
+                jdbcTemplate.execute("ALTER TABLE sys_user MODIFY COLUMN role VARCHAR(1000)");
+                log.info("Modified role column to VARCHAR(1000) on sys_user successfully.");
+            } catch (Exception ignored) {}
+
             insertOrUpdateRole("ADMIN", "超级管理员", "拥有平台最高特权，具备全量功能页签、系统配置、租户管理与全权审批", PERM_ALL);
             insertOrUpdateRole("DBA", "核心数据库管理员", "负责数据库实例纳管、会话与账号管理、高危工单终审与 BPMN 流程编排", PERM_DBA);
             insertOrUpdateRole("DEV_LEAD", "业务开发组长", "负责业务工单初审、DML 审核、资源组分配与团队日常变更管控", PERM_DEV_LEAD);
@@ -303,6 +309,12 @@ public class SysRoleService {
         return com.wmdb.model.PageResultDTO.of(dtos, (long) total, (long) pageIndex, (long) pageSize);
     }
 
+    private void ensureRoleColumnSize() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE sys_user MODIFY COLUMN role VARCHAR(1000)");
+        } catch (Exception ignored) {}
+    }
+
     /**
      * 批量为指定角色添加用户成员
      */
@@ -310,6 +322,7 @@ public class SysRoleService {
         if (userIds == null || userIds.isEmpty() || roleCode == null || roleCode.trim().isEmpty()) {
             return;
         }
+        ensureRoleColumnSize();
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         for (Object raw : userIds) {
             Long uid = null;
@@ -332,7 +345,12 @@ public class SysRoleService {
                     } catch (Exception e) {
                         user.setRole(String.join(",", roles));
                     }
-                    sysUserMapper.updateById(user);
+                    try {
+                        sysUserMapper.updateById(user);
+                    } catch (Exception e) {
+                        ensureRoleColumnSize();
+                        sysUserMapper.updateById(user);
+                    }
                 }
             }
         }
@@ -345,6 +363,7 @@ public class SysRoleService {
         if (userIds == null || userIds.isEmpty() || roleCode == null || roleCode.trim().isEmpty()) {
             return;
         }
+        ensureRoleColumnSize();
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         for (Object raw : userIds) {
             Long uid = null;
@@ -369,7 +388,12 @@ public class SysRoleService {
                 } catch (Exception e) {
                     user.setRole(String.join(",", roles));
                 }
-                sysUserMapper.updateById(user);
+                try {
+                    sysUserMapper.updateById(user);
+                } catch (Exception e) {
+                    ensureRoleColumnSize();
+                    sysUserMapper.updateById(user);
+                }
             }
         }
     }
