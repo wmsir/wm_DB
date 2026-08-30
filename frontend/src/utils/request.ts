@@ -69,6 +69,10 @@ request.interceptors.response.use(
       message = '网络请求超时（>30s），请检查后端服务运行状态或目标数据库连通性'
     } else if (error.response) {
       const status = error.response.status
+      if (error.response.data && error.response.data.message) {
+        message = error.response.data.message
+      }
+
       if (status === 401) {
         message = '登录身份已失效或未登录，请重新登录'
         const userStore = useUserStore()
@@ -85,6 +89,8 @@ request.interceptors.response.use(
         }
       } else if (status === 500) {
         message = error.response.data?.message || '系统内部异常'
+      } else if (status === 400) {
+        message = error.response.data?.message || '请求参数有误或操作被拦截'
       }
     }
 

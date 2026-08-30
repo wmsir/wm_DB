@@ -1,7 +1,7 @@
 /**
  * 系统功能页签与权限定义清单
  *
- * 规范定义系统中的 6 大核心模块与 17 个子页签的路由、名称、图标与说明。
+ * 规范定义系统中的 6 大核心模块与 18 个子页签的路由、名称、图标与说明。
  */
 
 export interface PermissionNode {
@@ -15,7 +15,7 @@ export interface PermissionNode {
 export const SYSTEM_PERMISSION_TREE: PermissionNode[] = [
   {
     id: '/dashboard',
-    name: '仪表盘 (Dashboard)',
+    name: '平台总览 (Dashboard)',
     icon: 'Odometer',
     description: '系统整体运行概览、执行统计、待办审批与拦截监控大盘'
   },
@@ -34,46 +34,48 @@ export const SYSTEM_PERMISSION_TREE: PermissionNode[] = [
     id: '/data',
     name: '数据操作与安全 (Data & Security)',
     icon: 'Search',
-    description: '线上数据查询、脱敏规则配置与数据导出',
+    description: '线上数据查询、脱敏规则配置与 SQL 审计合规大盘',
     children: [
       { id: '/data-query', name: '数据查询控制台', description: '在线 SQL 安全查询与大结果集分页浏览' },
-      { id: '/data-masking', name: '动态脱敏配置', description: '手机号、身份证、银行卡等脱敏规则策略配置' }
+      { id: '/data-masking', name: '动态脱敏配置', description: '手机号、身份证、银行卡等脱敏规则策略配置' },
+      { id: '/audit-dashboard', name: 'SQL 审计大盘', description: '全站 SQL 操作审计日志、拦截监控与合规看板' }
     ]
   },
   {
     id: '/instances',
-    name: '实例管理 (Instance Management)',
+    name: '实例与资源管理 (Instances & Resources)',
     icon: 'Coin',
-    description: '数据库实例纳管、参数配置、会话监控与核心管控',
+    description: '数据库实例纳管、业务资源组划分、会话监控与核心管控',
     children: [
       { id: '/instance-list', name: '实例列表', description: '数据库实例注册、连通性探测与环境分配' },
-      { id: '/instance-config', name: '参数配置', description: '实例执行安全参数、工单定制扩展字段与必填约束配置' },
-      { id: '/instance-sessions', name: '会话管理', description: '活跃连接监控、慢查询排查与会话强杀' },
-      { id: '/instance-databases', name: '数据库管理', description: 'Schema 数据库清单与字符集管理' },
-      { id: '/instance-accounts', name: '账号管理', description: '数据库原生用户账号与特权授权' },
-      { id: '/instance-params', name: '全局参数查看', description: '数据库全局运行变量 (SHOW VARIABLES) 与平台安全策略' }
+      { id: '/resource-group-list', name: '业务资源组', description: '业务线与实例绑定划分、多资源组统一管理' },
+      { id: '/instance-databases', name: '数据库管理', description: 'Schema 数据库清单与字符集空间管理' },
+      { id: '/instance-accounts', name: '账号权限管理', description: '数据库原生用户账号与特权授权管理' },
+      { id: '/instance-sessions', name: '会话监控与强杀', description: '活跃连接监控、慢查询排查与会话强杀' },
+      { id: '/instance-params', name: '全局参数查看', description: '数据库全局运行变量 (SHOW VARIABLES) 与平台安全策略' },
+      { id: '/instance-config', name: '安全参数策略', description: '实例执行安全参数、工单定制扩展字段与必填约束配置' }
     ]
   },
   {
     id: '/perms',
-    name: '权限与组织 (Permissions & Org)',
+    name: '用户与权限 (Users & Permissions)',
     icon: 'UserFilled',
-    description: '业务资源组划分、人员组织与系统角色授权',
+    description: '人员组织架构分配与系统角色功能权限矩阵配置',
     children: [
-      { id: '/resource-group-list', name: '业务资源组', description: '业务线与实例绑定划分、多资源组归属管理' },
       { id: '/user-list', name: '用户管理', description: '系统人员账号、姓名标识、组织分配与状态维护' },
-      { id: '/role-list', name: '角色权限', description: '系统角色定义与页签功能权限矩阵配置' }
+      { id: '/role-list', name: '角色与权限', description: '系统角色定义与页签功能权限矩阵配置' }
     ]
   },
   {
     id: '/system',
-    name: '系统与流程 (System & Workflow)',
+    name: '系统与配置 (System & Configuration)',
     icon: 'Operation',
-    description: '工作流引擎 BPMN 可视化设计、授权证书与系统主题',
+    description: '工作流引擎 BPMN 可视化设计、AI 模型接入、授权证书与系统主题',
     children: [
       { id: '/workflow-designer', name: '流程设计与模板', description: 'BPMN 2.0 拓扑编排、排他网关条件路由与模板绑定' },
+      { id: '/ai-config', name: 'AI 模型配置', description: '主流大模型提供商（DeepSeek、通义千问、OpenAI、智谱、文心、Kimi、Ollama）与自定义大模型接入及连通自检' },
       { id: '/license', name: '授权证书', description: '商业版证书鉴权、授权节点数与到期状态' },
-      { id: '/settings', name: '自定义主题', description: '系统外观风格、主色调与界面个性化定制' }
+      { id: '/settings', name: '自定义主题与水印', description: '系统外观风格、主色调与界面个性化防泄密水印定制' }
     ]
   }
 ]
@@ -96,6 +98,63 @@ export const getAllTabKeys = (): string[] => {
   return keys
 }
 
+export interface PermissionSummaryResult {
+  isAll: boolean
+  totalCount: number
+  modules: { name: string; count: number; total: number }[]
+}
+
+/**
+ * 解析角色权限 JSON 字符串并统计模块页签归属与全量标识
+ */
+export const getPermissionSummary = (permsStr: string): PermissionSummaryResult => {
+  if (!permsStr || permsStr === '[]' || permsStr === '""') {
+    return { isAll: false, totalCount: 0, modules: [] }
+  }
+  try {
+    const parsed = typeof permsStr === 'string' ? JSON.parse(permsStr) : permsStr
+    if (Array.isArray(parsed)) {
+      if (parsed.includes('*')) {
+        return { isAll: true, totalCount: getAllTabKeys().length, modules: [] }
+      }
+      const permSet = new Set(parsed)
+      const modules: { name: string; count: number; total: number }[] = []
+      let totalCount = 0
+
+      SYSTEM_PERMISSION_TREE.forEach(moduleNode => {
+        if (moduleNode.children && moduleNode.children.length > 0) {
+          const childKeys = moduleNode.children.map(c => c.id)
+          const matched = childKeys.filter(k => permSet.has(k))
+          if (matched.length > 0) {
+            modules.push({
+              name: moduleNode.name.split(' ')[0],
+              count: matched.length,
+              total: childKeys.length
+            })
+            totalCount += matched.length
+          }
+        } else {
+          if (permSet.has(moduleNode.id)) {
+            modules.push({
+              name: moduleNode.name.split(' ')[0],
+              count: 1,
+              total: 1
+            })
+            totalCount += 1
+          }
+        }
+      })
+
+      return { isAll: false, totalCount, modules }
+    }
+  } catch (e) {
+    if (permsStr.includes('*')) {
+      return { isAll: true, totalCount: getAllTabKeys().length, modules: [] }
+    }
+  }
+  return { isAll: false, totalCount: 0, modules: [] }
+}
+
 /**
  * 预置角色标准页签权限包定义
  */
@@ -103,13 +162,13 @@ export const PRESET_PERMISSION_PACKAGES: Record<string, { name: string; icon: st
   ADMIN: {
     name: '超级管理员全权包',
     icon: '👑',
-    desc: '拥有平台全部 17 个功能页签与特权管理权限',
+    desc: '拥有平台全部 18 个功能页签与特权管理权限',
     paths: ['*']
   },
   DBA: {
     name: '核心 DBA 运维管理包',
     icon: '💾',
-    desc: '涵盖工单中心、数据查询、全量实例管理、业务资源组与 BPMN 流程设计',
+    desc: '涵盖工单中心、数据查询、全量实例管理、业务资源组、BPMN 流程设计与 AI 模型配置',
     paths: [
       '/dashboard',
       '/ticket-list',
@@ -117,13 +176,16 @@ export const PRESET_PERMISSION_PACKAGES: Record<string, { name: string; icon: st
       '/ai-sql-review',
       '/data-query',
       '/data-masking',
+      '/audit-dashboard',
       '/instance-list',
-      '/instance-sessions',
+      '/resource-group-list',
       '/instance-databases',
       '/instance-accounts',
+      '/instance-sessions',
       '/instance-params',
-      '/resource-group-list',
-      '/workflow-designer'
+      '/instance-config',
+      '/workflow-designer',
+      '/ai-config'
     ]
   },
   DEV_LEAD: {
@@ -146,7 +208,6 @@ export const PRESET_PERMISSION_PACKAGES: Record<string, { name: string; icon: st
     icon: '💻',
     desc: '拥有个人工单提交、预执行校验、AI 诊断与数据查询控制台',
     paths: [
-      '/dashboard',
       '/ticket-list',
       '/ticket-create',
       '/ai-sql-review',
@@ -154,61 +215,26 @@ export const PRESET_PERMISSION_PACKAGES: Record<string, { name: string; icon: st
     ]
   },
   AUDITOR: {
-    name: '安全审计与合规包',
+    name: '安全与合规审计员包',
     icon: '🔍',
-    desc: '专精于安全大盘监控、工单审核流追踪、动态脱敏配置与证书',
+    desc: '涵盖 SQL 变更审计、敏感数据脱敏查看、平台审计日志与工单合规核验',
     paths: [
       '/dashboard',
       '/ticket-list',
-      '/ai-sql-review',
-      '/data-masking',
-      '/license',
-      '/settings'
+      '/audit-dashboard',
+      '/data-masking'
     ]
-  }
-}
-
-/**
- * 根据权限路径列表解析为直观的模块统计摘要
- */
-export const getPermissionSummary = (permissions: string[] | string): { isAll: boolean; totalCount: number; modules: { name: string; count: number; total: number }[] } => {
-  let list: string[] = []
-  if (typeof permissions === 'string') {
-    try {
-      list = JSON.parse(permissions)
-    } catch {
-      list = [permissions]
-    }
-  } else if (Array.isArray(permissions)) {
-    list = permissions
-  }
-
-  const allTabs = getAllTabKeys()
-  if (list.includes('*')) {
-    return {
-      isAll: true,
-      totalCount: allTabs.length,
-      modules: SYSTEM_PERMISSION_TREE.map(m => ({
-        name: m.name.split(' (')[0],
-        count: m.children ? m.children.length : 1,
-        total: m.children ? m.children.length : 1
-      }))
-    }
-  }
-
-  const modules = SYSTEM_PERMISSION_TREE.map(m => {
-    const childKeys = m.children ? m.children.map(c => c.id) : [m.id]
-    const matchedCount = childKeys.filter(k => list.includes(k)).length
-    return {
-      name: m.name.split(' (')[0],
-      count: matchedCount,
-      total: childKeys.length
-    }
-  }).filter(m => m.count > 0)
-
-  return {
-    isAll: list.length >= allTabs.length,
-    totalCount: list.filter(k => allTabs.includes(k)).length,
-    modules
+  },
+  OPS: {
+    name: 'SRE / 系统运维保障包',
+    icon: '⚡',
+    desc: '涵盖实例列表、会话排查、参数查看与系统监控',
+    paths: [
+      '/dashboard',
+      '/instance-list',
+      '/resource-group-list',
+      '/instance-sessions',
+      '/instance-params'
+    ]
   }
 }

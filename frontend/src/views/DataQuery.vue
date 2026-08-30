@@ -58,7 +58,7 @@
           <span class="item-label">执行数据库：</span>
           <el-select
             v-model="selectedDbName"
-            placeholder="选择具体数据库 (Schema)"
+            placeholder="选择具体目标数据库"
             style="width: 200px;"
             @change="handleDbChange"
             :loading="databasesLoading"
@@ -800,7 +800,7 @@ const handleExecuteQuery = async () => {
     return
   }
   if (!selectedDbName.value) {
-    ElMessage.warning('请选择目标具体数据库 (Schema)')
+    ElMessage.warning('请选择目标数据库')
     return
   }
   if (!currentTab.value || !currentTab.value.sql || currentTab.value.sql.trim().length === 0) {
@@ -846,7 +846,7 @@ const handleExecuteExplain = async () => {
     return
   }
   if (!selectedDbName.value) {
-    ElMessage.warning('请选择目标具体数据库 (Schema)')
+    ElMessage.warning('请选择目标数据库')
     return
   }
   if (!currentTab.value || !currentTab.value.sql || currentTab.value.sql.trim().length === 0) {

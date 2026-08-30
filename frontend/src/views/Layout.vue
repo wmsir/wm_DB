@@ -1,148 +1,202 @@
 <template>
-  <el-container class="layout-container">
-    <el-aside width="240px" class="layout-aside">
-      <div class="logo">
-        <el-icon style="margin-right: 8px; font-size: 20px;"><Platform /></el-icon>
-        <span>wmDB 完美数据库</span>
+  <el-container class="layout-container" :class="{ 'is-sidebar-collapsed': isCollapse }">
+    <!-- 左侧现代暗黑科技风导航栏 -->
+    <el-aside :width="isCollapse ? '64px' : '240px'" class="layout-aside">
+      <!-- 品牌 Logo 区域 -->
+      <div class="brand-header" @click="router.push('/dashboard')">
+        <div class="brand-logo-icon">
+          <el-icon><Platform /></el-icon>
+        </div>
+        <div class="brand-text-wrap" v-if="!isCollapse">
+          <div class="brand-title">wmDB 智能云</div>
+          <div class="brand-subtitle">数据库自治与安全管控平台</div>
+        </div>
       </div>
 
-      <el-menu
-        :default-active="activeMenu"
-        :default-openeds="['/instances', '/tickets', '/data', '/perms', '/system']"
-        class="el-menu-vertical"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
-        router
-        unique-opened
-      >
-        <!-- 1. 平台总览 (仅超级管理员可查看) -->
-        <el-menu-item index="/dashboard" v-if="userStore.isAdmin">
-          <el-icon><Odometer /></el-icon>
-          <span>平台总览</span>
-        </el-menu-item>
+      <!-- 导航菜单 -->
+      <el-scrollbar class="aside-menu-scrollbar">
+        <el-menu
+          :default-active="activeMenu"
+          :default-openeds="isCollapse ? [] : ['/instances', '/tickets', '/data', '/perms', '/system']"
+          :collapse="isCollapse"
+          class="el-menu-vertical"
+          router
+          :collapse-transition="false"
+        >
+          <!-- 1. 平台总览 (仅超级管理员/管理角色可见) -->
+          <el-menu-item index="/dashboard" v-if="userStore.isAdmin || userStore.hasPermission('/dashboard')">
+            <el-icon class="menu-icon"><Odometer /></el-icon>
+            <template #title>
+              <span class="menu-title">平台总览</span>
+              <el-tag size="small" effect="dark" type="danger" class="menu-badge" v-if="pendingApprovals.length > 0">
+                {{ pendingApprovals.length }}
+              </el-tag>
+            </template>
+          </el-menu-item>
 
-        <!-- 2. 工单中心 -->
-        <el-sub-menu index="/tickets" v-if="hasAnyPermission(['/ticket-list', '/ticket-create', '/ai-sql-review'])">
-          <template #title>
-            <el-icon><Document /></el-icon>
-            <span>工单中心</span>
-          </template>
-          <el-menu-item index="/ticket-list" v-if="userStore.hasPermission('/ticket-list')">
-            <el-icon><Tickets /></el-icon>
-            <span>工单列表</span>
-          </el-menu-item>
-          <el-menu-item index="/ticket-create" v-if="userStore.hasPermission('/ticket-create')">
-            <el-icon><EditPen /></el-icon>
-            <span>新建工单</span>
-          </el-menu-item>
-          <el-menu-item index="/ai-sql-review" v-if="userStore.hasPermission('/ai-sql-review')">
-            <el-icon><MagicStick /></el-icon>
-            <span>AI 智能审核</span>
-          </el-menu-item>
-        </el-sub-menu>
+          <!-- 2. 工单中心 -->
+          <el-sub-menu index="/tickets" v-if="hasAnyPermission(['/ticket-list', '/ticket-create', '/ai-sql-review'])">
+            <template #title>
+              <el-icon class="menu-icon"><Document /></el-icon>
+              <span>工单中心</span>
+            </template>
+            <el-menu-item index="/ticket-list" v-if="userStore.hasPermission('/ticket-list')">
+              <el-icon><Tickets /></el-icon>
+              <template #title><span>工单列表</span></template>
+            </el-menu-item>
+            <el-menu-item index="/ticket-create" v-if="userStore.hasPermission('/ticket-create')">
+              <el-icon><EditPen /></el-icon>
+              <template #title><span>新建工单</span></template>
+            </el-menu-item>
+            <el-menu-item index="/ai-sql-review" v-if="userStore.hasPermission('/ai-sql-review')">
+              <el-icon><MagicStick /></el-icon>
+              <template #title><span>AI 智能审核</span></template>
+            </el-menu-item>
+          </el-sub-menu>
 
-        <!-- 3. 数据操作与安全 -->
-        <el-sub-menu index="/data" v-if="hasAnyPermission(['/data-query', '/data-masking', '/audit-dashboard'])">
-          <template #title>
-            <el-icon><Search /></el-icon>
-            <span>数据操作与安全</span>
-          </template>
-          <el-menu-item index="/data-query" v-if="userStore.hasPermission('/data-query')">
-            <el-icon><Search /></el-icon>
-            <span>数据查询控制台</span>
-          </el-menu-item>
-          <el-menu-item index="/data-masking" v-if="userStore.hasPermission('/data-masking')">
-            <el-icon><Hide /></el-icon>
-            <span>动态脱敏配置</span>
-          </el-menu-item>
-          <el-menu-item index="/audit-dashboard" v-if="userStore.hasPermission('/audit-dashboard')">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>SQL 审计与合规大屏</span>
-          </el-menu-item>
-        </el-sub-menu>
+          <!-- 3. 数据操作与安全 -->
+          <el-sub-menu index="/data" v-if="hasAnyPermission(['/data-query', '/data-masking', '/audit-dashboard'])">
+            <template #title>
+              <el-icon class="menu-icon"><Search /></el-icon>
+              <span>数据操作与安全</span>
+            </template>
+            <el-menu-item index="/data-query" v-if="userStore.hasPermission('/data-query')">
+              <el-icon><Search /></el-icon>
+              <template #title><span>数据查询控制台</span></template>
+            </el-menu-item>
+            <el-menu-item index="/data-masking" v-if="userStore.hasPermission('/data-masking')">
+              <el-icon><Hide /></el-icon>
+              <template #title><span>动态脱敏配置</span></template>
+            </el-menu-item>
+            <el-menu-item index="/audit-dashboard" v-if="userStore.hasPermission('/audit-dashboard')">
+              <el-icon><DataAnalysis /></el-icon>
+              <template #title><span>SQL 审计大盘</span></template>
+            </el-menu-item>
+          </el-sub-menu>
 
-        <!-- 4. 实例管理 -->
-        <el-sub-menu index="/instances" v-if="hasAnyPermission(['/instance-list', '/instance-sessions', '/instance-databases', '/instance-accounts', '/instance-params'])">
-          <template #title>
-            <el-icon><Coin /></el-icon>
-            <span>实例管理</span>
-          </template>
-          <el-menu-item index="/instance-list" v-if="userStore.hasPermission('/instance-list')">
-            <el-icon><List /></el-icon>
-            <span>实例列表</span>
-          </el-menu-item>
-          <el-menu-item index="/instance-config" v-if="userStore.hasPermission('/instance-config') || userStore.hasPermission('/instance-list')">
-            <el-icon><Setting /></el-icon>
-            <span>参数配置</span>
-          </el-menu-item>
-          <el-menu-item index="/instance-sessions" v-if="userStore.hasPermission('/instance-sessions')">
-            <el-icon><DataLine /></el-icon>
-            <span>会话管理</span>
-          </el-menu-item>
-          <el-menu-item index="/instance-databases" v-if="userStore.hasPermission('/instance-databases')">
-            <el-icon><FolderOpened /></el-icon>
-            <span>数据库管理</span>
-          </el-menu-item>
-          <el-menu-item index="/instance-accounts" v-if="userStore.hasPermission('/instance-accounts')">
-            <el-icon><User /></el-icon>
-            <span>账号管理</span>
-          </el-menu-item>
-          <el-menu-item index="/instance-params" v-if="userStore.hasPermission('/instance-params')">
-            <el-icon><Monitor /></el-icon>
-            <span>全局参数查看</span>
-          </el-menu-item>
-        </el-sub-menu>
+          <!-- 4. 实例与资源管理 (业务资源组统一归纳于此，操作路径最顺畅) -->
+          <el-sub-menu index="/instances" v-if="hasAnyPermission(['/instance-list', '/resource-group-list', '/instance-databases', '/instance-accounts', '/instance-sessions', '/instance-params', '/instance-config'])">
+            <template #title>
+              <el-icon class="menu-icon"><Coin /></el-icon>
+              <span>实例与资源管理</span>
+            </template>
+            <el-menu-item index="/instance-list" v-if="userStore.hasPermission('/instance-list')">
+              <el-icon><List /></el-icon>
+              <template #title><span>实例列表</span></template>
+            </el-menu-item>
+            <el-menu-item index="/resource-group-list" v-if="userStore.hasPermission('/resource-group-list')">
+              <el-icon><Suitcase /></el-icon>
+              <template #title>
+                <span>业务资源组</span>
+                <el-tag size="small" type="success" effect="plain" class="inner-menu-tag">业务线</el-tag>
+              </template>
+            </el-menu-item>
+            <el-menu-item index="/instance-databases" v-if="userStore.hasPermission('/instance-databases')">
+              <el-icon><FolderOpened /></el-icon>
+              <template #title><span>数据库管理</span></template>
+            </el-menu-item>
+            <el-menu-item index="/instance-accounts" v-if="userStore.hasPermission('/instance-accounts')">
+              <el-icon><User /></el-icon>
+              <template #title><span>账号权限管理</span></template>
+            </el-menu-item>
+            <el-menu-item index="/instance-sessions" v-if="userStore.hasPermission('/instance-sessions')">
+              <el-icon><DataLine /></el-icon>
+              <template #title><span>会话监控与强杀</span></template>
+            </el-menu-item>
+            <el-menu-item index="/instance-params" v-if="userStore.hasPermission('/instance-params')">
+              <el-icon><Monitor /></el-icon>
+              <template #title><span>全局参数查看</span></template>
+            </el-menu-item>
+            <el-menu-item index="/instance-config" v-if="userStore.hasPermission('/instance-config') || userStore.hasPermission('/instance-list')">
+              <el-icon><Setting /></el-icon>
+              <template #title><span>安全参数策略</span></template>
+            </el-menu-item>
+          </el-sub-menu>
 
-        <!-- 5. 权限与组织 -->
-        <el-sub-menu index="/perms" v-if="hasAnyPermission(['/resource-group-list', '/user-list', '/role-list'])">
-          <template #title>
-            <el-icon><UserFilled /></el-icon>
-            <span>权限与组织</span>
-          </template>
-          <el-menu-item index="/resource-group-list" v-if="userStore.hasPermission('/resource-group-list')">
-            <el-icon><Suitcase /></el-icon>
-            <span>业务资源组</span>
-          </el-menu-item>
-          <el-menu-item index="/user-list" v-if="userStore.hasPermission('/user-list')">
-            <el-icon><User /></el-icon>
-            <span>用户管理</span>
-          </el-menu-item>
-          <el-menu-item index="/role-list" v-if="userStore.hasPermission('/role-list')">
-            <el-icon><Lock /></el-icon>
-            <span>角色权限</span>
-          </el-menu-item>
-        </el-sub-menu>
+          <!-- 5. 用户与权限组织 -->
+          <el-sub-menu index="/perms" v-if="hasAnyPermission(['/user-list', '/role-list'])">
+            <template #title>
+              <el-icon class="menu-icon"><UserFilled /></el-icon>
+              <span>用户与权限</span>
+            </template>
+            <el-menu-item index="/user-list" v-if="userStore.hasPermission('/user-list')">
+              <el-icon><User /></el-icon>
+              <template #title><span>用户管理</span></template>
+            </el-menu-item>
+            <el-menu-item index="/role-list" v-if="userStore.hasPermission('/role-list')">
+              <el-icon><Lock /></el-icon>
+              <template #title><span>角色与权限</span></template>
+            </el-menu-item>
+          </el-sub-menu>
 
-        <!-- 6. 系统与流程 -->
-        <el-sub-menu index="/system" v-if="hasAnyPermission(['/workflow-designer', '/license', '/settings'])">
-          <template #title>
-            <el-icon><Operation /></el-icon>
-            <span>系统与流程</span>
-          </template>
-          <el-menu-item index="/workflow-designer" v-if="userStore.hasPermission('/workflow-designer')">
-            <el-icon><Share /></el-icon>
-            <span>流程设计与模板</span>
-          </el-menu-item>
-          <el-menu-item index="/license" v-if="userStore.hasPermission('/license')">
-            <el-icon><Key /></el-icon>
-            <span>授权证书</span>
-          </el-menu-item>
-          <el-menu-item index="/settings" v-if="userStore.hasPermission('/settings')">
-            <el-icon><Brush /></el-icon>
-            <span>自定义主题</span>
-          </el-menu-item>
-        </el-sub-menu>
-      </el-menu>
+          <!-- 6. 系统与配置 -->
+          <el-sub-menu index="/system" v-if="hasAnyPermission(['/workflow-designer', '/ai-config', '/license', '/settings'])">
+            <template #title>
+              <el-icon class="menu-icon"><Operation /></el-icon>
+              <span>系统与配置</span>
+            </template>
+            <el-menu-item index="/workflow-designer" v-if="userStore.hasPermission('/workflow-designer')">
+              <el-icon><Share /></el-icon>
+              <template #title><span>流程设计与模板</span></template>
+            </el-menu-item>
+            <el-menu-item index="/ai-config" v-if="userStore.hasPermission('/ai-config') || userStore.hasPermission('/settings')">
+              <el-icon><Cpu /></el-icon>
+              <template #title>
+                <span>AI 模型配置</span>
+                <el-tag size="small" type="primary" effect="plain" class="inner-menu-tag">LLM</el-tag>
+              </template>
+            </el-menu-item>
+            <el-menu-item index="/license" v-if="userStore.hasPermission('/license')">
+              <el-icon><Key /></el-icon>
+              <template #title><span>授权证书</span></template>
+            </el-menu-item>
+            <el-menu-item index="/settings" v-if="userStore.hasPermission('/settings')">
+              <el-icon><Brush /></el-icon>
+              <template #title><span>自定义主题与水印</span></template>
+            </el-menu-item>
+          </el-sub-menu>
+        </el-menu>
+      </el-scrollbar>
+
+      <!-- 侧边栏底部折叠切换器 -->
+      <div class="aside-footer" @click="isCollapse = !isCollapse">
+        <el-icon class="collapse-icon">
+          <Fold v-if="!isCollapse" />
+          <Expand v-else />
+        </el-icon>
+        <span class="collapse-text" v-if="!isCollapse">收起导航菜单</span>
+      </div>
     </el-aside>
 
+    <!-- 右侧主体内容容器 -->
     <el-container class="inner-container">
+      <!-- 现代化精致 Header -->
       <el-header class="layout-header">
         <div class="header-left">
-          <span class="system-tag">商业企业版 V2.0</span>
+          <!-- 面包屑导航 -->
+          <el-breadcrumb separator="/" class="layout-breadcrumb">
+            <el-breadcrumb-item :to="{ path: '/dashboard' }">
+              <el-icon class="crumb-icon"><HomeFilled /></el-icon>
+              <span>首页</span>
+            </el-breadcrumb-item>
+            <el-breadcrumb-item v-if="currentModuleTitle">
+              <span>{{ currentModuleTitle }}</span>
+            </el-breadcrumb-item>
+            <el-breadcrumb-item>
+              <span class="active-crumb">{{ currentPageTitle }}</span>
+            </el-breadcrumb-item>
+          </el-breadcrumb>
         </div>
+
         <div class="header-right">
-          <!-- 🔔 待办审批提醒通知中心 -->
+          <!-- 快捷全局功能导航搜索 -->
+          <div class="quick-search-trigger" @click="handleOpenSearchDialog">
+            <el-icon><Search /></el-icon>
+            <span>搜索功能与页面...</span>
+            <kbd class="shortcut-key">Ctrl K</kbd>
+          </div>
+
+          <!-- 待办审批提醒通知中心 -->
           <el-popover
             placement="bottom-end"
             :width="380"
@@ -150,10 +204,10 @@
             popper-class="notification-popover"
           >
             <template #reference>
-              <div class="bell-badge-wrapper">
-                <el-badge :value="pendingApprovals.length" :hidden="pendingApprovals.length === 0" :max="99" class="notification-badge">
-                  <el-button circle class="bell-btn" :type="pendingApprovals.length > 0 ? 'danger' : 'default'" plain>
-                    <el-icon :size="18"><Bell /></el-icon>
+              <div class="header-tool-btn" :class="{ 'has-badge': pendingApprovals.length > 0 }">
+                <el-badge :value="pendingApprovals.length" :hidden="pendingApprovals.length === 0" :max="99">
+                  <el-button circle class="bell-btn">
+                    <el-icon :size="17"><Bell /></el-icon>
                   </el-button>
                 </el-badge>
               </div>
@@ -209,35 +263,56 @@
             </div>
           </el-popover>
 
-          <el-dropdown @command="handleLanguageChange" style="margin-right: 20px; cursor: pointer;">
-            <span class="el-dropdown-link">
-              语言 / Language<el-icon class="el-icon--right"><arrow-down /></el-icon>
-            </span>
+          <!-- 语言切换 -->
+          <el-dropdown @command="handleLanguageChange" trigger="click">
+            <div class="header-tool-btn text-tool-btn">
+              <span>{{ locale === 'zh' ? '🇨🇳 中文' : '🇺🇸 English' }}</span>
+              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </div>
             <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="zh">中文</el-dropdown-item>
-                <el-dropdown-item command="en">English</el-dropdown-item>
+              <el-dropdown-menu class="custom-dropdown-menu">
+                <el-dropdown-item command="zh" :class="{ 'is-active-lang': locale === 'zh' }">🇨🇳 简体中文</el-dropdown-item>
+                <el-dropdown-item command="en" :class="{ 'is-active-lang': locale === 'en' }">🇺🇸 English</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
 
-          <el-dropdown @command="handleUserCommand" style="margin-left: 10px; cursor: pointer;">
+          <!-- 分隔线 -->
+          <div class="header-divider"></div>
+
+          <!-- 用户头像与角色信息 -->
+          <el-dropdown @command="handleUserCommand" trigger="click">
             <div class="user-profile-badge">
-              <el-avatar size="small" style="background: #409EFF; margin-right: 8px;">
-                {{ userRealName ? userRealName.substring(0, 1) : '管' }}
-              </el-avatar>
-              <span style="margin-right: 6px; font-weight: 600;">{{ userRealName }}</span>
-              <el-tag size="small" :type="getRoleTagType(userStore.userRole)" effect="dark" round>
-                {{ formatRoleNameZh(userStore.userRole) }}
-              </el-tag>
-              <el-icon class="el-icon--right" style="margin-left: 6px;"><arrow-down /></el-icon>
+              <div class="avatar-box">
+                <el-avatar size="small" class="custom-avatar">
+                  {{ userRealName ? userRealName.substring(0, 1) : '管' }}
+                </el-avatar>
+                <span class="status-dot"></span>
+              </div>
+              <div class="user-text-info">
+                <span class="user-name">{{ userRealName }}</span>
+                <el-tag size="small" :type="getRoleTagType(userStore.userRole)" effect="light" class="role-pill">
+                  {{ formatRoleNameZh(userStore.userRole) }}
+                </el-tag>
+              </div>
+              <el-icon class="arrow-icon"><ArrowDown /></el-icon>
             </div>
             <template #dropdown>
-              <el-dropdown-menu>
+              <el-dropdown-menu class="custom-dropdown-menu">
+                <div class="user-dropdown-header">
+                  <div class="u-name">{{ userRealName }}</div>
+                  <div class="u-role">权限身份：{{ formatRoleNameZh(userStore.userRole) }}</div>
+                </div>
                 <el-dropdown-item command="profile">
-                  <el-icon><User /></el-icon>个人中心
+                  <el-icon><User /></el-icon>个人中心 / 账号设置
                 </el-dropdown-item>
-                <el-dropdown-item command="logout" divided>
+                <el-dropdown-item command="ai-config" v-if="userStore.isAdmin || userStore.hasPermission('/ai-config')">
+                  <el-icon><Cpu /></el-icon>AI 模型与配置中心
+                </el-dropdown-item>
+                <el-dropdown-item command="settings" v-if="userStore.isAdmin || userStore.hasPermission('/settings')">
+                  <el-icon><Brush /></el-icon>个性化外观与主题
+                </el-dropdown-item>
+                <el-dropdown-item command="logout" divided class="logout-item">
                   <el-icon><SwitchButton /></el-icon>退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -246,10 +321,51 @@
         </div>
       </el-header>
 
+      <!-- 主视图路由展示区域 -->
       <el-main class="layout-main">
-        <router-view></router-view>
+        <router-view v-slot="{ Component }">
+          <transition name="fade-transform" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </el-main>
     </el-container>
+
+    <!-- 全局快捷跳转搜索弹窗 (Ctrl + K) -->
+    <el-dialog
+      v-model="searchDialogVisible"
+      title="🚀 全局快捷功能检索"
+      width="560px"
+      :show-close="false"
+      class="quick-search-dialog"
+      align-center
+    >
+      <el-input
+        v-model="searchKeyword"
+        placeholder="输入功能名称或拼音进行快速跳转 (如 工单、资源组、AI、实例)..."
+        :prefix-icon="Search"
+        clearable
+        size="large"
+        class="search-dialog-input"
+        autofocus
+      />
+      <div class="search-results-list">
+        <div
+          v-for="item in filteredQuickNavItems"
+          :key="item.path"
+          class="search-result-item"
+          @click="handleQuickNavigate(item.path)"
+        >
+          <div class="s-icon">{{ item.icon }}</div>
+          <div class="s-meta">
+            <div class="s-title">{{ item.name }}</div>
+            <div class="s-desc">{{ item.desc }}</div>
+          </div>
+          <el-tag size="small" type="info" effect="plain">{{ item.category }}</el-tag>
+        </div>
+        <el-empty v-if="filteredQuickNavItems.length === 0" description="未搜索到匹配功能，请尝试其他关键词" :image-size="60" />
+      </div>
+    </el-dialog>
   </el-container>
 </template>
 
@@ -287,13 +403,21 @@ import {
   BellFilled,
   Refresh,
   SwitchButton,
-  DataAnalysis
+  DataAnalysis,
+  Cpu,
+  HomeFilled,
+  Fold,
+  Expand
 } from '@element-plus/icons-vue'
 
 const { locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+
+const isCollapse = ref(false)
+const searchDialogVisible = ref(false)
+const searchKeyword = ref('')
 
 const hasAnyPermission = (paths: string[]) => {
   if (userStore.isAdmin) return true
@@ -342,6 +466,97 @@ const activeMenu = computed(() => {
 })
 
 const userRealName = computed(() => userStore.realName || '管理员')
+
+// 面包屑标题映射
+const routeTitleMap: Record<string, { module: string; page: string }> = {
+  '/dashboard': { module: '概览', page: '平台总览' },
+  '/ticket-list': { module: '工单中心', page: '工单列表' },
+  '/ticket-create': { module: '工单中心', page: '新建工单' },
+  '/ai-sql-review': { module: '工单中心', page: 'AI 智能审核' },
+  '/data-query': { module: '数据操作与安全', page: '数据查询控制台' },
+  '/data-masking': { module: '数据操作与安全', page: '动态脱敏配置' },
+  '/audit-dashboard': { module: '数据操作与安全', page: 'SQL 审计大盘' },
+  '/instance-list': { module: '实例与资源管理', page: '实例列表' },
+  '/resource-group-list': { module: '实例与资源管理', page: '业务资源组' },
+  '/instance-databases': { module: '实例与资源管理', page: '数据库管理' },
+  '/instance-accounts': { module: '实例与资源管理', page: '账号权限管理' },
+  '/instance-sessions': { module: '实例与资源管理', page: '会话监控与强杀' },
+  '/instance-params': { module: '实例与资源管理', page: '全局参数查看' },
+  '/instance-config': { module: '实例与资源管理', page: '安全参数策略' },
+  '/user-list': { module: '用户与权限', page: '用户管理' },
+  '/role-list': { module: '用户与权限', page: '角色与权限' },
+  '/workflow-designer': { module: '系统与配置', page: '流程设计与模板' },
+  '/ai-config': { module: '系统与配置', page: 'AI 模型配置' },
+  '/license': { module: '系统与配置', page: '授权证书' },
+  '/settings': { module: '系统与配置', page: '自定义主题与水印' },
+  '/user-profile': { module: '个人中心', page: '个人设置' }
+}
+
+const currentModuleTitle = computed(() => {
+  const item = routeTitleMap[route.path]
+  return item ? item.module : ''
+})
+
+const currentPageTitle = computed(() => {
+  const item = routeTitleMap[route.path]
+  if (item) return item.page
+  if (route.path.startsWith('/ticket/')) return '工单详情与审批'
+  return route.name ? String(route.name) : '当前页面'
+})
+
+// 全局快捷搜索导航项
+const quickNavItems = [
+  { name: '平台总览 (Dashboard)', desc: '系统运行指标、工单趋势与拦截统计', path: '/dashboard', icon: '📊', category: '平台总览' },
+  { name: '工单列表', desc: '检索历史变更、追踪审批进度', path: '/ticket-list', icon: '📋', category: '工单中心' },
+  { name: '新建 SQL 工单', desc: '提交 DML/DDL 变更并执行 Dry-Run 预检', path: '/ticket-create', icon: '✍️', category: '工单中心' },
+  { name: 'AI 智能审核', desc: '大模型 SQL 性能诊断、重写与风险审计', path: '/ai-sql-review', icon: '🤖', category: '工单中心' },
+  { name: '数据查询控制台', desc: '安全 Web SQL 查询与分页浏览', path: '/data-query', icon: '🔍', category: '数据与安全' },
+  { name: '动态脱敏配置', desc: '手机号、身份证、银行卡等脱敏规则策略', path: '/data-masking', icon: '🛡️', category: '数据与安全' },
+  { name: 'SQL 审计大盘', desc: '操作流水日志、合规看板与风险拦截', path: '/audit-dashboard', icon: '📈', category: '数据与安全' },
+  { name: '实例列表', desc: '数据库实例注册、连通性探测', path: '/instance-list', icon: '🗄️', category: '实例与资源' },
+  { name: '业务资源组', desc: '业务线与实例绑定划分、多组归属', path: '/resource-group-list', icon: '💼', category: '实例与资源' },
+  { name: '会话管理 (Kill Session)', desc: '活跃连接监控、慢查询排查与会话强杀', path: '/instance-sessions', icon: '⚡', category: '实例与资源' },
+  { name: '数据库管理 (Schema)', desc: '库清单、字符集与数据空间容量', path: '/instance-databases', icon: '📁', category: '实例与资源' },
+  { name: '账号管理 (Accounts)', desc: '原生数据库账号与权限配置', path: '/instance-accounts', icon: '👤', category: '实例与资源' },
+  { name: '全局参数查看 (Variables)', desc: 'MySQL 系统全局参数与平台策略', path: '/instance-params', icon: '⚙️', category: '实例与资源' },
+  { name: '流程设计与模板 (BPMN)', desc: '可视化工作流拓扑编排与模板绑定', path: '/workflow-designer', icon: '🔀', category: '系统配置' },
+  { name: 'AI 模型配置', desc: 'DeepSeek、Qwen、OpenAI、Ollama 接入配置与连通自检', path: '/ai-config', icon: '🧠', category: '系统配置' },
+  { name: '用户管理', desc: '系统人员账号维护与组织分配', path: '/user-list', icon: '👥', category: '用户与权限' },
+  { name: '角色权限', desc: '系统角色定义与页签权限矩阵', path: '/role-list', icon: '🔐', category: '用户与权限' },
+  { name: '自定义主题与水印', desc: '系统外观风格、主色调与防泄密水印', path: '/settings', icon: '🎨', category: '系统配置' }
+]
+
+const userAccessibleQuickNavItems = computed(() => {
+  return quickNavItems.filter(item => userStore.isAdmin || userStore.hasPermission(item.path))
+})
+
+const filteredQuickNavItems = computed(() => {
+  const baseList = userAccessibleQuickNavItems.value
+  if (!searchKeyword.value.trim()) return baseList
+  const q = searchKeyword.value.trim().toLowerCase()
+  return baseList.filter(item => 
+    item.name.toLowerCase().includes(q) || 
+    item.desc.toLowerCase().includes(q) ||
+    item.category.toLowerCase().includes(q)
+  )
+})
+
+const handleOpenSearchDialog = () => {
+  searchKeyword.value = ''
+  searchDialogVisible.value = true
+}
+
+const handleQuickNavigate = (path: string) => {
+  searchDialogVisible.value = false
+  router.push(path)
+}
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    searchDialogVisible.value = !searchDialogVisible.value
+  }
+}
 
 const fetchPendingApprovals = async () => {
   if (!userStore.token) return
@@ -413,6 +628,10 @@ const handleLogout = () => {
 const handleUserCommand = (cmd: string) => {
   if (cmd === 'profile') {
     router.push('/user-profile')
+  } else if (cmd === 'ai-config') {
+    router.push('/ai-config')
+  } else if (cmd === 'settings') {
+    router.push('/settings')
   } else if (cmd === 'logout') {
     handleLogout()
   }
@@ -427,6 +646,7 @@ onMounted(() => {
   userStore.fetchUserInfo()
   fetchPendingApprovals()
   pollTimer = window.setInterval(fetchPendingApprovals, 15000)
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
@@ -434,59 +654,192 @@ onUnmounted(() => {
     clearInterval(pollTimer)
     pollTimer = null
   }
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
 
 <style scoped>
 .layout-container {
-  height: 100%;
-  width: 100%;
+  height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: row !important;
   overflow: hidden;
+  background-color: #f1f5f9;
 }
 
+/* ===================================================
+   1. 侧边栏：现代高级深邃科技 Slate 暗黑渐变设计
+   =================================================== */
 .layout-aside {
-  background-color: #304156;
-  width: 240px !important;
+  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
   flex-shrink: 0;
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  box-shadow: 2px 0 6px rgba(0, 21, 41, 0.15);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.25);
+  transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 100;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.logo {
-  height: 60px;
-  line-height: 60px;
-  text-align: center;
-  color: #fff;
-  font-size: 16px;
-  font-weight: bold;
-  background-color: #2b3643;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 10px;
+.brand-header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  background: rgba(17, 24, 39, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.brand-header:hover {
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.brand-logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #ffffff;
+  font-size: 20px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  flex-shrink: 0;
+}
+
+.brand-text-wrap {
+  margin-left: 12px;
+  overflow: hidden;
+}
+
+.brand-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.brand-subtitle {
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.aside-menu-scrollbar {
+  flex: 1;
+  overflow-x: hidden;
 }
 
 .el-menu-vertical {
-  border-right: none;
-  width: 100%;
+  border-right: none !important;
+  background-color: transparent !important;
+  padding: 8px 0;
 }
 
-.el-menu-vertical :deep(.el-sub-menu .el-menu-item) {
-  padding-left: 48px !important;
-  background-color: #1f2d3d !important;
+/* 菜单项基础与悬浮效果 */
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  height: 44px;
+  line-height: 44px;
+  margin: 3px 8px;
+  border-radius: 6px;
+  color: #cbd5e1 !important;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.el-menu-vertical :deep(.el-sub-menu .el-menu-item:hover) {
-  background-color: #001528 !important;
+:deep(.el-menu-item:hover),
+:deep(.el-sub-menu__title:hover) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
 }
 
+/* 激活高亮 */
+:deep(.el-menu-item.is-active) {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.28) 0%, rgba(59, 130, 246, 0.08) 100%) !important;
+  color: #60a5fa !important;
+  font-weight: 600;
+  position: relative;
+  box-shadow: inset 3px 0 0 0 #3b82f6;
+}
+
+:deep(.el-menu-item.is-active .el-icon) {
+  color: #60a5fa !important;
+}
+
+/* 二级菜单背景深度区分 */
+:deep(.el-sub-menu .el-menu) {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  padding: 4px 0;
+}
+
+:deep(.el-sub-menu .el-menu-item) {
+  padding-left: 46px !important;
+  height: 40px;
+  line-height: 40px;
+  font-size: 13px;
+}
+
+.menu-icon {
+  font-size: 17px;
+  margin-right: 10px;
+  color: #94a3b8;
+  transition: color 0.2s;
+}
+
+.menu-badge {
+  margin-left: auto;
+  transform: scale(0.85);
+}
+
+.inner-menu-tag {
+  margin-left: auto;
+  font-size: 10px;
+  height: 18px;
+  padding: 0 4px;
+  line-height: 16px;
+  transform: scale(0.85);
+}
+
+/* 侧边栏底部折叠栏 */
+.aside-footer {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 12.5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(17, 24, 39, 0.95);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.aside-footer:hover {
+  background: rgba(30, 41, 59, 0.95);
+  color: #60a5fa;
+}
+
+.collapse-icon {
+  font-size: 16px;
+}
+
+/* ===================================================
+   2. 顶部 Header：现代高透毛玻璃卡片风格
+   =================================================== */
 .inner-container {
   display: flex;
   flex: 1;
@@ -497,16 +850,18 @@ onUnmounted(() => {
 }
 
 .layout-header {
-  height: 60px !important;
-  background-color: #fff;
-  border-bottom: 1px solid #e6e6e6;
+  height: 64px !important;
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  padding: 0 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   flex-shrink: 0;
-  z-index: 10;
+  z-index: 50;
 }
 
 .header-left {
@@ -514,38 +869,232 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.system-tag {
-  background: #ecf5ff;
-  border: 1px solid #d9ecff;
-  color: #409EFF;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 12px;
+.layout-breadcrumb {
+  font-size: 13.5px;
+}
+
+:deep(.layout-breadcrumb .el-breadcrumb__inner) {
+  display: flex;
+  align-items: center;
+  color: #64748b;
   font-weight: 500;
+}
+
+:deep(.layout-breadcrumb .el-breadcrumb__inner:hover) {
+  color: #3b82f6;
+}
+
+.crumb-icon {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+.active-crumb {
+  color: #0f172a !important;
+  font-weight: 600;
 }
 
 .header-right {
   display: flex;
   align-items: center;
+  gap: 14px;
 }
 
-.bell-badge-wrapper {
-  margin-right: 20px;
+/* 全局搜索快捷触发条 */
+.quick-search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  color: #64748b;
+  font-size: 12.5px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quick-search-trigger:hover {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.shortcut-key {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: monospace;
+  color: #64748b;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.06);
+}
+
+.header-tool-btn {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.text-tool-btn {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.text-tool-btn:hover {
+  background: #f1f5f9;
+  color: #3b82f6;
+}
+
+.bell-btn {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #64748b;
+  transition: all 0.2s;
+}
+
+.bell-btn:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.header-divider {
+  width: 1px;
+  height: 24px;
+  background: #e2e8f0;
+}
+
+/* 用户头像胶囊 */
+.user-profile-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 4px 6px;
+  border-radius: 24px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-profile-badge:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.avatar-box {
+  position: relative;
   display: flex;
   align-items: center;
 }
 
-.bell-btn {
-  border: 1px solid #e4e7ed;
+.custom-avatar {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  font-weight: 600;
+  color: #ffffff;
 }
 
-.bell-btn:hover {
-  background: #fdf6ec;
-  border-color: #f56c6c;
-  color: #f56c6c;
+.status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 1.5px solid #ffffff;
 }
 
+.user-text-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.role-pill {
+  font-size: 11px;
+  height: 20px;
+  line-height: 18px;
+  padding: 0 6px;
+  border-radius: 10px;
+}
+
+.arrow-icon {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.custom-dropdown-menu {
+  padding: 6px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+
+.user-dropdown-header {
+  padding: 8px 14px 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 4px;
+}
+
+.u-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.u-role {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.logout-item {
+  color: #ef4444 !important;
+}
+
+/* ===================================================
+   3. 主内容区域与页面切换动效
+   =================================================== */
+.layout-main {
+  background-color: #f8fafc;
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+}
+
+.fade-transform-enter-active,
+.fade-transform-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-transform-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.fade-transform-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+/* 通知中心列表 */
 .notification-card {
   padding: 4px 0;
 }
@@ -555,7 +1104,7 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding-bottom: 10px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f1f5f9;
   margin-bottom: 10px;
 }
 
@@ -564,7 +1113,7 @@ onUnmounted(() => {
   align-items: center;
   font-weight: 600;
   font-size: 14px;
-  color: #303133;
+  color: #0f172a;
 }
 
 .n-body {
@@ -585,10 +1134,10 @@ onUnmounted(() => {
 }
 
 .n-item:hover {
-  background: #ecf5ff;
-  border-color: #409eff;
+  background: #eff6ff;
+  border-color: #3b82f6;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12);
 }
 
 .n-item-top {
@@ -600,7 +1149,7 @@ onUnmounted(() => {
 
 .n-item-type {
   font-weight: 600;
-  color: #409eff;
+  color: #3b82f6;
   font-size: 12px;
 }
 
@@ -641,24 +1190,65 @@ onUnmounted(() => {
 .n-footer {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid #f1f5f9;
 }
 
-.user-profile-badge {
+/* 全局快捷搜索弹窗 */
+.quick-search-dialog :deep(.el-dialog__header) {
+  padding: 16px 20px 10px 20px;
+}
+
+.quick-search-dialog :deep(.el-dialog__body) {
+  padding: 10px 20px 20px 20px;
+}
+
+.search-dialog-input {
+  margin-bottom: 14px;
+}
+
+.search-results-list {
+  max-height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-result-item {
   display: flex;
   align-items: center;
-  font-weight: 500;
-  color: #303133;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.layout-main {
-  background-color: #f0f2f5;
-  padding: 20px;
+.search-result-item:hover {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  transform: translateX(3px);
+}
+
+.s-icon {
+  font-size: 20px;
+  margin-right: 12px;
+}
+
+.s-meta {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  box-sizing: border-box;
-  min-width: 0;
-  width: 100%;
+}
+
+.s-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.s-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
 }
 </style>

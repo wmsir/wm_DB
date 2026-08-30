@@ -27,6 +27,7 @@ import ResourceGroupList from '../views/ResourceGroupList.vue'
 import UserList from '../views/UserList.vue'
 import RoleList from '../views/RoleList.vue'
 import UserProfile from '../views/UserProfile.vue'
+import AiConfig from '../views/AiConfig.vue'
 
 import { useUserStore } from '../store/user'
 
@@ -188,6 +189,15 @@ const routes = [
         path: 'settings',
         name: 'Settings',
         component: Settings
+      },
+      {
+        path: 'ai-config',
+        name: 'AiConfig',
+        component: AiConfig
+      },
+      {
+        path: 'ai/config',
+        redirect: '/ai-config'
       },
       // 个人中心
       {

@@ -32,7 +32,7 @@
             </div>
 
             <div class="selector-item">
-              <span class="selector-label">2. 数据库 (Schema)：</span>
+              <span class="selector-label">2. 目标数据库：</span>
               <el-select
                 v-model="selectedDbName"
                 placeholder="请选择数据库"
@@ -162,7 +162,7 @@
           </el-table>
         </div>
 
-        <el-empty v-else description="请在上方依次选择【数据库实例】、【数据库 (Schema)】及【数据表】开始配置脱敏规则" />
+        <el-empty v-else description="请在上方依次选择【数据库实例】、【目标数据库】及【数据表】开始配置脱敏规则" />
       </el-tab-pane>
 
       <!-- Tab 2: 已配置规则全局看板 -->
@@ -183,7 +183,7 @@
         <div class="table-wrapper">
           <el-table :data="allRules" border stripe style="width: 100%" v-loading="overviewLoading">
             <el-table-column prop="id" label="ID" width="70" align="center" />
-            <el-table-column prop="dbName" label="数据库 Schema" width="150" />
+            <el-table-column prop="dbName" label="目标数据库" width="150" />
             <el-table-column prop="tableName" label="数据表" width="180">
               <template #default="scope">
                 <span style="font-family: monospace; font-weight: 600;">{{ scope.row.tableName }}</span>

@@ -524,7 +524,7 @@
           <div class="db-scope-wrapper" style="width: 100%;">
             <el-radio-group v-model="form.dbScopeMode" size="small" @change="handleDbScopeModeChange">
               <el-radio-button value="ALL">🌐 整个资源组全部数据库通用 (默认)</el-radio-button>
-              <el-radio-button value="CUSTOM">🎯 细化指定具体数据库实例/Schema</el-radio-button>
+              <el-radio-button value="CUSTOM">🎯 细化指定具体目标数据库</el-radio-button>
             </el-radio-group>
 
             <div v-if="form.dbScopeMode === 'CUSTOM'" class="custom-db-select-box" style="margin-top: 10px;">

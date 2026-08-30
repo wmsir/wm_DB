@@ -499,7 +499,7 @@
                 <span style="font-weight: 600; color: #303133;">{{ getInstanceName(row.instance) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="dbName" label="目标 Schema" min-width="140" show-overflow-tooltip>
+            <el-table-column prop="dbName" label="目标数据库" min-width="140" show-overflow-tooltip>
               <template #default="{ row }">
                 <el-tag v-if="row.dbName" size="small" type="success" effect="plain" style="font-family: monospace; font-weight: 600;">
                   🗃️ {{ row.dbName }}
@@ -1161,7 +1161,7 @@
               {{ sqlList.length }} 条语句 · {{ submittedSqlLines.length }} 行
             </el-tag>
             <el-tag v-if="ticketDetail?.ticket?.dbName" size="small" type="success" effect="plain" style="font-weight: 600;">
-              🗃️ 目标 Schema: {{ ticketDetail.ticket.dbName }}
+              🗃️ 目标数据库: {{ ticketDetail.ticket.dbName }}
             </el-tag>
           </div>
           <div class="sql-viewer-header-right">
@@ -2354,7 +2354,7 @@ const downloadSubmittedSql = async () => {
   const filename = `ticket_${ticketId}_submitted_sql_${new Date().toISOString().slice(0, 10)}.sql`
 
   if (text) {
-    const header = `-- ================================================================\n-- 工单编号: #${ticketId}\n-- 目标数据库实例: ${getInstanceName(ticketDetail.value?.ticket?.instanceId || '')}\n-- 目标 Schema: ${ticketDetail.value?.ticket?.dbName || 'default'}\n-- 申请人: ${cleanApplicantName(ticketDetail.value?.ticket?.applicantName || ticketDetail.value?.ticket?.applicantIdCard)}\n-- 提交时间: ${ticketDetail.value?.ticket?.createTime || new Date().toLocaleString()}\n-- 说明: 原始提交执行 SQL 脚本\n-- ================================================================\n\n`
+    const header = `-- ================================================================\n-- 工单编号: #${ticketId}\n-- 目标数据库实例: ${getInstanceName(ticketDetail.value?.ticket?.instanceId || '')}\n-- 目标数据库: ${ticketDetail.value?.ticket?.dbName || 'default'}\n-- 申请人: ${cleanApplicantName(ticketDetail.value?.ticket?.applicantName || ticketDetail.value?.ticket?.applicantIdCard)}\n-- 提交时间: ${ticketDetail.value?.ticket?.createTime || new Date().toLocaleString()}\n-- 说明: 原始提交执行 SQL 脚本\n-- ================================================================\n\n`
     const blob = new Blob([header + text], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

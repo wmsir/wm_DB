@@ -231,8 +231,8 @@
             </template>
           </el-table-column>
 
-          <!-- 6. 目标执行 Schema / 数据库 -->
-          <el-table-column prop="dbName" label="目标 Schema" min-width="130" show-overflow-tooltip>
+          <!-- 6. 目标执行数据库 -->
+          <el-table-column prop="dbName" label="目标数据库" min-width="130" show-overflow-tooltip>
             <template #default="{ row }">
               <el-tag v-if="row.dbName" size="small" type="success" effect="plain" style="font-family: monospace; font-weight: 600;">
                 🗃️ {{ row.dbName }}
@@ -292,29 +292,46 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="220" fixed="right" align="center">
+          <el-table-column label="操作" width="230" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button link type="primary" @click="viewDetail(row.id)">审批 / 查看</el-button>
-              
-              <!-- 申请人撤回工单（仅限自己提交且处于审批中的工单） -->
-              <el-button
-                v-if="isMySubmittedTicket(row) && (row.status === 'AUDITING' || row.status === 'PENDING_APPROVAL')"
-                link
-                type="warning"
-                @click="handleWithdrawTicket(row)"
-              >
-                撤回
-              </el-button>
+              <div style="display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: nowrap;">
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  :icon="Tickets"
+                  style="font-weight: 600; padding: 4px 10px;"
+                  @click="viewDetail(row.id)"
+                >
+                  审批 / 查看
+                </el-button>
+                
+                <!-- 申请人撤回工单（仅限自己提交且处于审批中的工单） -->
+                <el-button
+                  v-if="isMySubmittedTicket(row) && (row.status === 'AUDITING' || row.status === 'PENDING_APPROVAL')"
+                  size="small"
+                  type="warning"
+                  plain
+                  :icon="Back"
+                  style="font-weight: 600; padding: 4px 10px;"
+                  @click="handleWithdrawTicket(row)"
+                >
+                  撤回
+                </el-button>
 
-              <!-- 终态工单再来一单 -->
-              <el-button
-                v-if="['TERMINATED', 'FAILED', 'REJECTED', 'EXECUTED'].includes(row.status)"
-                link
-                type="success"
-                @click="cloneTicket(row.id)"
-              >
-                再来一单
-              </el-button>
+                <!-- 终态工单再来一单 -->
+                <el-button
+                  v-if="['TERMINATED', 'FAILED', 'REJECTED', 'EXECUTED'].includes(row.status)"
+                  size="small"
+                  type="success"
+                  plain
+                  :icon="RefreshRight"
+                  style="font-weight: 600; padding: 4px 10px;"
+                  @click="cloneTicket(row.id)"
+                >
+                  再来一单
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -341,7 +358,7 @@ import { useRouter, useRoute } from 'vue-router'
 import request from '../utils/request'
 import { useUserStore } from '../store/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, CopyDocument, Search, RefreshRight } from '@element-plus/icons-vue'
+import { Plus, Refresh, CopyDocument, Search, RefreshRight, Tickets, Back } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()

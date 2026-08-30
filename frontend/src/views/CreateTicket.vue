@@ -136,9 +136,9 @@
               </el-row>
 
               <el-row :gutter="20">
-                <!-- 目标执行数据库 (Schema) -->
+                <!-- 目标数据库 -->
                 <el-col :xs="24" :sm="12" id="form-item-dbname">
-                  <el-form-item label="目标执行数据库 (Schema)" required>
+                  <el-form-item label="目标数据库" required>
                     <el-select
                       v-model="form.dbName"
                       placeholder="请选择具体执行数据库"
@@ -195,7 +195,17 @@
                       <el-option label="📝 纯 DML 数据变更" value="DML_CHANGE" />
                       <el-option label="⚠️ 包含 DDL 结构变更" value="DDL_CHANGE" />
                     </el-select>
-                    <div class="field-hint">
+                    <div v-if="form.sqlSubtype === 'AUTO' && detectedSqlSubtype" style="margin-top: 6px;">
+                      <el-tag
+                        :type="detectedSqlSubtype.tagType"
+                        effect="light"
+                        style="font-size: 12px; font-weight: 600; padding: 4px 8px; height: auto; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;"
+                      >
+                        <span>{{ detectedSqlSubtype.icon }} 智能识别结果: <b>{{ detectedSqlSubtype.label }}</b></span>
+                      </el-tag>
+                      <div style="font-size: 11.5px; color: #64748b; margin-top: 2px;">{{ detectedSqlSubtype.desc }}</div>
+                    </div>
+                    <div v-else class="field-hint">
                       {{ form.sqlSubtype === 'AUTO' ? '根据 SQL 内容自动判定 DML 或 DDL 流程' : (form.sqlSubtype === 'DML_CHANGE' ? '强制匹配 DML 数据变更专属流' : '强制匹配 DDL 结构变更专属流') }}
                     </div>
                   </el-form-item>
@@ -610,11 +620,12 @@
                   class="editor-textarea-native"
                   placeholder="在此输入待审核执行的 SQL 脚本（支持多语句，如：-- 1 &#10;INSERT INTO table_name ...）..."
                   @scroll="handleEditorScroll"
+                  @blur="onSqlBlur"
                   spellcheck="false"
                 ></textarea>
               </div>
 
-              <!-- 编辑器底部信息状态栏 (行号、字符数、语句数、语法检测) -->
+              <!-- 编辑器底部信息状态栏 (行号、字符数、语句数、语法检测、SQL细分类型) -->
               <div class="editor-status-bar">
                 <div class="status-left">
                   <span class="status-chip">
@@ -631,6 +642,15 @@
                   </span>
                 </div>
                 <div class="status-right">
+                  <el-tag
+                    v-if="detectedSqlSubtype"
+                    size="small"
+                    :type="detectedSqlSubtype.tagType"
+                    effect="light"
+                    style="font-weight: 600; margin-right: 6px;"
+                  >
+                    {{ detectedSqlSubtype.icon }} 细分类型: {{ detectedSqlSubtype.label }}
+                  </el-tag>
                   <el-tag
                     v-if="sqlEditorStats.invalidStatements.length === 0 && form.sqlText.trim()"
                     size="small"
@@ -1245,6 +1265,62 @@ const sqlEditorStats = computed(() => {
   }
 })
 
+const DDL_KEYWORDS_SET = new Set(['CREATE', 'ALTER', 'DROP', 'TRUNCATE', 'RENAME', 'COMMENT', 'FLASHBACK', 'PURGE'])
+const DML_KEYWORDS_SET = new Set(['INSERT', 'UPDATE', 'DELETE', 'REPLACE', 'MERGE', 'UPSERT'])
+
+const detectedSqlSubtype = computed(() => {
+  const text = (form.value.sqlText || '').trim()
+  if (!text) return null
+
+  const rawSegments = text.split(';').map(s => s.trim()).filter(s => s.length > 0)
+  let hasDdl = false
+  let hasDml = false
+  const ddlTypes = new Set<string>()
+  let dmlCount = 0
+
+  for (const raw of rawSegments) {
+    const clean = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/--.*?(\r?\n|$)/g, '').trim()
+    if (!clean) continue
+
+    const firstWord = clean.split(/\s+/)[0].replace(/[^a-zA-Z0-9_]/g, '').toUpperCase()
+    if (DDL_KEYWORDS_SET.has(firstWord)) {
+      hasDdl = true
+      ddlTypes.add(firstWord)
+    }
+    if (DML_KEYWORDS_SET.has(firstWord)) {
+      hasDml = true
+      dmlCount++
+    }
+  }
+
+  if (hasDdl) {
+    return {
+      type: 'DDL_CHANGE' as const,
+      label: '包含 DDL 结构变更',
+      tagType: 'warning' as const,
+      icon: '⚠️',
+      desc: `识别到 ${Array.from(ddlTypes).join('/')} 等结构定义指令${dmlCount > 0 ? ` (混合 ${dmlCount} 条 DML 数据操作)` : ''}`
+    }
+  } else if (hasDml) {
+    return {
+      type: 'DML_CHANGE' as const,
+      label: '纯 DML 数据变更',
+      tagType: 'success' as const,
+      icon: '📝',
+      desc: `识别到 ${dmlCount} 条纯数据写入/更新语句，无结构定义变更`
+    }
+  } else if (rawSegments.length > 0) {
+    return {
+      type: 'SQL_AUDIT' as const,
+      label: '通用 SQL 变更 / 查询',
+      tagType: 'info' as const,
+      icon: '🔍',
+      desc: '未检测到明确的 DML/DDL 变更语句'
+    }
+  }
+  return null
+})
+
 const extractTablesFromSql = (sql: string): Set<string> => {
   const tables = new Set<string>()
   if (!sql) return tables
@@ -1681,9 +1757,9 @@ const fetchRoutingPreview = async () => {
       } else if (form.value.sqlSubtype === 'DDL_CHANGE') {
         effectiveType = 'DDL_CHANGE'
       } else {
-        const sql = form.value.sqlText ? form.value.sqlText.toUpperCase() : ''
-        if (sql.includes('CREATE ') || sql.includes('ALTER ') || sql.includes('DROP ') || sql.includes('TRUNCATE ')) {
-          effectiveType = 'DDL_CHANGE'
+        const detected = detectedSqlSubtype.value
+        if (detected && (detected.type === 'DML_CHANGE' || detected.type === 'DDL_CHANGE')) {
+          effectiveType = detected.type
         } else {
           effectiveType = 'SQL_AUDIT'
         }
@@ -1707,11 +1783,46 @@ const fetchRoutingPreview = async () => {
   }
 }
 
+let sqlAnalysisTimer: any = null
+let lastNotifiedSubtype: string | null = null
+
+const handleSqlEditFinished = (isExplicitAction: boolean = false) => {
+  if (form.value.instanceId) {
+    fetchRoutingPreview()
+  }
+  const detected = detectedSqlSubtype.value
+  if (!detected || !form.value.sqlText.trim()) return
+
+  if (form.value.type === 'SQL_AUDIT' && form.value.sqlSubtype === 'AUTO') {
+    if (isExplicitAction || (lastNotifiedSubtype !== null && lastNotifiedSubtype !== detected.type)) {
+      ElMessage({
+        type: detected.type === 'DDL_CHANGE' ? 'warning' : 'success',
+        message: `🤖 SQL 编辑识别完毕：已自动识别为【${detected.label}】(${detected.desc})，已自动匹配对应审批流！`,
+        grouping: true,
+        duration: 3000
+      })
+    }
+    lastNotifiedSubtype = detected.type
+  }
+}
+
 watch(() => [form.value.instanceId, form.value.dbName, form.value.type, form.value.sqlSubtype, form.value.resourceGroup], () => {
   if (form.value.instanceId) {
     fetchRoutingPreview()
   }
 }, { immediate: true })
+
+watch(() => form.value.sqlText, () => {
+  if (sqlAnalysisTimer) clearTimeout(sqlAnalysisTimer)
+  sqlAnalysisTimer = setTimeout(() => {
+    handleSqlEditFinished(false)
+  }, 400)
+})
+
+const onSqlBlur = () => {
+  if (sqlAnalysisTimer) clearTimeout(sqlAnalysisTimer)
+  handleSqlEditFinished(true)
+}
 
 const refreshInstancePermissions = async () => {
   instancesLoading.value = true
@@ -1758,10 +1869,22 @@ SELECT COALESCE(MAX(PREFERENCEID), 0) + 1, NOW(), NOW(), '复制续保清空配�
 FROM typ_preference
 WHERE PREFERENCEID >= 0000000000000001 AND PREFERENCEID <= 9999999999999999;`
   ElMessage.success('已插入 DML 影响行数注解范例')
+  handleSqlEditFinished(true)
 }
 
 const handleFileChange = (file: any) => {
   form.value.file = file.raw
+  if (file.raw) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const content = e.target?.result as string
+      if (content) {
+        form.value.sqlText = content
+        handleSqlEditFinished(true)
+      }
+    }
+    reader.readAsText(file.raw)
+  }
 }
 
 // 预执行校验
@@ -1771,7 +1894,7 @@ const handleDryRun = async () => {
     return
   }
   if (!form.value.dbName) {
-    ElMessage.warning('请选择目标具体数据库 (Schema)')
+    ElMessage.warning('请选择目标数据库')
     return
   }
 
@@ -1868,7 +1991,7 @@ const handleSubmitTicket = async () => {
     return
   }
   if (!form.value.dbName) {
-    scrollToElement('form-item-dbname', '请选择目标具体数据库 (Schema)')
+    scrollToElement('form-item-dbname', '请选择目标数据库')
     return
   }
 

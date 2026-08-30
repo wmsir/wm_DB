@@ -392,7 +392,7 @@
                       </template>
                     </el-table-column>
 
-                    <el-table-column prop="dbName" label="具体数据库 (Schema)" min-width="160">
+                    <el-table-column prop="dbName" label="目标数据库" min-width="160">
                       <template #default="{ row }">
                         <el-tag size="small" type="success" effect="light" style="font-weight: 600;">
                           🗃️ {{ row.dbName }}
