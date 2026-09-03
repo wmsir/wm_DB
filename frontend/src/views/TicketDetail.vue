@@ -99,6 +99,19 @@
           
           <div class="header-tag-group">
             <el-button
+              v-if="['AUDITING', 'SUBMITTED', 'PENDING_APPROVAL'].includes(ticketDetail?.ticket?.status)"
+              size="small"
+              type="danger"
+              :icon="Bell"
+              :loading="urgeLoading"
+              :disabled="urgeCooldown > 0"
+              @click="handleOpenUrgeDialog()"
+              style="font-weight: 600; background: rgba(239, 68, 68, 0.9); border-color: #ef4444; color: #fff;"
+            >
+              {{ urgeCooldown > 0 ? `已催办 (${urgeCooldown}s)` : '⏰ 加急催办' }}
+            </el-button>
+
+            <el-button
               size="small"
               :icon="Refresh"
               @click="handleManualRefresh"
@@ -1245,6 +1258,7 @@
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
               <el-tag type="success">🟢 企业微信应用工作消息</el-tag>
               <el-tag type="primary">🔵 阿里钉钉群/工作通知</el-tag>
+              <el-tag type="success" style="background: rgba(16,185,129,0.1); border-color: #10b981; color: #047857;">🟣 字节飞书 / Lark 交互卡片</el-tag>
               <el-tag type="warning">🟡 站内待办审批提醒</el-tag>
             </div>
           </el-form-item>
@@ -1553,9 +1567,20 @@ const urgeCooldown = ref(0)
 const activeUrgeNode = ref<any>(null)
 let urgeTimer: any = null
 
-const handleOpenUrgeDialog = (node: any) => {
-  activeUrgeNode.value = node
-  urgeReason.value = ''
+const handleOpenUrgeDialog = (node?: any) => {
+  if (urgeCooldown.value > 0) {
+    ElMessage.warning(`您刚已发起过催办，请等待 ${urgeCooldown.value} 秒后再次催办`)
+    return
+  }
+  if (node && node.nodeName) {
+    activeUrgeNode.value = node
+  } else {
+    activeUrgeNode.value = {
+      nodeName: ticketDetail.value?.gatewayDecision?.targetNodeName || '当前审批节点',
+      eligibleApprovers: ticketDetail.value?.gatewayDecision?.eligibleApprovers || ['当前节点审批人']
+    }
+  }
+  urgeReason.value = '生产上线窗口临近，劳烦领导尽快协助审批！'
   urgeDialogVisible.value = true
 }
 

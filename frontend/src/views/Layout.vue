@@ -130,7 +130,7 @@
           </el-sub-menu>
 
           <!-- 6. 系统与配置 -->
-          <el-sub-menu index="/system" v-if="hasAnyPermission(['/workflow-designer', '/ai-config', '/license', '/settings'])">
+          <el-sub-menu index="/system" v-if="hasAnyPermission(['/workflow-designer', '/ai-config', '/notification-config', '/license', '/settings'])">
             <template #title>
               <el-icon class="menu-icon"><Operation /></el-icon>
               <span>系统与配置</span>
@@ -144,6 +144,13 @@
               <template #title>
                 <span>AI 模型配置</span>
                 <el-tag size="small" type="primary" effect="plain" class="inner-menu-tag">LLM</el-tag>
+              </template>
+            </el-menu-item>
+            <el-menu-item index="/notification-config" v-if="userStore.hasPermission('/notification-config') || userStore.hasPermission('/settings')">
+              <el-icon><Bell /></el-icon>
+              <template #title>
+                <span>消息通知与告警</span>
+                <el-tag size="small" type="success" effect="plain" class="inner-menu-tag">企微/钉钉/飞书</el-tag>
               </template>
             </el-menu-item>
             <el-menu-item index="/license" v-if="userStore.hasPermission('/license')">
@@ -308,6 +315,9 @@
                 </el-dropdown-item>
                 <el-dropdown-item command="ai-config" v-if="userStore.isAdmin || userStore.hasPermission('/ai-config')">
                   <el-icon><Cpu /></el-icon>AI 模型与配置中心
+                </el-dropdown-item>
+                <el-dropdown-item command="notification-config" v-if="userStore.isAdmin || userStore.hasPermission('/notification-config')">
+                  <el-icon><Bell /></el-icon>消息通知与告警配置
                 </el-dropdown-item>
                 <el-dropdown-item command="settings" v-if="userStore.isAdmin || userStore.hasPermission('/settings')">
                   <el-icon><Brush /></el-icon>个性化外观与主题
@@ -487,6 +497,7 @@ const routeTitleMap: Record<string, { module: string; page: string }> = {
   '/role-list': { module: '用户与权限', page: '角色与权限' },
   '/workflow-designer': { module: '系统与配置', page: '流程设计与模板' },
   '/ai-config': { module: '系统与配置', page: 'AI 模型配置' },
+  '/notification-config': { module: '系统与配置', page: '消息通知与告警配置' },
   '/license': { module: '系统与配置', page: '授权证书' },
   '/settings': { module: '系统与配置', page: '自定义主题与水印' },
   '/user-profile': { module: '个人中心', page: '个人设置' }
@@ -521,6 +532,7 @@ const quickNavItems = [
   { name: '全局参数查看 (Variables)', desc: 'MySQL 系统全局参数与平台策略', path: '/instance-params', icon: '⚙️', category: '实例与资源' },
   { name: '流程设计与模板 (BPMN)', desc: '可视化工作流拓扑编排与模板绑定', path: '/workflow-designer', icon: '🔀', category: '系统配置' },
   { name: 'AI 模型配置', desc: 'DeepSeek、Qwen、OpenAI、Ollama 接入配置与连通自检', path: '/ai-config', icon: '🧠', category: '系统配置' },
+  { name: '消息通知与告警配置', desc: '企业微信工作消息、阿里钉钉机器人、电话语音外呼与频次策略', path: '/notification-config', icon: '🔔', category: '系统配置' },
   { name: '用户管理', desc: '系统人员账号维护与组织分配', path: '/user-list', icon: '👥', category: '用户与权限' },
   { name: '角色权限', desc: '系统角色定义与页签权限矩阵', path: '/role-list', icon: '🔐', category: '用户与权限' },
   { name: '自定义主题与水印', desc: '系统外观风格、主色调与防泄密水印', path: '/settings', icon: '🎨', category: '系统配置' }
@@ -630,6 +642,8 @@ const handleUserCommand = (cmd: string) => {
     router.push('/user-profile')
   } else if (cmd === 'ai-config') {
     router.push('/ai-config')
+  } else if (cmd === 'notification-config') {
+    router.push('/notification-config')
   } else if (cmd === 'settings') {
     router.push('/settings')
   } else if (cmd === 'logout') {

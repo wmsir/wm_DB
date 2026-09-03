@@ -226,6 +226,7 @@ public class TicketController {
     /**
      * 获取工单详情
      */
+
     @Operation(summary = "获取工单详情及 SQL 明细")
     @GetMapping("/{id}/detail")
     public Result<Map<String, Object>> getTicketDetail(@PathVariable("id") Long id) {

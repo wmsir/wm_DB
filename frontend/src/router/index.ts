@@ -28,6 +28,7 @@ import UserList from '../views/UserList.vue'
 import RoleList from '../views/RoleList.vue'
 import UserProfile from '../views/UserProfile.vue'
 import AiConfig from '../views/AiConfig.vue'
+import NotificationConfig from '../views/NotificationConfig.vue'
 
 import { useUserStore } from '../store/user'
 
@@ -198,6 +199,15 @@ const routes = [
       {
         path: 'ai/config',
         redirect: '/ai-config'
+      },
+      {
+        path: 'notification-config',
+        name: 'NotificationConfig',
+        component: NotificationConfig
+      },
+      {
+        path: 'notification/config',
+        redirect: '/notification-config'
       },
       // 个人中心
       {

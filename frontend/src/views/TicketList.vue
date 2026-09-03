@@ -306,6 +306,21 @@
                   审批 / 查看
                 </el-button>
                 
+                <!-- 催办审批（处于审批流转中的工单） -->
+                <el-button
+                  v-if="['AUDITING', 'PENDING_APPROVAL', 'SUBMITTED'].includes(row.status)"
+                  size="small"
+                  type="danger"
+                  plain
+                  :icon="Bell"
+                  style="font-weight: 600; padding: 4px 10px;"
+                  :loading="urgingMap[row.id]"
+                  :disabled="(urgeCooldownMap[row.id] || 0) > 0"
+                  @click="handleUrgeTicket(row)"
+                >
+                  {{ (urgeCooldownMap[row.id] || 0) > 0 ? `催办 (${urgeCooldownMap[row.id]}s)` : '催办' }}
+                </el-button>
+
                 <!-- 申请人撤回工单（仅限自己提交且处于审批中的工单） -->
                 <el-button
                   v-if="isMySubmittedTicket(row) && (row.status === 'AUDITING' || row.status === 'PENDING_APPROVAL')"
@@ -358,7 +373,7 @@ import { useRouter, useRoute } from 'vue-router'
 import request from '../utils/request'
 import { useUserStore } from '../store/user'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Refresh, CopyDocument, Search, RefreshRight, Tickets, Back } from '@element-plus/icons-vue'
+import { Plus, Refresh, CopyDocument, Search, RefreshRight, Tickets, Back, Bell } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -667,6 +682,54 @@ const pagedTickets = computed(() => {
 watch(() => [activeStatusTab.value, userPerspectiveFilter.value, filterInstanceId.value, filterType.value, searchKeyword.value], () => {
   currentPage.value = 1
 })
+
+const urgingMap = ref<Record<number, boolean>>({})
+const urgeCooldownMap = ref<Record<number, number>>({})
+
+const startUrgeCooldown = (ticketId: number, seconds = 60) => {
+  urgeCooldownMap.value[ticketId] = seconds
+  const timer = setInterval(() => {
+    if ((urgeCooldownMap.value[ticketId] || 0) <= 1) {
+      delete urgeCooldownMap.value[ticketId]
+      clearInterval(timer)
+    } else {
+      urgeCooldownMap.value[ticketId]--
+    }
+  }, 1000)
+}
+
+const handleUrgeTicket = async (row: any) => {
+  if ((urgeCooldownMap.value[row.id] || 0) > 0) {
+    ElMessage.warning(`您刚已发起过催办，请等待 ${urgeCooldownMap.value[row.id]} 秒后再次催办`)
+    return
+  }
+
+  try {
+    const { value: reason } = await ElMessageBox.prompt(
+      `即将向工单 #${row.id}（目标库: ${row.dbName || '默认库'}）当前节点的所有待审批责任人发送加急催办通知（支持企业微信工作消息、飞书富文本互动卡片、阿里钉钉）。\n\n您可补充催办加急说明：`,
+      '⏰ 工单审批加急催办',
+      {
+        confirmButtonText: '立即发送催办通知',
+        cancelButtonText: '取消',
+        inputPlaceholder: '如：生产上线窗口临近，劳烦领导尽快协助审批！',
+        inputValue: '生产上线窗口临近，劳烦领导尽快协助审批！',
+        type: 'warning'
+      }
+    )
+
+    urgingMap.value[row.id] = true
+    const res: any = await request.post(`/v1/ticket/${row.id}/urge`, { reason: reason || '请尽快审批' })
+    const msg = res?.data?.message || '加急催办通知已通过启用的企业微信、飞书、钉钉成功下发给当前待审批人！'
+    ElMessage.success(msg)
+    startUrgeCooldown(row.id, 60)
+  } catch (err: any) {
+    if (err !== 'cancel') {
+      ElMessage.error(err?.response?.data?.message || err?.message || '发起催办失败')
+    }
+  } finally {
+    urgingMap.value[row.id] = false
+  }
+}
 
 const handleWithdrawTicket = async (row: any) => {
   try {

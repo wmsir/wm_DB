@@ -74,6 +74,7 @@ export const SYSTEM_PERMISSION_TREE: PermissionNode[] = [
     children: [
       { id: '/workflow-designer', name: '流程设计与模板', description: 'BPMN 2.0 拓扑编排、排他网关条件路由与模板绑定' },
       { id: '/ai-config', name: 'AI 模型配置', description: '主流大模型提供商（DeepSeek、通义千问、OpenAI、智谱、文心、Kimi、Ollama）与自定义大模型接入及连通自检' },
+      { id: '/notification-config', name: '消息通知与告警配置', description: '企业微信工作消息 (WSDL/SOAP)、阿里钉钉群机器人、紧急电话智能语音外呼及推送频次策略配置' },
       { id: '/license', name: '授权证书', description: '商业版证书鉴权、授权节点数与到期状态' },
       { id: '/settings', name: '自定义主题与水印', description: '系统外观风格、主色调与界面个性化防泄密水印定制' }
     ]
@@ -185,7 +186,8 @@ export const PRESET_PERMISSION_PACKAGES: Record<string, { name: string; icon: st
       '/instance-params',
       '/instance-config',
       '/workflow-designer',
-      '/ai-config'
+      '/ai-config',
+      '/notification-config'
     ]
   },
   DEV_LEAD: {

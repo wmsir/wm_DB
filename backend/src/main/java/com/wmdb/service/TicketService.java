@@ -24,6 +24,8 @@ import java.util.*;
 @Slf4j
 @Service
 public class TicketService {
+
+    private final Map<Long, Long> urgeCooldownTracker;
     private final StorageService storageService;
     private final MysqlEngineImpl mysqlEnginePlugin;
     private final DmEngineImpl dmEnginePlugin;
@@ -64,6 +66,7 @@ public class TicketService {
                          SystemConfigService systemConfigService, WorkflowTemplateService workflowTemplateService,
                          WorkflowTemplateMapper workflowTemplateMapper,
                          javax.sql.DataSource dataSource) {
+        this.urgeCooldownTracker = new java.util.concurrent.ConcurrentHashMap<>();
         this.storageService = storageService; this.mysqlEnginePlugin = mysqlEnginePlugin;
         this.dmEnginePlugin = dmEnginePlugin; this.oracleEnginePlugin = oracleEnginePlugin;
         this.oceanBaseEnginePlugin = oceanBaseEnginePlugin; this.kingbaseEnginePlugin = kingbaseEnginePlugin;
@@ -312,7 +315,7 @@ public class TicketService {
         } catch (Exception e) {
             log.warn("Start Flowable process failed: {}", e.getMessage());
         }
-        notificationService.sendTicketNotification(ticket, "SUBMITTED");
+        notificationService.sendApprovalStageNotification(ticket, "SUBMITTED", "工单创建提交", applicantName, reason);
         return ticket;
     }
 
@@ -348,7 +351,7 @@ public class TicketService {
             // 第 2 级 (业务开发组长初审通过) -> 推进至第 3 级 (核心 DBA 安全复核)
             appendLog(ticketId, operatorIdCard, opName, "STAGE_APPROVE", "业务开发组长初审节点",
                     "【业务开发组长初审】通过（审核人: " + opName + "），四级审批流程已流转推进至第 3 节点【核心DBA安全复核】。" + (comment != null && !comment.trim().isEmpty() ? " 审批批注: " + comment : ""));
-            notificationService.sendTicketNotification(ticket, "AUDITING");
+            notificationService.sendApprovalStageNotification(ticket, "AUDITING", "业务开发组长初审", opName, comment);
             return AsyncTicketExecutor.ExecutionResult.builder()
                     .success(true)
                     .totalActualRows(0)
@@ -359,7 +362,7 @@ public class TicketService {
             // 第 3 级 (核心 DBA 复核通过) -> 推进至第 4 级 (运维安全总监终审)
             appendLog(ticketId, operatorIdCard, opName, "STAGE_APPROVE", "核心DBA安全复核节点",
                     "【核心DBA安全复核】通过（审核人: " + opName + "），四级审批流程已流转推进至第 4 节点【运维安全总监终审】。" + (comment != null && !comment.trim().isEmpty() ? " 审批批注: " + comment : ""));
-            notificationService.sendTicketNotification(ticket, "AUDITING");
+            notificationService.sendApprovalStageNotification(ticket, "AUDITING", "核心DBA安全复核", opName, comment);
             return AsyncTicketExecutor.ExecutionResult.builder()
                     .success(true)
                     .totalActualRows(0)
@@ -372,7 +375,7 @@ public class TicketService {
         if (is3Level && stageApprovedCount == 0) {
             appendLog(ticketId, operatorIdCard, opName, "STAGE_APPROVE", "开发组长初审节点",
                     "【开发组长初审】通过（审核人: " + opName + "），三级审批流程已流转推进至第 2 节点【核心DBA技术复审】。" + (comment != null && !comment.trim().isEmpty() ? " 审批批注: " + comment : ""));
-            notificationService.sendTicketNotification(ticket, "AUDITING");
+            notificationService.sendApprovalStageNotification(ticket, "AUDITING", "开发组长初审", opName, comment);
             return AsyncTicketExecutor.ExecutionResult.builder()
                     .success(true)
                     .totalActualRows(0)
@@ -382,7 +385,7 @@ public class TicketService {
         } else if (is3Level && stageApprovedCount == 1) {
             appendLog(ticketId, operatorIdCard, opName, "STAGE_APPROVE", "核心DBA技术复审节点",
                     "【核心DBA技术复审】通过（审核人: " + opName + "），三级审批流程已流转推进至第 3 节点【系统管理员终审】。" + (comment != null && !comment.trim().isEmpty() ? " 审批批注: " + comment : ""));
-            notificationService.sendTicketNotification(ticket, "AUDITING");
+            notificationService.sendApprovalStageNotification(ticket, "AUDITING", "核心DBA技术复审", opName, comment);
             return AsyncTicketExecutor.ExecutionResult.builder()
                     .success(true)
                     .totalActualRows(0)
@@ -1027,7 +1030,7 @@ public class TicketService {
     }
 
     /**
-     * 工单加急催办：记录催办审计流水并通过企业微信/钉钉向当前候选审批人发送即时提醒
+     * 工单加急催办：记录催办审计流水并通过企业微信/钉钉/飞书向当前候选审批人发送即时提醒
      */
     public Map<String, Object> urgeTicket(Long ticketId, String operatorIdCard, String urgeReason) {
         SqlTicket ticket = sqlTicketMapper.selectById(ticketId);
@@ -1038,6 +1041,14 @@ public class TicketService {
             throw new BusinessException("A0400", "当前工单已闭环归档，无需催办！");
         }
 
+        long now = System.currentTimeMillis();
+        Long lastUrge = urgeCooldownTracker.get(ticketId);
+        if (lastUrge != null && (now - lastUrge) < 60000) {
+            long remainingSec = (60000 - (now - lastUrge)) / 1000;
+            throw new BusinessException("A0429", "您刚已发起过催办，请等待 " + remainingSec + " 秒后再次催办");
+        }
+        urgeCooldownTracker.put(ticketId, now);
+
         SqlTicketDetail detail = sqlTicketDetailMapper.selectOne(new QueryWrapper<SqlTicketDetail>().eq("ticket_id", ticketId));
         ApproverInfo approverInfo = resolveApproverInfo(ticket, detail);
         List<String> targetApprovers = approverInfo.eligibleApprovers != null ? approverInfo.eligibleApprovers : List.of("当前审批责任人");
@@ -1046,18 +1057,20 @@ public class TicketService {
         String operatorName = operator != null && operator.getRealName() != null ? operator.getRealName() : (operator != null ? operator.getUsername() : operatorIdCard);
 
         String reasonText = (urgeReason != null && !urgeReason.trim().isEmpty()) ? urgeReason : "业务发布在即，请尽快完成工单审核与执行";
-        String comment = String.format("申请人【%s】发起加急催办：【%s】；已通过企业微信/钉钉向当前审批责任人【%s】发送即时提醒。",
+        String comment = String.format("申请人【%s】发起加急催办：【%s】；已通过企业微信/钉钉/飞书向当前审批责任人【%s】发送即时提醒。",
                 operatorName, reasonText, String.join("、", targetApprovers));
 
         appendLog(ticketId, operatorIdCard, operatorName, "URGE", "审批加急催办", comment);
+
+        notificationService.sendUrgeNotification(ticket, operatorName, reasonText);
 
         Map<String, Object> res = new HashMap<>();
         res.put("ticketId", ticketId);
         res.put("nodeName", approverInfo.nodeName);
         res.put("targetApprovers", targetApprovers);
-        res.put("channels", List.of("企业微信工作消息", "阿里钉钉工作通知", "系统站内待办通知"));
+        res.put("channels", List.of("企业微信工作消息", "阿里钉钉工作通知", "字节飞书交互卡片", "系统站内待办通知"));
         res.put("urgeTime", LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-        res.put("message", String.format("已成功向【%s】发送企业微信与钉钉加急催办通知！", String.join("、", targetApprovers)));
+        res.put("message", String.format("已成功向【%s】发送企业微信、飞书与钉钉加急催办通知！", String.join("、", targetApprovers)));
         return res;
     }
 
@@ -1614,10 +1627,7 @@ public class TicketService {
             dto.setId(t.getId()); dto.setBusinessKey(t.getBusinessKey()); dto.setType(t.getType());
             dto.setDbName(t.getDbName()); dto.setApplicantIdCard(t.getApplicantIdCard()); dto.setApplicantName(t.getApplicantName());
             dto.setReason(t.getReason());
-            result.add(dto);
         }
         return result;
     }
 }
-
-
