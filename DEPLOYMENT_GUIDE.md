@@ -217,3 +217,51 @@ bash deploy.sh
 - [x] **数据连通验证**：工单列表拉取阿里云 RDS 数据库真实历史工单（60+条）。
 - [x] **接口代理验证**：前端发起 `/api/v1/...` 请求返回 HTTP 200，无跨域报错。
 - [x] **原有服务不受影响**：服务器原有的 `toolso.cn` HTTPS 站点正常运行。
+
+---
+
+## 六、 多数据库与国产数据库（达梦/金仓/高斯/TiDB/Oracle）自动化执行配置说明
+
+系统内置了 **智能多数据库方言与国产数据引擎自动初始化组件 (`DatabaseAutoInitializerRunner`)**，支持在部署启动时自动识别数据库驱动并加载对应方言的 SQL 脚本。
+
+### 1. 配置参数 (`application.yml`)
+```yaml
+wmdb:
+  database:
+    # 是否在系统启动部署时自动初始化表结构 (默认 true)
+    auto-init: ${WMDB_DB_AUTO_INIT:true}
+    # 数据库类型配置：auto (默认自动智能嗅探)、mysql、dameng (达梦)、kingbase (人大金仓)、opengauss (华为高斯)、oracle、tidb
+    type: ${WMDB_DB_TYPE:auto}
+    # 遇到已存在的表时是否忽略报错平滑继续 (默认 true，保证幂等性)
+    continue-on-error: ${WMDB_DB_CONTINUE_ON_ERROR:true}
+```
+
+### 2. 支持的数据库引擎与方言目录结构
+| 数据库分类 | 支持引擎与版本 | 匹配关键词 / JDBC 前缀 | 自动执行脚本路径 |
+| :--- | :--- | :--- | :--- |
+| **国产达梦** | 达梦数据库 DM8 / DM7 | `dm`, `dameng`, `jdbc:dm:` | `classpath:db/dameng/schema.sql` |
+| **国产人大金仓** | KingbaseES KES V8R3 / V8R6 / V9 | `kingbase`, `jdbc:kingbase8:` | `classpath:db/kingbase/schema.sql` |
+| **国产华为高斯** | openGauss 2.0+ / 统信 UOS / PostgreSQL | `opengauss`, `zenith`, `jdbc:opengauss:` | `classpath:db/opengauss/schema.sql` |
+| **国产分布式** | OceanBase (MySQL / Oracle 双模式) | `oceanbase` | 自动分支：MySQL 模式走 `db/mysql/`，Oracle 模式走 `db/oracle/` |
+| **国产分布式** | PingCAP TiDB 分布式数据库 | `tidb` | `classpath:db/mysql/schema.sql` (100% 语法兼容) |
+| **企业商业库** | Oracle 12c / 18c / 19c / 21c | `oracle`, `jdbc:oracle:` | `classpath:db/oracle/schema.sql` |
+| **开源标准库** | MySQL 5.7+ / 8.0+ / 8.4+ / MariaDB | `mysql`, `jdbc:mysql:` | `classpath:db/mysql/schema.sql` |
+
+### 3. 部署切换数据库实例示例
+当需要将系统切换至国产达梦数据库部署时，只需在 Docker 运行或命令行中指定参数，系统启动时将自动检测并执行建表：
+```bash
+# 启动时连接国产达梦数据库并自动执行建表
+java -jar wmdb-backend.jar \
+  --spring.datasource.url="jdbc:dm://192.168.1.100:5236/DAMENG" \
+  --spring.datasource.username="SYSDBA" \
+  --spring.datasource.password="SYSDBA001" \
+  --spring.datasource.driver-class-name="dm.jdbc.driver.DmDriver" \
+  --wmdb.database.type="auto"
+```
+系统启动日志中将清晰打印如下追踪信息：
+```text
+[DB-AUTO-INIT] 📌 底层驱动检测产品: 【DM DBMS】
+[DB-AUTO-INIT] 🇨🇳 识别为国产【达梦数据库 (DaMeng DM)】引擎
+[DB-AUTO-INIT] 📂 正在加载并执行初始化脚本: 【classpath:db/dameng/schema.sql】
+[DB-AUTO-INIT] 🌟 脚本【schema.sql】批量执行完毕！
+```
