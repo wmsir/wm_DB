@@ -1,266 +1,469 @@
 <template>
-  <div class="login-container">
-    <div class="login-box">
-      <div class="login-header">
-        <div class="brand-logo">
-          <span class="logo-icon">🛡️</span>
+  <div class="login-wrapper">
+    <!-- 背景流光与科技网格点缀 -->
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+    <div class="ambient-glow glow-3"></div>
+    <div class="cyber-grid-overlay"></div>
+
+    <!-- 顶栏微导航 -->
+    <header class="top-nav-bar">
+      <div class="nav-brand">
+        <div class="nav-brand-logo">
+          <span class="logo-emoji">🛡️</span>
         </div>
-        <h2 class="title">wmDB 完美数据库</h2>
-        <div class="subtitle">企业级智能数据库运维与安全审计平台</div>
+        <div class="nav-brand-text">
+          <span class="brand-title">WMdb 智能云</span>
+          <span class="brand-badge">Enterprise v2.8</span>
+        </div>
       </div>
+      <div class="nav-status-group">
+        <div class="status-indicator">
+          <span class="pulse-dot"></span>
+          <span class="status-text">生产安全网关集群正常</span>
+        </div>
+        <div class="env-pill">RDS MySQL 8.0 联动在线</div>
+      </div>
+    </header>
 
-      <el-tabs v-model="activeTab" class="login-tabs" stretch @tab-change="handleTabChange">
-        <!-- Tab 1: 账号密码登录 -->
-        <el-tab-pane label="账号密码" name="account">
-          <el-form
-            ref="accountFormRef"
-            :model="accountForm"
-            :rules="accountRules"
-            label-position="top"
-          >
-            <el-form-item label="登录账号" prop="account">
-              <el-input
-                v-model="accountForm.account"
-                placeholder="用户名 / 手机号 / 邮箱 / 身份证号"
-                clearable
-                :prefix-icon="User"
-              />
-            </el-form-item>
-            <el-form-item label="登录密码" prop="password">
-              <el-input
-                v-model="accountForm.password"
-                type="password"
-                placeholder="请输入登录密码"
-                show-password
-                :prefix-icon="Lock"
-                @keyup.enter="handleAccountLogin"
-              />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" class="login-btn" @click="handleAccountLogin" :loading="loading">
-                登 录
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
+    <!-- 主展示与登录双栏区域 -->
+    <main class="login-main-stage">
+      <!-- 左栏：产品定位与核心能力展台 -->
+      <section class="hero-showcase-panel">
+        <div class="hero-header">
+          <div class="hero-tag">
+            <span class="tag-sparkle">✨</span>
+            <span>企业级数据库敏捷协同与安全治理云</span>
+          </div>
+          <h1 class="hero-headline">
+            为现代研发打造的<br />
+            <span class="gradient-text">全生命周期 SQL 变更治理</span>平台
+          </h1>
+          <p class="hero-description">
+            多源异构数据引擎覆盖、SQL 语法与安全智能预检、SpEL 排他审批网关、定时与灰度分批流式执行，全链路保障生产数据安全与高可用。
+          </p>
+        </div>
 
-        <!-- Tab 2: 手机/邮箱验证码登录 -->
-        <el-tab-pane label="验证码登录" name="phone">
-          <el-form
-            ref="phoneFormRef"
-            :model="phoneForm"
-            :rules="phoneRules"
-            label-position="top"
-          >
-            <el-form-item label="手机号或邮箱" prop="phone">
-              <el-input
-                v-model="phoneForm.phone"
-                placeholder="请输入11位手机号或企业邮箱"
-                clearable
-                :prefix-icon="Iphone"
-              />
-            </el-form-item>
-            <el-form-item label="验证码" prop="code">
-              <div class="code-input-row">
+        <!-- 4 大技术特性矩阵 -->
+        <div class="feature-matrix-grid">
+          <div class="feature-card">
+            <div class="feature-icon-box icon-shield">
+              <span>🛡️</span>
+            </div>
+            <div class="feature-info">
+              <div class="feature-title">SQL 智能预检与安全网关</div>
+              <div class="feature-desc">Dry-Run 影响行数深度推导比对，高危 DDL/DML 自动阻断与偏差告警</div>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-box icon-workflow">
+              <span>⛓️</span>
+            </div>
+            <div class="feature-info">
+              <div class="feature-title">动态多级排他审批流水线</div>
+              <div class="feature-desc">业务初审 ➔ 核心 DBA 复核 ➔ 安全总监终审，基于规则灵活条件分流</div>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-box icon-speed">
+              <span>⚡</span>
+            </div>
+            <div class="feature-info">
+              <div class="feature-title">灰度分批与定时窗口调度</div>
+              <div class="feature-desc">低峰期自动流式下发，大批量 DML 平滑提交，杜绝长事务锁表与从库延迟</div>
+            </div>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-box icon-bell">
+              <span>🔔</span>
+            </div>
+            <div class="feature-info">
+              <div class="feature-title">全渠道消息与加急催办总线</div>
+              <div class="feature-desc">企业微信工作消息、飞书富文本互动卡片、钉钉加急群通知多端即刻触达</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 多数据库支持生态徽章 -->
+        <div class="db-ecosystem-footer">
+          <span class="db-eco-label">支持引擎生态：</span>
+          <div class="db-badges-wrap">
+            <span class="db-badge">MySQL 8.0</span>
+            <span class="db-badge">TiDB</span>
+            <span class="db-badge">OceanBase</span>
+            <span class="db-badge">达梦 DM8</span>
+            <span class="db-badge">人大金仓 Kingbase</span>
+            <span class="db-badge">openGauss</span>
+            <span class="db-badge">Oracle</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右栏：轻奢毛玻璃科技登录卡片 -->
+      <section class="login-card-panel">
+        <div class="login-card-glass">
+          <div class="card-header">
+            <div class="card-title-row">
+              <h2 class="card-title">欢迎登录</h2>
+              <span class="card-title-badge">用户控制台</span>
+            </div>
+            <p class="card-subtitle">请选择身份验证方式接入数据库变更管控中心</p>
+          </div>
+
+          <!-- 定制胶囊式选项卡 (Segmented Pills) -->
+          <div class="segmented-tabs-bar">
+            <button
+              class="tab-pill-btn"
+              :class="{ active: activeTab === 'account' }"
+              @click="handleTabChange('account')"
+            >
+              <el-icon><User /></el-icon>
+              <span>账号密码</span>
+            </button>
+            <button
+              class="tab-pill-btn"
+              :class="{ active: activeTab === 'phone' }"
+              @click="handleTabChange('phone')"
+            >
+              <el-icon><Iphone /></el-icon>
+              <span>手机验证码</span>
+            </button>
+            <button
+              class="tab-pill-btn"
+              :class="{ active: activeTab === 'qrcode' }"
+              @click="handleTabChange('qrcode')"
+            >
+              <el-icon><Cellphone /></el-icon>
+              <span>APP 扫码</span>
+            </button>
+          </div>
+
+          <!-- Tab 1: 账号密码登录 -->
+          <div v-show="activeTab === 'account'" class="tab-content-fade">
+            <el-form
+              ref="accountFormRef"
+              :model="accountForm"
+              :rules="accountRules"
+              label-position="top"
+              class="custom-login-form"
+            >
+              <el-form-item label="登录凭证账号" prop="account">
                 <el-input
-                  v-model="phoneForm.code"
-                  placeholder="请输入6位验证码"
+                  v-model="accountForm.account"
+                  placeholder="用户名 / 手机号 / 企业邮箱 / 身份证号"
                   clearable
-                  :prefix-icon="Key"
-                  maxlength="6"
-                  @keyup.enter="handlePhoneLogin"
+                  size="large"
+                  :prefix-icon="User"
+                  class="tech-input"
                 />
+              </el-form-item>
+              <el-form-item label="安全访问密码" prop="password">
+                <el-input
+                  v-model="accountForm.password"
+                  type="password"
+                  placeholder="请输入密码（支持国密 SM2 加密传输）"
+                  show-password
+                  size="large"
+                  :prefix-icon="Lock"
+                  class="tech-input"
+                  @keyup.enter="handleAccountLogin"
+                />
+              </el-form-item>
+              <el-form-item style="margin-top: 24px;">
                 <el-button
                   type="primary"
-                  plain
-                  class="send-code-btn"
-                  :disabled="countdown > 0 || sendLoading"
-                  :loading="sendLoading"
-                  @click="handleSendCode"
+                  class="tech-submit-btn"
+                  size="large"
+                  @click="handleAccountLogin"
+                  :loading="loading"
                 >
-                  {{ countdown > 0 ? `${countdown}s 后重新获取` : '获取验证码' }}
+                  <span v-if="!loading">登 录 控 制 台</span>
+                  <span v-else>正在验证安全凭据...</span>
                 </el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- Tab 2: 手机/邮箱验证码登录 -->
+          <div v-show="activeTab === 'phone'" class="tab-content-fade">
+            <el-form
+              ref="phoneFormRef"
+              :model="phoneForm"
+              :rules="phoneRules"
+              label-position="top"
+              class="custom-login-form"
+            >
+              <el-form-item label="手机号码或企业邮箱" prop="phone">
+                <el-input
+                  v-model="phoneForm.phone"
+                  placeholder="请输入 11 位手机号或企业邮箱"
+                  clearable
+                  size="large"
+                  :prefix-icon="Iphone"
+                  class="tech-input"
+                />
+              </el-form-item>
+              <el-form-item label="动态短信验证码" prop="code">
+                <div class="code-input-row">
+                  <el-input
+                    v-model="phoneForm.code"
+                    placeholder="请输入 6 位验证码"
+                    clearable
+                    size="large"
+                    :prefix-icon="Key"
+                    maxlength="6"
+                    class="tech-input code-flex-input"
+                    @keyup.enter="handlePhoneLogin"
+                  />
+                  <el-button
+                    type="primary"
+                    plain
+                    size="large"
+                    class="send-code-btn"
+                    :disabled="countdown > 0 || sendLoading"
+                    :loading="sendLoading"
+                    @click="handleSendCode"
+                  >
+                    {{ countdown > 0 ? `${countdown}s 重发` : '获取验证码' }}
+                  </el-button>
+                </div>
+              </el-form-item>
+              <el-form-item style="margin-top: 24px;">
+                <el-button
+                  type="primary"
+                  class="tech-submit-btn"
+                  size="large"
+                  @click="handlePhoneLogin"
+                  :loading="loading"
+                >
+                  <span v-if="!loading">快速验证并登入</span>
+                  <span v-else>正在核实验证码...</span>
+                </el-button>
+              </el-form-item>
+            </el-form>
+          </div>
+
+          <!-- Tab 3: APP 扫码登录 (企微/钉钉/飞书/统一SSO) -->
+          <div v-show="activeTab === 'qrcode'" class="tab-content-fade">
+            <div class="qr-login-container">
+              <!-- 渠道选择器 -->
+              <div class="qr-channel-selector">
+                <div
+                  v-for="ch in channels"
+                  :key="ch.key"
+                  class="channel-tab"
+                  :class="{ active: currentChannel === ch.key }"
+                  @click="switchChannel(ch.key)"
+                >
+                  <span class="ch-icon">{{ ch.icon }}</span>
+                  <span class="ch-label">{{ ch.name }}</span>
+                </div>
               </div>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" class="login-btn" @click="handlePhoneLogin" :loading="loading">
-                登 录 / 快速验证
-              </el-button>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
 
-        <!-- Tab 3: APP 扫码登录 (企微/钉钉/飞书/统一SSO) -->
-        <el-tab-pane label="APP 扫码登录" name="qrcode">
-          <div class="qr-login-container">
-            <!-- 渠道选择器 -->
-            <div class="qr-channel-selector">
-              <div
-                v-for="ch in channels"
-                :key="ch.key"
-                class="channel-tab"
-                :class="{ active: currentChannel === ch.key }"
-                @click="switchChannel(ch.key)"
-              >
-                <span class="ch-icon">{{ ch.icon }}</span>
-                <span class="ch-label">{{ ch.name }}</span>
-              </div>
-            </div>
+              <!-- 二维码展示核心区 -->
+              <div class="qr-card-wrapper">
+                <div
+                  class="qr-box"
+                  :class="{ 'is-expired': qrInfo?.status === 'EXPIRED' }"
+                  @click="qrInfo?.status === 'EXPIRED' && refreshQr()"
+                >
+                  <div class="qr-code-graphic" v-if="qrInfo">
+                    <svg viewBox="0 0 100 100" class="qr-svg">
+                      <rect x="0" y="0" width="100" height="100" fill="#ffffff" />
+                      <!-- 定位角标 1 (左上) -->
+                      <rect x="8" y="8" width="26" height="26" fill="#1e293b" rx="4" />
+                      <rect x="13" y="13" width="16" height="16" fill="#ffffff" rx="2" />
+                      <rect x="17" y="17" width="8" height="8" fill="#1e293b" rx="1" />
 
-            <!-- 二维码展示核心区 -->
-            <div class="qr-card-wrapper">
-              <div class="qr-box" :class="{ 'is-expired': qrInfo?.status === 'EXPIRED' }" @click="qrInfo?.status === 'EXPIRED' && refreshQr()">
-                <!-- 二维码图形模拟与 SVG 渲染 -->
-                <div class="qr-code-graphic" v-if="qrInfo">
-                  <svg viewBox="0 0 100 100" class="qr-svg">
-                    <rect x="0" y="0" width="100" height="100" fill="#ffffff" />
-                    <!-- 定位角标 1 (左上) -->
-                    <rect x="8" y="8" width="26" height="26" fill="#1e293b" rx="4" />
-                    <rect x="13" y="13" width="16" height="16" fill="#ffffff" rx="2" />
-                    <rect x="17" y="17" width="8" height="8" fill="#1e293b" rx="1" />
+                      <!-- 定位角标 2 (右上) -->
+                      <rect x="66" y="8" width="26" height="26" fill="#1e293b" rx="4" />
+                      <rect x="71" y="13" width="16" height="16" fill="#ffffff" rx="2" />
+                      <rect x="75" y="17" width="8" height="8" fill="#1e293b" rx="1" />
 
-                    <!-- 定位角标 2 (右上) -->
-                    <rect x="66" y="8" width="26" height="26" fill="#1e293b" rx="4" />
-                    <rect x="71" y="13" width="16" height="16" fill="#ffffff" rx="2" />
-                    <rect x="75" y="17" width="8" height="8" fill="#1e293b" rx="1" />
+                      <!-- 定位角标 3 (左下) -->
+                      <rect x="8" y="66" width="26" height="26" fill="#1e293b" rx="4" />
+                      <rect x="13" y="71" width="16" height="16" fill="#ffffff" rx="2" />
+                      <rect x="17" y="75" width="8" height="8" fill="#1e293b" rx="1" />
 
-                    <!-- 定位角标 3 (左下) -->
-                    <rect x="8" y="66" width="26" height="26" fill="#1e293b" rx="4" />
-                    <rect x="13" y="71" width="16" height="16" fill="#ffffff" rx="2" />
-                    <rect x="17" y="75" width="8" height="8" fill="#1e293b" rx="1" />
+                      <!-- 数据矩阵点阵 -->
+                      <circle cx="42" cy="12" r="3" fill="#3b82f6" />
+                      <circle cx="50" cy="18" r="3" fill="#1e293b" />
+                      <circle cx="40" cy="28" r="3" fill="#1e293b" />
+                      <circle cx="55" cy="30" r="3" fill="#3b82f6" />
+                      <circle cx="15" cy="45" r="3" fill="#1e293b" />
+                      <circle cx="26" cy="48" r="3" fill="#3b82f6" />
+                      <circle cx="38" cy="42" r="3" fill="#1e293b" />
+                      <circle cx="50" cy="50" r="4" fill="#2563eb" />
+                      <circle cx="62" cy="42" r="3" fill="#1e293b" />
+                      <circle cx="75" cy="48" r="3" fill="#3b82f6" />
+                      <circle cx="85" cy="45" r="3" fill="#1e293b" />
+                      <circle cx="42" cy="62" r="3" fill="#1e293b" />
+                      <circle cx="55" cy="70" r="3" fill="#3b82f6" />
+                      <circle cx="68" cy="72" r="3" fill="#1e293b" />
+                      <circle cx="82" cy="65" r="3" fill="#1e293b" />
+                      <circle cx="72" cy="85" r="3" fill="#3b82f6" />
+                      <circle cx="85" cy="82" r="3" fill="#1e293b" />
+                      <circle cx="45" cy="85" r="3" fill="#1e293b" />
+                    </svg>
+                    <div class="qr-center-logo">
+                      <span>{{ getChannelIcon(currentChannel) }}</span>
+                    </div>
+                  </div>
 
-                    <!-- 数据矩阵点阵 -->
-                    <circle cx="42" cy="12" r="3" fill="#3b82f6" />
-                    <circle cx="50" cy="18" r="3" fill="#1e293b" />
-                    <circle cx="40" cy="28" r="3" fill="#1e293b" />
-                    <circle cx="55" cy="30" r="3" fill="#3b82f6" />
-                    <circle cx="15" cy="45" r="3" fill="#1e293b" />
-                    <circle cx="26" cy="48" r="3" fill="#3b82f6" />
-                    <circle cx="38" cy="42" r="3" fill="#1e293b" />
-                    <circle cx="50" cy="50" r="4" fill="#2563eb" />
-                    <circle cx="62" cy="42" r="3" fill="#1e293b" />
-                    <circle cx="75" cy="48" r="3" fill="#3b82f6" />
-                    <circle cx="85" cy="45" r="3" fill="#1e293b" />
-                    <circle cx="42" cy="62" r="3" fill="#1e293b" />
-                    <circle cx="55" cy="70" r="3" fill="#3b82f6" />
-                    <circle cx="68" cy="72" r="3" fill="#1e293b" />
-                    <circle cx="82" cy="65" r="3" fill="#1e293b" />
-                    <circle cx="72" cy="85" r="3" fill="#3b82f6" />
-                    <circle cx="85" cy="82" r="3" fill="#1e293b" />
-                    <circle cx="45" cy="85" r="3" fill="#1e293b" />
-                  </svg>
-                  <div class="qr-center-logo">
-                    <span>{{ getChannelIcon(currentChannel) }}</span>
+                  <!-- 过期遮罩 -->
+                  <div class="qr-mask expired-mask" v-if="qrInfo?.status === 'EXPIRED'">
+                    <el-icon :size="28"><Refresh /></el-icon>
+                    <span class="mask-text">二维码已失效</span>
+                    <span class="mask-sub">点击即刻刷新</span>
+                  </div>
+
+                  <!-- 扫码成功待确认遮罩 -->
+                  <div class="qr-mask scanned-mask" v-else-if="qrInfo?.status === 'SCANNED'">
+                    <el-icon :size="32" color="#10b981"><Check /></el-icon>
+                    <span class="mask-text">手机端已识别</span>
+                    <span class="mask-sub">请在移动终端点击确认授权</span>
                   </div>
                 </div>
 
-                <!-- 过期遮罩 -->
-                <div class="qr-mask expired-mask" v-if="qrInfo?.status === 'EXPIRED'">
-                  <el-icon :size="28"><Refresh /></el-icon>
-                  <span class="mask-text">二维码已过期</span>
-                  <span class="mask-sub">点击重新获取</span>
+                <!-- 状态提示与有效倒计时 -->
+                <div class="qr-status-info">
+                  <div class="qr-tip-text">
+                    请打开 <b>{{ getChannelName(currentChannel) }}</b> 扫一扫
+                  </div>
+                  <div class="qr-expire-tag" v-if="qrInfo && qrInfo.status === 'WAITING'">
+                    有效时间剩余：<b>{{ qrRemainSeconds }}s</b>
+                  </div>
                 </div>
 
-                <!-- 扫码成功待确认遮罩 -->
-                <div class="qr-mask scanned-mask" v-else-if="qrInfo?.status === 'SCANNED'">
-                  <el-icon :size="32" color="#67C23A"><Check /></el-icon>
-                  <span class="mask-text">已扫描</span>
-                  <span class="mask-sub">请在移动端点击确认登录</span>
+                <!-- 测试模拟扫码授权按钮 -->
+                <div class="mock-scan-area">
+                  <el-button
+                    type="success"
+                    size="small"
+                    plain
+                    :icon="Cellphone"
+                    :loading="mockScanLoading"
+                    @click="handleMockScanConfirm"
+                    class="mock-btn"
+                  >
+                    ⚡ 一键模拟手机扫码确认
+                  </el-button>
                 </div>
-              </div>
-
-              <!-- 状态提示与有效倒计时 -->
-              <div class="qr-status-info">
-                <div class="qr-tip-text">
-                  请使用 <b>{{ getChannelName(currentChannel) }}</b> 扫描二维码
-                </div>
-                <div class="qr-expire-tag" v-if="qrInfo && qrInfo.status === 'WAITING'">
-                  二维码有效期剩余：<b>{{ qrRemainSeconds }}s</b>
-                </div>
-              </div>
-
-              <!-- 测试模拟扫码授权按钮 -->
-              <div class="mock-scan-area">
-                <el-button
-                  type="success"
-                  size="small"
-                  plain
-                  :icon="Cellphone"
-                  :loading="mockScanLoading"
-                  @click="handleMockScanConfirm"
-                >
-                  ⚡ 模拟移动端一键扫码授权
-                </el-button>
               </div>
             </div>
           </div>
-        </el-tab-pane>
-      </el-tabs>
 
-      <!-- 底部注册与账号链接 -->
-      <div class="login-footer-action">
-        <span>还没有账号？</span>
-        <el-button link type="primary" style="font-weight: 600;" @click="registerDialogVisible = true">
-          立即注册新账号
-        </el-button>
-      </div>
+          <!-- 精致快速演练账号选择栏 (Horizontal Role Pills) -->
+          <div class="fast-account-strip">
+            <div class="strip-header">
+              <span class="strip-title">🎯 快捷身份一键切换 (预置演练账号)</span>
+              <span class="strip-hint">点击填入</span>
+            </div>
+            <div class="role-chips-grid">
+              <button
+                type="button"
+                class="role-chip"
+                :class="{ active: selectedRoleKey === 'admin' }"
+                @click="fillTestRole('admin', 'testadmin1', '123456')"
+              >
+                <span class="role-icon">👑</span>
+                <span class="role-label">超级管理员</span>
+              </button>
+              <button
+                type="button"
+                class="role-chip"
+                :class="{ active: selectedRoleKey === 'lead' }"
+                @click="fillTestRole('lead', 'testadmin2', '123456')"
+              >
+                <span class="role-icon">👔</span>
+                <span class="role-label">开发组长</span>
+              </button>
+              <button
+                type="button"
+                class="role-chip"
+                :class="{ active: selectedRoleKey === 'dba' }"
+                @click="fillTestRole('dba', 'testadmin3', '123456')"
+              >
+                <span class="role-icon">🛡️</span>
+                <span class="role-label">核心 DBA</span>
+              </button>
+              <button
+                type="button"
+                class="role-chip"
+                :class="{ active: selectedRoleKey === 'audit' }"
+                @click="fillTestRole('audit', 'test_auditor', '123456')"
+              >
+                <span class="role-icon">🔍</span>
+                <span class="role-label">安全合规官</span>
+              </button>
+              <button
+                type="button"
+                class="role-chip"
+                :class="{ active: selectedRoleKey === 'dev' }"
+                @click="fillTestRole('dev', 'test_dev', '123456')"
+              >
+                <span class="role-icon">💻</span>
+                <span class="role-label">开发工程师</span>
+              </button>
+            </div>
+          </div>
 
-      <!-- 快速测试账号提示区 (覆盖全流程审批与开发角色) -->
-      <div class="test-account-tip">
-        <div class="tip-header">
-          <span style="font-weight: 700;">🎯 审批节点与全流程演练预置账号</span>
-        </div>
-        <div class="tip-body">
-          <div class="tip-item">
-            <span class="tip-text"><b>👑 超级管理员</b> (全节点特权)：<code>testadmin1</code> / <code>123456</code></span>
-            <el-button link type="primary" size="small" @click="fillTestAccount('testadmin1', '123456')">一键填入</el-button>
+          <!-- 底部辅助功能：注册新账号 -->
+          <div class="card-footer-actions">
+            <span class="footer-hint">暂无内部权限凭证？</span>
+            <el-button link type="primary" class="register-link" @click="registerDialogVisible = true">
+              申请注册新账号 ➔
+            </el-button>
           </div>
-          <div class="tip-item">
-            <span class="tip-text"><b>👔 开发组长</b> (初审审批节点)：<code>testadmin2</code> / <code>123456</code></span>
-            <el-button link type="primary" size="small" @click="fillTestAccount('testadmin2', '123456')">一键填入</el-button>
-          </div>
-          <div class="tip-item">
-            <span class="tip-text"><b>🛡️ 核心 DBA</b> (复核/执行节点)：<code>testadmin3</code> / <code>123456</code></span>
-            <el-button link type="primary" size="small" @click="fillTestAccount('testadmin3', '123456')">一键填入</el-button>
-          </div>
-          <div class="tip-item">
-            <span class="tip-text"><b>🔍 安全合规官</b> (合规审查节点)：<code>test_auditor</code> / <code>123456</code></span>
-            <el-button link type="primary" size="small" @click="fillTestAccount('test_auditor', '123456')">一键填入</el-button>
-          </div>
-          <div class="tip-item">
-            <span class="tip-text"><b>💻 普通开发</b> (工单申请/查询)：<code>test_dev</code> / <code>123456</code></span>
-            <el-button link type="primary" size="small" @click="fillTestAccount('test_dev', '123456')">一键填入</el-button>
+
+          <div class="security-meta-bar">
+            <span>🔒 国密 SM2/SM4 传输防护</span>
+            <span>·</span>
+            <span>TLS 1.3</span>
+            <span>·</span>
+            <span>延迟 &lt; 15ms</span>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
+
+    <!-- 页脚版权信息 -->
+    <footer class="bottom-copyright-bar">
+      <span>© 2026 WMdb 完美数据库智能云 · 企业级数据库协同治理中心</span>
+      <span class="pipe-split">|</span>
+      <span>粤ICP备2025000000号-1</span>
+    </footer>
 
     <!-- 用户多渠道注册弹窗 -->
     <el-dialog
-      title="注册系统账号 (User Registration)"
+      title="申请注册新账号 (User Registration)"
       v-model="registerDialogVisible"
-      width="520px"
+      width="540px"
       destroy-on-close
+      class="custom-register-dialog"
     >
       <el-alert
-        title="重要说明：姓名必填，系统支持同名同姓智能消歧（将自动显示身份证后6位/手机尾号）"
+        title="重要说明：姓名必填，系统支持同名同姓智能消歧（将自动匹配显示身份证后6位/手机尾号）"
         type="info"
         :closable="false"
         show-icon
-        style="margin-bottom: 16px;"
+        style="margin-bottom: 18px;"
       />
 
       <el-form
         ref="registerFormRef"
         :model="registerForm"
         :rules="registerRules"
-        label-width="100px"
+        label-width="110px"
       >
         <el-form-item label="真实姓名" prop="realName">
           <el-input v-model="registerForm.realName" placeholder="必填，如：张伟、李明" />
         </el-form-item>
 
-        <el-form-item label="注册方式" prop="registerType">
+        <el-form-item label="注册认证方式" prop="registerType">
           <el-radio-group v-model="registerForm.registerType">
             <el-radio value="ACCOUNT">自定义账号</el-radio>
             <el-radio value="PHONE">手机号注册</el-radio>
@@ -268,30 +471,30 @@
           </el-radio-group>
         </el-form-item>
 
-        <el-form-item label="登录账号" prop="username" v-if="registerForm.registerType === 'ACCOUNT'">
-          <el-input v-model="registerForm.username" placeholder="请输入登录账号名（字母数字下划线）" />
+        <el-form-item label="登录用户名" prop="username" v-if="registerForm.registerType === 'ACCOUNT'">
+          <el-input v-model="registerForm.username" placeholder="请输入账号名（字母数字下划线组合）" />
         </el-form-item>
 
         <el-form-item label="手机号码" prop="phone" :required="registerForm.registerType === 'PHONE'">
-          <el-input v-model="registerForm.phone" placeholder="请输入11位手机号码" maxlength="11" />
+          <el-input v-model="registerForm.phone" placeholder="请输入 11 位有效手机号" maxlength="11" />
         </el-form-item>
 
-        <el-form-item label="电子邮箱" prop="email" :required="registerForm.registerType === 'EMAIL'">
+        <el-form-item label="工作邮箱" prop="email" :required="registerForm.registerType === 'EMAIL'">
           <el-input v-model="registerForm.email" placeholder="如：zhangsan@company.com" />
         </el-form-item>
 
         <el-form-item label="身份证号" prop="idCard">
-          <el-input v-model="registerForm.idCard" placeholder="选填，用于重名时自动显示后6位消歧标识" maxlength="18" />
+          <el-input v-model="registerForm.idCard" placeholder="选填，用于重名消歧识别（后6位展示）" maxlength="18" />
         </el-form-item>
 
-        <el-form-item label="业务资源组" prop="resourceGroups">
+        <el-form-item label="归属业务组" prop="resourceGroups">
           <el-select
             v-model="registerForm.resourceGroups"
             multiple
             collapse-tags
             collapse-tags-tooltip
             style="width: 100%;"
-            placeholder="选择归属业务组（支持多选）"
+            placeholder="请选择归属业务资源组（支持多选）"
           >
             <el-option label="车险承保资源组" value="车险承保资源组" />
             <el-option label="销管系统资源组" value="销管系统资源组" />
@@ -304,24 +507,24 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="初始角色" prop="role">
+        <el-form-item label="申请初始角色" prop="role">
           <el-select v-model="registerForm.role" style="width: 100%;">
-            <el-option label="DEV - 开发工程师 (工单申请/SQL查询)" value="DEV" />
+            <el-option label="DEV - 开发工程师 (工单申请与SQL查询)" value="DEV" />
             <el-option label="DEV_LEAD - 开发组长 (初审审批人)" value="DEV_LEAD" />
-            <el-option label="DBA - 数据库管理员 (复审/执行管理)" value="DBA" />
-            <el-option label="AUDITOR - 安全审计员 (合规审计)" value="AUDITOR" />
+            <el-option label="DBA - 数据库管理员 (安全复审与执行调度)" value="DBA" />
+            <el-option label="AUDITOR - 安全审计员 (全量合规审计)" value="AUDITOR" />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="登录密码" prop="password">
-          <el-input v-model="registerForm.password" type="password" placeholder="请输入不少于6位密码" show-password />
+        <el-form-item label="设置密码" prop="password">
+          <el-input v-model="registerForm.password" type="password" placeholder="请输入不少于 6 位安全密码" show-password />
         </el-form-item>
       </el-form>
 
       <template #footer>
         <el-button @click="registerDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="registerLoading" @click="handleRegisterSubmit">
-          立即注册并登录
+          立即提交并登入系统
         </el-button>
       </template>
     </el-dialog>
@@ -343,17 +546,20 @@ const PUBLIC_KEY = import.meta.env.VITE_SM2_PUBLIC_KEY || '04fea943c0bb2c03cefbf
 const router = useRouter()
 const userStore = useUserStore()
 
-const activeTab = ref('account')
+const activeTab = ref<'account' | 'phone' | 'qrcode'>('account')
 const loading = ref(false)
 const sendLoading = ref(false)
 const countdown = ref(0)
 let timer: number | null = null
 
+// 快速角色体验选中的 key
+const selectedRoleKey = ref('admin')
+
 // 账号密码表单
 const accountFormRef = ref<FormInstance>()
 const accountForm = reactive({
-  account: '',
-  password: ''
+  account: 'testadmin1',
+  password: 'password'
 })
 
 const accountRules = reactive<FormRules>({
@@ -361,7 +567,7 @@ const accountRules = reactive<FormRules>({
     { required: true, message: '请输入用户名、手机号、邮箱或身份证号', trigger: 'blur' }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: 'blur' },
+    { required: true, message: '请输入登录密码', trigger: 'blur' },
     { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
   ]
 })
@@ -386,8 +592,8 @@ const phoneRules = reactive<FormRules>({
 // 扫码登录相关
 const channels = [
   { key: 'WECOM', name: '企业微信', icon: '💼' },
-  { key: 'DINGTALK', name: '钉钉', icon: '📌' },
-  { key: 'FEISHU', name: '飞书', icon: '🕊️' },
+  { key: 'DINGTALK', name: '阿里钉钉', icon: '📌' },
+  { key: 'FEISHU', name: '字节飞书', icon: '🕊️' },
   { key: 'SSO', name: '统一 SSO', icon: '🌐' }
 ]
 const currentChannel = ref('WECOM')
@@ -412,7 +618,7 @@ const handleLoginSuccess = async (token: string, welcomeMsg?: string) => {
   if (welcomeMsg) {
     ElMessage.success(welcomeMsg)
   } else {
-    ElMessage.success('登录成功')
+    ElMessage.success('凭据校验通过，欢迎进入系统！')
   }
   userStore.token = token
   localStorage.setItem('wmdb_token', token)
@@ -426,7 +632,8 @@ const handleLoginSuccess = async (token: string, welcomeMsg?: string) => {
   }
 }
 
-const handleTabChange = (tabName: any) => {
+const handleTabChange = (tabName: 'account' | 'phone' | 'qrcode') => {
+  activeTab.value = tabName
   if (tabName === 'qrcode') {
     refreshQr()
   } else {
@@ -654,10 +861,16 @@ const handleRegisterSubmit = async () => {
   })
 }
 
-const fillTestAccount = (account: string, pass: string) => {
+// 快速填入演练角色账号
+const fillTestRole = (key: string, account: string, pass: string) => {
+  selectedRoleKey.value = key
   activeTab.value = 'account'
   accountForm.account = account
   accountForm.password = pass
+  ElMessage.info({
+    message: `已自动填入角色凭据，点击「登录控制台」即可登入`,
+    duration: 2000
+  })
 }
 
 onMounted(() => {
@@ -672,52 +885,457 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+/* 整个页面主容器 */
+.login-wrapper {
+  position: relative;
   min-height: 100vh;
   width: 100%;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-  padding: 20px;
-  box-sizing: border-box;
+  background: #090d16;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  color: #f1f5f9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.login-box {
-  width: 460px;
-  max-width: 100%;
-  padding: 36px 32px 28px;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
-  box-sizing: border-box;
+/* 柔和科技流光光晕背景 */
+.ambient-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
 }
 
-.login-header {
-  text-align: center;
-  margin-bottom: 22px;
+.glow-1 {
+  width: 600px;
+  height: 600px;
+  top: -150px;
+  left: -100px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.22) 0%, rgba(37, 99, 235, 0) 70%);
 }
 
-.brand-logo {
-  font-size: 36px;
-  margin-bottom: 4px;
+.glow-2 {
+  width: 550px;
+  height: 550px;
+  bottom: -100px;
+  right: -80px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.18) 0%, rgba(99, 102, 241, 0) 70%);
 }
 
-.title {
-  margin: 0 0 6px;
-  font-size: 24px;
+.glow-3 {
+  width: 450px;
+  height: 450px;
+  top: 40%;
+  left: 45%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(16, 185, 129, 0) 70%);
+}
+
+/* 科技几何点阵微网格 */
+.cyber-grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 顶部品牌微导航 */
+.top-nav-bar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 48px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(9, 13, 22, 0.6);
+  backdrop-filter: blur(10px);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-brand-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3) 0%, rgba(30, 64, 175, 0.5) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 15px rgba(37, 99, 235, 0.3);
+}
+
+.logo-emoji {
+  font-size: 20px;
+}
+
+.nav-brand-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-title {
+  font-size: 18px;
   font-weight: 700;
-  color: #1e293b;
   letter-spacing: 0.5px;
+  color: #ffffff;
 }
 
-.subtitle {
+.brand-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-weight: 600;
+}
+
+.nav-status-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+.pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulse-ring 2s infinite ease-in-out;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.env-pill {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+/* 主展示区域 */
+.login-main-stage {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 40px 48px 24px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 60px;
+}
+
+/* 左侧品牌展台 */
+.hero-showcase-panel {
+  flex: 1.15;
+  max-width: 680px;
+}
+
+.hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 30px;
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
   font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.hero-headline {
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1.25;
+  margin: 0 0 16px;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-description {
+  font-size: 15px;
+  line-height: 1.65;
+  color: #94a3b8;
+  margin: 0 0 32px;
+}
+
+/* 特性矩阵卡片 */
+.feature-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.feature-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  transition: all 0.25s ease;
+}
+
+.feature-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(59, 130, 246, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.feature-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.icon-shield { background: rgba(37, 99, 235, 0.15); border-color: rgba(59, 130, 246, 0.3); }
+.icon-workflow { background: rgba(147, 51, 234, 0.15); border-color: rgba(168, 85, 247, 0.3); }
+.icon-speed { background: rgba(245, 158, 11, 0.15); border-color: rgba(251, 191, 36, 0.3); }
+.icon-bell { background: rgba(16, 185, 129, 0.15); border-color: rgba(52, 211, 153, 0.3); }
+
+.feature-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 3px;
+}
+
+.feature-desc {
+  font-size: 12px;
+  line-height: 1.45;
   color: #64748b;
 }
 
-.login-tabs {
-  margin-bottom: 12px;
+/* 底部引擎标签 */
+.db-ecosystem-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.db-eco-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.db-badges-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.db-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+/* 右侧登录卡片容器 */
+.login-card-panel {
+  flex: 0.95;
+  max-width: 480px;
+  width: 100%;
+}
+
+.login-card-glass {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 32px 30px 24px;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.card-header {
+  margin-bottom: 20px;
+}
+
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.card-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.card-title-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #60a5fa;
+  background: rgba(37, 99, 235, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+/* 现代胶囊选项卡 */
+.segmented-tabs-bar {
+  display: flex;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 22px;
+  gap: 4px;
+}
+
+.tab-pill-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-pill-btn:hover {
+  color: #ffffff;
+}
+
+.tab-pill-btn.active {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.9) 0%, rgba(30, 64, 175, 0.9) 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.tab-content-fade {
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 表单定制输入框 */
+.custom-login-form :deep(.el-form-item) {
+  margin-bottom: 18px;
+}
+
+.custom-login-form :deep(.el-form-item__label) {
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 600;
+  padding-bottom: 6px;
+}
+
+.tech-input :deep(.el-input__wrapper) {
+  background: rgba(15, 23, 42, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: none !important;
+  border-radius: 10px !important;
+  padding: 6px 14px;
+  transition: all 0.2s;
+}
+
+.tech-input :deep(.el-input__wrapper:hover) {
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+.tech-input :deep(.el-input__wrapper.is-focus) {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
+.tech-input :deep(.el-input__inner) {
+  color: #ffffff !important;
+  font-size: 14px;
+}
+
+.tech-input :deep(.el-input__inner::placeholder) {
+  color: #64748b !important;
+  font-size: 13px;
+}
+
+.tech-input :deep(.el-input__prefix-inner) {
+  color: #60a5fa;
+  font-size: 16px;
 }
 
 .code-input-row {
@@ -726,32 +1344,56 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.code-flex-input {
+  flex: 1;
+}
+
 .send-code-btn {
   flex-shrink: 0;
-  width: 130px;
-}
-
-.login-btn {
-  width: 100%;
-  height: 40px;
-  font-size: 15px;
+  width: 120px;
+  height: 42px;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: 600;
-  margin-top: 6px;
 }
 
-/* 扫码登录样式 */
+/* 提交按钮 */
+.tech-submit-btn {
+  width: 100%;
+  height: 44px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  transition: all 0.2s;
+}
+
+.tech-submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.55);
+}
+
+.tech-submit-btn:active {
+  transform: translateY(0);
+}
+
+/* 扫码登录区 */
 .qr-login-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 10px 0;
+  padding: 4px 0 10px;
 }
 
 .qr-channel-selector {
   display: flex;
-  background: #f1f5f9;
+  background: rgba(0, 0, 0, 0.35);
   padding: 4px;
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
   margin-bottom: 16px;
   width: 100%;
 }
@@ -759,12 +1401,12 @@ onUnmounted(() => {
 .channel-tab {
   flex: 1;
   text-align: center;
-  padding: 6px 4px;
+  padding: 7px 4px;
   font-size: 12px;
-  font-weight: 500;
-  color: #64748b;
+  font-weight: 600;
+  color: #94a3b8;
   cursor: pointer;
-  border-radius: 6px;
+  border-radius: 7px;
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -773,10 +1415,9 @@ onUnmounted(() => {
 }
 
 .channel-tab.active {
-  background: #ffffff;
-  color: #2563eb;
-  font-weight: 600;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.12);
+  color: #60a5fa;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .qr-card-wrapper {
@@ -787,15 +1428,15 @@ onUnmounted(() => {
 }
 
 .qr-box {
-  width: 190px;
-  height: 190px;
+  width: 180px;
+  height: 180px;
   padding: 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
   background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   position: relative;
-  cursor: default;
+  box-sizing: border-box;
 }
 
 .qr-box.is-expired {
@@ -821,8 +1462,8 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   background: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -835,7 +1476,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  border-radius: 10px;
+  border-radius: 14px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -845,18 +1486,18 @@ onUnmounted(() => {
 }
 
 .expired-mask {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.88);
   color: #ffffff;
 }
 
 .scanned-mask {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   color: #1e293b;
 }
 
 .mask-text {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13.5px;
+  font-weight: 700;
 }
 
 .mask-sub {
@@ -865,69 +1506,196 @@ onUnmounted(() => {
 }
 
 .qr-status-info {
-  margin-top: 14px;
+  margin-top: 12px;
   text-align: center;
 }
 
 .qr-tip-text {
   font-size: 13px;
-  color: #334155;
+  color: #cbd5e1;
 }
 
 .qr-expire-tag {
   font-size: 12px;
-  color: #94a3b8;
+  color: #64748b;
   margin-top: 4px;
 }
 
 .mock-scan-area {
-  margin-top: 14px;
-}
-
-.login-footer-action {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 13px;
-  color: #64748b;
   margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px dashed #e2e8f0;
 }
 
-.test-account-tip {
-  margin-top: 16px;
+.mock-btn {
+  border-radius: 8px;
+}
+
+/* 快捷演练账号选择栏 */
+.fast-account-strip {
+  margin-top: 18px;
   padding: 12px 14px;
-  background-color: #f8fafc;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-  font-size: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
 }
 
-.tip-header {
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 6px;
-}
-
-.tip-body {
+.strip-header {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.strip-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.strip-hint {
+  font-size: 11px;
+  color: #60a5fa;
+}
+
+.role-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.tip-item {
-  display: flex;
-  justify-content: space-between;
+.role-chip {
+  display: inline-flex;
   align-items: center;
+  gap: 4px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-chip:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #ffffff;
+}
+
+.role-chip.active {
+  background: rgba(37, 99, 235, 0.3);
+  border-color: #3b82f6;
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.role-icon {
+  font-size: 12px;
+}
+
+.role-label {
+  font-size: 11.5px;
+}
+
+/* 底部辅助链接 */
+.card-footer-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 12.5px;
+}
+
+.footer-hint {
   color: #64748b;
 }
 
-.tip-item code {
-  background: #e2e8f0;
-  padding: 2px 5px;
-  border-radius: 3px;
-  color: #2563eb;
-  font-family: monospace;
+.register-link {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.security-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: #475569;
+}
+
+/* 页脚版权 */
+.bottom-copyright-bar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  color: #475569;
+  background: rgba(9, 13, 22, 0.8);
+}
+
+.pipe-split {
+  opacity: 0.3;
+}
+
+/* 响应式适配 */
+@media (max-width: 1080px) {
+  .login-main-stage {
+    flex-direction: column;
+    padding: 30px 24px;
+    gap: 36px;
+  }
+  
+  .hero-showcase-panel {
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .hero-tag {
+    margin: 0 auto 16px;
+  }
+
+  .hero-headline {
+    font-size: 28px;
+  }
+
+  .feature-matrix-grid {
+    text-align: left;
+  }
+
+  .db-ecosystem-footer {
+    justify-content: center;
+  }
+
+  .login-card-panel {
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 640px) {
+  .top-nav-bar {
+    padding: 14px 20px;
+  }
+
+  .nav-status-group {
+    display: none;
+  }
+
+  .feature-matrix-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .login-card-glass {
+    padding: 24px 18px;
+  }
 }
 </style>
