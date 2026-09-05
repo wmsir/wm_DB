@@ -789,7 +789,7 @@ const handleExportCsv = () => {
 
   const link = document.createElement('a')
   link.href = url
-  link.setAttribute('download', 'wmdb_sql_audit_report.csv')
+  link.setAttribute('download', 'pacersql_audit_report.csv')
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

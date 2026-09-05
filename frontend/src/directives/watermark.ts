@@ -45,7 +45,7 @@ const addWatermark = (el: HTMLElement, _binding?: DirectiveBinding) => {
   }
 
   const token = localStorage.getItem('wmdb_token');
-  let watermarkText = 'wmDB 安全审计';
+  let watermarkText = '稳骥 PacerSQL 安全审计';
 
   if (token) {
     try {

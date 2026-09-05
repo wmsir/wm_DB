@@ -8,7 +8,7 @@
           <span>云原生数据库自治平台 · 生产网关集群正常运行中</span>
         </div>
         <h1 class="welcome-heading">
-          早安，{{ userStore.userInfo?.realName || userStore.userInfo?.username || '管理员' }}！欢迎回到 wmDB 智能云
+          早安，{{ userStore.userInfo?.realName || userStore.userInfo?.username || '管理员' }}！欢迎回到 稳骥 PacerSQL 智能云
         </h1>
         <p class="welcome-subtext">
           已全天候纳管多源异构数据库实例，8 大核心业务资源组平稳运行，智能预检实时守护生产变更安全。
@@ -479,7 +479,7 @@
           <div class="step-item">
             <span class="step-badge">1</span>
             <div class="step-desc">
-              <b>机器环境准备</b>：在新机器（如 <code>192.168.1.103</code>）上安装 Docker，并拉取启动 <code>wmdb-frontend</code> 与 <code>wmdb-backend</code> 容器。
+              <b>机器环境准备</b>：在新机器（如 <code>192.168.1.103</code>）上安装 Docker，并拉取启动 <code>pacersql-frontend</code> 与 <code>pacersql-backend</code> 容器。
             </div>
           </div>
           <div class="step-item">
@@ -491,7 +491,7 @@
           <div class="step-item">
             <span class="step-badge">3</span>
             <div class="step-desc">
-              <b>大盘拓扑自动注册</b>：在配置文件 <code>application.yml</code> 的 <code>wmdb.cluster.nodes</code> 增加该节点的 IP、自定义名称与备注，重启后总览大盘立即实时监控！
+              <b>大盘拓扑自动注册</b>：在配置文件 <code>application.yml</code> 的 <code>pacersql.cluster.nodes</code> 增加该节点的 IP、自定义名称与备注，重启后总览大盘立即实时监控！
             </div>
           </div>
         </div>

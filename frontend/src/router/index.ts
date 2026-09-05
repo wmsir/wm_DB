@@ -29,11 +29,17 @@ import RoleList from '../views/RoleList.vue'
 import UserProfile from '../views/UserProfile.vue'
 import AiConfig from '../views/AiConfig.vue'
 import NotificationConfig from '../views/NotificationConfig.vue'
+import FwptPortal from '../views/FwptPortal.vue'
 
 import { useUserStore } from '../store/user'
 
 // 路由规则表
 const routes = [
+  {
+    path: '/portal',
+    name: 'FwptPortal',
+    component: FwptPortal
+  },
   {
     path: '/',
     redirect: '/login'
@@ -228,6 +234,21 @@ import { ElMessage } from 'element-plus'
 
 // 全局前置路由守卫
 router.beforeEach(async (to, _from, next) => {
+  // 1. 若直接访问 /portal，直接放行
+  if (to.path === '/portal' || to.name === 'FwptPortal') {
+    next()
+    return
+  }
+
+  // 2. 若当前是通过 fwpt.cn / www.fwpt.cn 访问且路径为根路径 /，自动呈现门户首页
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname
+    if ((host === 'fwpt.cn' || host === 'www.fwpt.cn') && (to.path === '/' || to.path === '')) {
+      next({ name: 'FwptPortal' })
+      return
+    }
+  }
+
   const userStore = useUserStore()
 
   if (to.meta.requiresAuth && !userStore.isAuthenticated) {

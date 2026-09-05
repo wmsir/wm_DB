@@ -8,8 +8,8 @@
           <el-icon><Platform /></el-icon>
         </div>
         <div class="brand-text-wrap" v-if="!isCollapse">
-          <div class="brand-title">wmDB 智能云</div>
-          <div class="brand-subtitle">数据库自治与安全管控平台</div>
+          <div class="brand-title">稳骥 PacerSQL</div>
+          <div class="brand-subtitle">高可用数据库变更自治平台</div>
         </div>
       </div>
 

@@ -10,14 +10,18 @@
     <header class="top-nav-bar">
       <div class="nav-brand">
         <div class="nav-brand-logo">
-          <span class="logo-emoji">🛡️</span>
+          <span class="logo-emoji">🐎</span>
         </div>
         <div class="nav-brand-text">
-          <span class="brand-title">WMdb 智能云</span>
+          <span class="brand-title">稳骥 PacerSQL</span>
           <span class="brand-badge">Enterprise v2.8</span>
         </div>
       </div>
       <div class="nav-status-group">
+        <router-link to="/portal" class="env-pill portal-link" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 4px; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3);">
+          <span>🌐</span>
+          <span>fwpt.cn 旗舰门户</span>
+        </router-link>
         <div class="status-indicator">
           <span class="pulse-dot"></span>
           <span class="status-text">生产安全网关集群正常</span>
@@ -33,14 +37,14 @@
         <div class="hero-header">
           <div class="hero-tag">
             <span class="tag-sparkle">✨</span>
-            <span>企业级数据库敏捷协同与安全治理云</span>
+            <span>“骥”为千里良驹 · “稳”压倒一切</span>
           </div>
           <h1 class="hero-headline">
-            为现代研发打造的<br />
-            <span class="gradient-text">全生命周期 SQL 变更治理</span>平台
+            稳骥 PacerSQL<br />
+            <span class="gradient-text">企业级高可用数据库变更自治平台</span>
           </h1>
           <p class="hero-description">
-            多源异构数据引擎覆盖、SQL 语法与安全智能预检、SpEL 排他审批网关、定时与灰度分批流式执行，全链路保障生产数据安全与高可用。
+            Pacer（匀速平稳赛马）之律动，直击生产高可用痛点。融合 AI 深度预检、SpEL 智能路由与灰度分批流式引擎，保障百万级核心数据库稳健运行。
           </p>
         </div>
 
@@ -432,7 +436,7 @@
 
     <!-- 页脚版权信息 -->
     <footer class="bottom-copyright-bar">
-      <span>© 2026 WMdb 完美数据库智能云 · 企业级数据库协同治理中心</span>
+      <span>© 2026 稳骥 PacerSQL · 企业级高可用数据库变更自治云平台 · fwpt.cn</span>
       <span class="pipe-split">|</span>
       <span>粤ICP备2025000000号-1</span>
     </footer>

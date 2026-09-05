@@ -434,7 +434,7 @@
               <el-row :gutter="16">
                 <el-col :span="12">
                   <el-form-item label="报备短信签名 (SignName)">
-                    <el-input v-model="form.sms.signName" placeholder="例如 wmDB云平台、企业数据中心" clearable />
+                    <el-input v-model="form.sms.signName" placeholder="例如 稳骥云平台、企业数据中心" clearable />
                     <div class="form-tip">必须与云厂商控制台审核通过的签名完全一致</div>
                   </el-form-item>
                 </el-col>
@@ -819,13 +819,13 @@ const testingSms = ref(false)
 const testingVoice = ref(false)
 
 const wechatTestErp = ref('zhangsan')
-const wechatTestMsg = ref('【wmDB 工单变更测试】您的 SQL 工单 #1024 已审批通过，预计将在维护窗口自动执行。')
+const wechatTestMsg = ref('【稳骥工单变更】您的 SQL 工单 #1024 已审批通过，预计将在维护窗口自动执行。')
 
-const dingtalkTestMsg = ref('【wmDB 数据库告警通知】生产库 `rm-uf6ab...` 当前存在 2 个慢查询阻塞会话，请 DBA 及时关注。')
-const feishuTestMsg = ref('【wmDB 飞书通知测试】工单 #1024 预执行 Dry-Run 校验通过，影响行数：12 行。')
+const dingtalkTestMsg = ref('【稳骥告警通知】生产库 `rm-uf6ab...` 当前存在 2 个慢查询阻塞会话，请 DBA 及时关注。')
+const feishuTestMsg = ref('【稳骥飞书通知】工单 #1024 预执行 Dry-Run 校验通过，影响行数：12 行。')
 
 const smsTestPhone = ref('13800138000')
-const smsTestMsg = ref('【wmDB云平台】工单 #1024 待开发组长初审，影响行数 12 行，请登录系统处理。')
+const smsTestMsg = ref('【稳骥云平台】工单 #1024 待开发组长初审，影响行数 12 行，请登录系统处理。')
 
 const voiceTestPhone = ref('13800138000')
 
@@ -868,7 +868,7 @@ const form = reactive<any>({
   sms: {
     enabled: true,
     provider: 'ALIYUN',
-    signName: 'wmDB云平台',
+    signName: '稳骥云平台',
     templateCode: 'SMS_283910243',
     aliyunAccessKeyId: 'LTAI5t_your_key',
     aliyunAccessKeySecret: 'your_secret',

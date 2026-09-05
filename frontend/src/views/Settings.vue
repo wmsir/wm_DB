@@ -112,7 +112,7 @@
               ></div>
               <div class="stage-content">
                 <div class="stage-card">
-                  <div class="stage-title">wmDB 数据库智能运维管理平台</div>
+                  <div class="stage-title">稳骥 PacerSQL 数据库智能运维自治平台</div>
                   <div class="stage-desc">
                     这是一张示例界面卡片。调节上方【水印显隐程度】滑块，可以实时观察文字清晰度与背景干扰程度，找到最适合您屏幕的平衡点！
                   </div>
