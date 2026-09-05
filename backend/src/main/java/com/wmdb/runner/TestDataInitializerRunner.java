@@ -32,6 +32,8 @@ import java.util.UUID;
 public class TestDataInitializerRunner implements CommandLineRunner {
 
     private final SysUserMapper sysUserMapper;
+    private final SysRoleMapper sysRoleMapper;
+    private final ResourceGroupMapper resourceGroupMapper;
     private final SqlTicketMapper sqlTicketMapper;
     private final SqlTicketDetailMapper sqlTicketDetailMapper;
     private final SqlAuditLogMapper sqlAuditLogMapper;
@@ -44,10 +46,67 @@ public class TestDataInitializerRunner implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("====== 开始初始化全系统真实业务测试数据与审批节点角色账号 ======");
+        initRoles();
+        initResourceGroups();
         initTestAccounts();
         initTestInstances();
         initRealisticTickets();
         log.info("====== 全系统真实业务测试数据与角色账号初始化完成 ======");
+    }
+
+    private void initRoles() {
+        ensureRole("ADMIN", "系统超级管理员", "拥有全系统最高审批与全局管理特权");
+        ensureRole("DEV_LEAD", "业务开发组长", "负责业务工单初审与资源组权限");
+        ensureRole("DBA", "核心数据库管理员", "负责生产数据库变更复核、执行与运维");
+        ensureRole("AUDITOR", "安全合规审计员", "负责数据合规审计与慢SQL审查");
+        ensureRole("DEV", "开发工程师", "负责工单发起、SQL编写与查询");
+    }
+
+    private void ensureRole(String code, String name, String desc) {
+        try {
+            SysRole exist = sysRoleMapper.selectOne(new QueryWrapper<SysRole>().eq("role_code", code));
+            if (exist == null) {
+                SysRole r = SysRole.builder()
+                        .tenantId("1")
+                        .roleCode(code)
+                        .roleName(name)
+                        .description(desc)
+                        .build();
+                sysRoleMapper.insert(r);
+            }
+        } catch (Exception e) {
+            log.debug("Role init note: {}", e.getMessage());
+        }
+    }
+
+    private void initResourceGroups() {
+        ensureGroup("车险承保资源组", "财险业务部", "testadmin2", "testadmin3", "主要负责车险承保、核心保单流转库变更");
+        ensureGroup("销管系统资源组", "渠道管理部", "leader_sales", "testadmin3", "负责代理人、佣金结算与机构组织树");
+        ensureGroup("理赔服务核心组", "理赔运营部", "testadmin2", "dba_master", "负责报案理赔、核赔与定损核心表结构变更");
+        ensureGroup("默认核心业务资源组", "基础技术架构组", "testadmin2", "testadmin3", "全域基础核心变更保障组");
+        ensureGroup("水险财产险1000条以下", "非车业务部", "leader_sales", "testadmin3", "水险与财产险日常微小变更流式通道");
+        ensureGroup("农险理赔资源组", "农险运营部", "testadmin2", "dba_master", "政策性农业保险与理赔结算");
+        ensureGroup("风勘中心资源组", "风险管理部", "testadmin2", "testadmin3", "现场风勘与大额标的评估数据");
+        ensureGroup("互联网车主服务与理赔快处组", "车主生态部", "testadmin2", "testadmin3", "线上端小程序与车友圈业务库");
+    }
+
+    private void ensureGroup(String groupName, String deptName, String devLead, String dbaLead, String desc) {
+        try {
+            ResourceGroup exist = resourceGroupMapper.selectOne(new QueryWrapper<ResourceGroup>().eq("group_name", groupName));
+            if (exist == null) {
+                ResourceGroup rg = ResourceGroup.builder()
+                        .tenantId("1")
+                        .groupName(groupName)
+                        .deptName(deptName)
+                        .devLead(devLead)
+                        .dbaLead(dbaLead)
+                        .description(desc)
+                        .build();
+                resourceGroupMapper.insert(rg);
+            }
+        } catch (Exception e) {
+            log.debug("Group init note: {}", e.getMessage());
+        }
     }
 
     /**
@@ -101,6 +160,7 @@ public class TestDataInitializerRunner implements CommandLineRunner {
             exist.setEmail(email);
             exist.setPasswordHash(DEFAULT_PWD_HASH);
             exist.setPasswordCipher(SmUtils.sm3Hash("123456"));
+            exist.setStatus(1);
             sysUserMapper.updateById(exist);
         }
     }

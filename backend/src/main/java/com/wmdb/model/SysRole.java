@@ -3,7 +3,10 @@ package com.wmdb.model;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 角色实体类
@@ -15,6 +18,9 @@ import lombok.Data;
  * @date 2023-10-25
  */
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @TableName("sys_role")
 public class SysRole {
 

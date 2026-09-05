@@ -683,48 +683,53 @@ onUnmounted(() => {
 }
 
 /* ===================================================
-   1. 侧边栏：现代高级深邃科技 Slate 暗黑渐变设计
+   1. 侧边栏：现代极简纯净、护眼明亮视觉系统
    =================================================== */
 .layout-aside {
-  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  background: #ffffff;
   flex-shrink: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.25);
+  box-shadow: 2px 0 12px rgba(15, 23, 42, 0.04);
   transition: width 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 100;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid #e2e8f0;
 }
 
 .brand-header {
   height: 64px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  background: rgba(17, 24, 39, 0.95);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0 18px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
   cursor: pointer;
   transition: all 0.2s ease;
   user-select: none;
 }
 
 .brand-header:hover {
-  background: rgba(30, 41, 59, 0.95);
+  background: #f8fafc;
 }
 
 .brand-logo-icon {
   width: 36px;
   height: 36px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2563eb 0%, #38bdf8 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
   font-size: 20px;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
   flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.brand-header:hover .brand-logo-icon {
+  transform: scale(1.05);
 }
 
 .brand-text-wrap {
@@ -735,18 +740,19 @@ onUnmounted(() => {
 .brand-title {
   font-size: 15px;
   font-weight: 700;
-  color: #ffffff;
-  letter-spacing: 0.5px;
+  color: #0f172a;
+  letter-spacing: 0.3px;
   line-height: 1.2;
 }
 
 .brand-subtitle {
   font-size: 11px;
-  color: #94a3b8;
+  color: #64748b;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: 2px;
+  margin-top: 3px;
+  font-weight: 400;
 }
 
 .aside-menu-scrollbar {
@@ -757,17 +763,17 @@ onUnmounted(() => {
 .el-menu-vertical {
   border-right: none !important;
   background-color: transparent !important;
-  padding: 8px 0;
+  padding: 10px 0;
 }
 
-/* 菜单项基础与悬浮效果 */
+/* 菜单项基础与悬浮效果：明亮护眼微圆角 */
 :deep(.el-menu-item),
 :deep(.el-sub-menu__title) {
-  height: 44px;
-  line-height: 44px;
-  margin: 3px 8px;
-  border-radius: 6px;
-  color: #cbd5e1 !important;
+  height: 42px;
+  line-height: 42px;
+  margin: 3px 10px;
+  border-radius: 8px;
+  color: #475569 !important;
   font-size: 13.5px;
   font-weight: 500;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -775,40 +781,63 @@ onUnmounted(() => {
 
 :deep(.el-menu-item:hover),
 :deep(.el-sub-menu__title:hover) {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #ffffff !important;
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
 }
 
-/* 激活高亮 */
+:deep(.el-menu-item:hover .el-icon),
+:deep(.el-sub-menu__title:hover .el-icon) {
+  color: #2563eb !important;
+}
+
+/* 激活高亮：清爽天空蓝微润胶囊底色与左指示线 */
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.28) 0%, rgba(59, 130, 246, 0.08) 100%) !important;
-  color: #60a5fa !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
   font-weight: 600;
   position: relative;
-  box-shadow: inset 3px 0 0 0 #3b82f6;
+  box-shadow: inset 3px 0 0 0 #2563eb;
 }
 
 :deep(.el-menu-item.is-active .el-icon) {
-  color: #60a5fa !important;
+  color: #2563eb !important;
 }
 
-/* 二级菜单背景深度区分 */
+/* 二级菜单背景：淡雅暖灰收纳槽与平滑缩进 */
 :deep(.el-sub-menu .el-menu) {
-  background-color: rgba(15, 23, 42, 0.6) !important;
-  padding: 4px 0;
+  background-color: #f8fafc !important;
+  padding: 4px 6px;
+  margin: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
 }
 
 :deep(.el-sub-menu .el-menu-item) {
-  padding-left: 46px !important;
-  height: 40px;
-  line-height: 40px;
+  padding-left: 38px !important;
+  height: 38px;
+  line-height: 38px;
   font-size: 13px;
+  color: #64748b !important;
+  border-radius: 6px;
+  margin: 2px 0;
+}
+
+:deep(.el-sub-menu .el-menu-item:hover) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+:deep(.el-sub-menu .el-menu-item.is-active) {
+  background-color: #e0f2fe !important;
+  color: #0284c7 !important;
+  font-weight: 600;
+  box-shadow: none;
 }
 
 .menu-icon {
   font-size: 17px;
   margin-right: 10px;
-  color: #94a3b8;
+  color: #64748b;
   transition: color 0.2s;
 }
 
@@ -821,30 +850,31 @@ onUnmounted(() => {
   margin-left: auto;
   font-size: 10px;
   height: 18px;
-  padding: 0 4px;
+  padding: 0 5px;
   line-height: 16px;
   transform: scale(0.85);
+  border-radius: 4px;
 }
 
-/* 侧边栏底部折叠栏 */
+/* 侧边栏底部折叠栏：纯白轻边界 */
 .aside-footer {
-  height: 44px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12.5px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(17, 24, 39, 0.95);
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
   cursor: pointer;
   user-select: none;
   transition: all 0.2s ease;
 }
 
 .aside-footer:hover {
-  background: rgba(30, 41, 59, 0.95);
-  color: #60a5fa;
+  background: #f8fafc;
+  color: #2563eb;
 }
 
 .collapse-icon {
