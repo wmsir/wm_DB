@@ -32,4 +32,17 @@ public class SystemConfigController {
         systemConfigService.updateSafetyPolicies(dto);
         return Result.success(systemConfigService.getSafetyPolicies());
     }
+
+    @Operation(summary = "获取集群执行策略配置 (默认：查询走从节点/执行走主节点)")
+    @GetMapping("/execution-policy")
+    public Result<SystemConfigService.ExecutionPolicyDTO> getExecutionPolicy() {
+        return Result.success(systemConfigService.getExecutionPolicy());
+    }
+
+    @Operation(summary = "更新集群执行策略配置 (支持动态配置多节点路由)")
+    @PostMapping("/execution-policy")
+    public Result<SystemConfigService.ExecutionPolicyDTO> updateExecutionPolicy(@RequestBody SystemConfigService.ExecutionPolicyDTO dto) {
+        systemConfigService.updateExecutionPolicy(dto);
+        return Result.success(systemConfigService.getExecutionPolicy());
+    }
 }

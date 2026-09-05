@@ -163,9 +163,36 @@
           <span class="section-subtext">已纳管 {{ clusterNodes.length }} 台部署机器 · 支持根据 IP / 命名 / 备注展示 · 点击卡片切换聚焦监控</span>
         </div>
         <div class="section-extra">
+          <el-button size="small" type="success" plain :icon="Operation" @click="openPolicyDialog">
+            配置执行策略
+          </el-button>
           <el-button size="small" type="primary" plain :icon="Plus" @click="expandNodeDialogVisible = true">
             扩展/纳管新机器
           </el-button>
+        </div>
+      </div>
+
+      <!-- 集群任务执行策略全局指示条 -->
+      <div class="cluster-policy-banner" @click="openPolicyDialog">
+        <div class="policy-banner-left">
+          <div class="policy-badge-pill">
+            <span class="policy-dot pulse-emerald-dot"></span>
+            <span class="policy-mode-title">当前集群执行策略：<b>{{ executionPolicy.policyName || '智能读写分离与高可用路由 (系统默认)' }}</b></span>
+          </div>
+          <div class="policy-route-tags">
+            <span class="route-chip route-query">
+              <el-icon><Search /></el-icon> 查询 (DQL): <b>{{ formatQueryRoute(executionPolicy.queryRoute) }}</b>
+            </span>
+            <span class="route-chip route-exec">
+              <el-icon><Tickets /></el-icon> 变更 (DDL/DML): <b>{{ formatExecuteRoute(executionPolicy.executeRoute) }}</b>
+            </span>
+            <span class="route-chip route-failover" v-if="executionPolicy.failoverEnabled">
+              故障自愈降级: 开启 (≤{{ executionPolicy.maxLagSeconds || 5 }}s)
+            </span>
+          </div>
+        </div>
+        <div class="policy-banner-right">
+          <span class="policy-btn-hint">调整策略模板 / 自定义路由 ⚙</span>
         </div>
       </div>
 
@@ -473,6 +500,113 @@
         <el-button type="primary" @click="expandNodeDialogVisible = false">知道了</el-button>
       </template>
     </el-dialog>
+
+    <!-- 7. 集群多机器执行与路由策略可视化配置弹窗 -->
+    <el-dialog
+      v-model="policyDialogVisible"
+      title="集群多节点任务执行策略配置 (Cluster Execution Policy)"
+      width="780px"
+      append-to-body
+      class="clean-dialog policy-dialog"
+    >
+      <div class="policy-dialog-body">
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          title="可视化配置集群多台机器的任务执行策略。系统内置默认策略：查询走从节点 (Worker)，工单变更与发布锁定主节点 (Master)。"
+          style="margin-bottom: 18px;"
+        />
+
+        <!-- 预设策略模板卡片 -->
+        <div class="dialog-sub-title">1. 推荐预设策略模板（点击卡片一键套用）</div>
+        <div class="preset-cards-grid">
+          <div
+            v-for="tpl in presetTemplates"
+            :key="tpl.policyMode"
+            class="preset-card"
+            :class="{ active: policyForm.policyMode === tpl.policyMode }"
+            @click="applyTemplate(tpl)"
+          >
+            <div class="preset-card-head">
+              <span class="preset-name">{{ tpl.policyName }}</span>
+              <el-tag size="small" :type="tpl.tagType" effect="light">{{ tpl.badge }}</el-tag>
+            </div>
+            <div class="preset-desc">{{ tpl.description }}</div>
+            <div class="preset-routes">
+              <span class="pr-item">🔍 查询: <b>{{ tpl.queryRouteLabel }}</b></span>
+              <span class="pr-item">⚡ 变更: <b>{{ tpl.executeRouteLabel }}</b></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自定义精细化参数 -->
+        <div class="dialog-sub-title" style="margin-top: 20px;">2. 精细化路由与高可用参数设置</div>
+        <el-form :model="policyForm" label-width="160px" class="policy-form" size="default">
+          <el-form-item label="策略显示名称">
+            <el-input v-model="policyForm.policyName" placeholder="例如：智能读写分离与高可用路由策略" />
+          </el-form-item>
+
+          <el-form-item label="数据查询 (DQL) 路由">
+            <el-radio-group v-model="policyForm.queryRoute">
+              <el-radio label="WORKER_SLAVE_FIRST">优先从节点 (系统默认)</el-radio>
+              <el-radio label="WORKER_ONLY">仅限从节点 (强隔离)</el-radio>
+              <el-radio label="MASTER_ONLY">仅限主节点</el-radio>
+              <el-radio label="LEAST_LOAD">动态最低负载节点</el-radio>
+            </el-radio-group>
+            <div class="form-tip-text">
+              日常数据查询、大模型 AI 预检依据此规则分流至只读从机（如 39.97.158.22），减轻主调度网关负载。
+            </div>
+          </el-form-item>
+
+          <el-form-item label="工单变更 (DDL/DML) 路由">
+            <el-radio-group v-model="policyForm.executeRoute">
+              <el-radio label="MASTER_ONLY">强制主节点 (系统默认)</el-radio>
+              <el-radio label="PRIMARY_COORDINATOR">分布式两阶段主协调</el-radio>
+            </el-radio-group>
+            <div class="form-tip-text">
+              数据表结构变更与批量 DML 更新统一在 Master 主调度网关执行，保障全局锁与审计强一致。
+            </div>
+          </el-form-item>
+
+          <el-form-item label="高可用与故障自愈">
+            <div class="switch-row">
+              <el-switch v-model="policyForm.failoverEnabled" active-text="从机故障时自动平滑回退主库" />
+              <div class="form-tip-text" style="margin-top: 4px;">
+                从节点异常、断网或复制延迟超标时，自动无感把查询流量降级回退至主库，保障业务零中断。
+              </div>
+            </div>
+          </el-form-item>
+
+          <el-form-item label="主从最大容忍延迟" v-if="policyForm.failoverEnabled">
+            <el-input-number v-model="policyForm.maxLagSeconds" :min="1" :max="60" :step="1" style="width: 160px;" />
+            <span style="margin-left: 10px; color: #64748b; font-size: 13px;">秒（从库延迟超过该阈值时自动降级回退主库）</span>
+          </el-form-item>
+
+          <el-form-item label="慢查询 / AI 算力隔离">
+            <el-select v-model="policyForm.heavyQueryNode" style="width: 260px;">
+              <el-option label="优先隔离至 Worker 从机" value="WORKER_ONLY" />
+              <el-option label="所有 Worker 节点轮询" value="ALL_WORKERS" />
+              <el-option label="不指定隔离节点" value="ANY" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="策略详细说明">
+            <el-input type="textarea" :rows="2" v-model="policyForm.description" placeholder="请输入策略备注说明..." />
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <div class="dialog-footer-row">
+          <el-button @click="resetToDefaultPolicy">恢复系统默认策略</el-button>
+          <div class="dialog-footer-right">
+            <el-button @click="policyDialogVisible = false">取消</el-button>
+            <el-button type="primary" :loading="savingPolicy" @click="saveExecutionPolicy">保存并全局生效</el-button>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -503,6 +637,142 @@ const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
 const expandNodeDialogVisible = ref(false)
+
+// 集群执行策略配置与多节点路由状态
+const policyDialogVisible = ref(false)
+const savingPolicy = ref(false)
+
+const executionPolicy = ref<any>({
+  policyMode: 'MASTER_WRITE_SLAVE_READ',
+  policyName: '智能读写分离与高可用路由 (系统默认)',
+  queryRoute: 'WORKER_SLAVE_FIRST',
+  executeRoute: 'MASTER_ONLY',
+  failoverEnabled: true,
+  maxLagSeconds: 5,
+  heavyQueryNode: 'WORKER_ONLY',
+  description: '日常数据查询自动分流到只读从机 (39.97.158.22)，变更工单发布锁定主网关执行 (101.35.100.169)。'
+})
+
+const policyForm = ref<any>({ ...executionPolicy.value })
+
+// 推荐预设策略模板库
+const presetTemplates = [
+  {
+    policyMode: 'MASTER_WRITE_SLAVE_READ',
+    policyName: '智能读写分离 (系统推荐·默认)',
+    badge: '推荐',
+    tagType: 'success',
+    queryRoute: 'WORKER_SLAVE_FIRST',
+    executeRoute: 'MASTER_ONLY',
+    queryRouteLabel: '优先分流从节点 (Worker)',
+    executeRouteLabel: '强制主调度机 (Master)',
+    failoverEnabled: true,
+    maxLagSeconds: 5,
+    heavyQueryNode: 'WORKER_ONLY',
+    description: '绝大多数生产环境首选。日常 DQL 查询自动负载均衡分流到 Worker 从机，变更工单与审批发布锁定 Master 主机。'
+  },
+  {
+    policyMode: 'WORKER_COMPUTE_ISOLATION',
+    policyName: '算力强隔离与分析加速',
+    badge: '高性能',
+    tagType: 'primary',
+    queryRoute: 'WORKER_ONLY',
+    executeRoute: 'MASTER_ONLY',
+    queryRouteLabel: '仅限从机计算池',
+    executeRouteLabel: '强制主调度机',
+    failoverEnabled: true,
+    maxLagSeconds: 10,
+    heavyQueryNode: 'WORKER_ONLY',
+    description: '针对大量报表统计、AI 预检和大批量数据查询场景，严禁查询流量触及主生产机，确保主网关绝对平稳。'
+  },
+  {
+    policyMode: 'LEAST_LOAD_FIRST',
+    policyName: '动态最低负载分流',
+    badge: '自适应',
+    tagType: 'warning',
+    queryRoute: 'LEAST_LOAD',
+    executeRoute: 'MASTER_ONLY',
+    queryRouteLabel: '动态最低 CPU/连接',
+    executeRouteLabel: '强制主调度机',
+    failoverEnabled: true,
+    maxLagSeconds: 3,
+    heavyQueryNode: 'ALL_WORKERS',
+    description: '适合扩容至 3 台或更多机器的动态高并发场景，系统每秒侦测集群负载，将请求实时路由至最轻闲机器。'
+  },
+  {
+    policyMode: 'ROUND_ROBIN',
+    policyName: '多从库均匀轮询 (Round Robin)',
+    badge: '高可用',
+    tagType: 'info',
+    queryRoute: 'ROUND_ROBIN',
+    executeRoute: 'MASTER_ONLY',
+    queryRouteLabel: '多从机对等循环',
+    executeRouteLabel: '强制主调度机',
+    failoverEnabled: true,
+    maxLagSeconds: 5,
+    heavyQueryNode: 'ALL_WORKERS',
+    description: '适用于多台从库读副本的集群架构，使读请求均匀分散在集群全部 Worker 节点上。'
+  }
+]
+
+const formatQueryRoute = (route: string) => {
+  switch (route) {
+    case 'WORKER_SLAVE_FIRST': return '优先从节点 (默认)'
+    case 'WORKER_ONLY': return '仅限从节点 (强隔离)'
+    case 'MASTER_ONLY': return '仅限主节点'
+    case 'LEAST_LOAD': return '动态最低负载'
+    case 'ROUND_ROBIN': return '多从节点轮询'
+    default: return route || '优先从节点'
+  }
+}
+
+const formatExecuteRoute = (route: string) => {
+  switch (route) {
+    case 'MASTER_ONLY': return '强制主节点 (Master)'
+    case 'PRIMARY_COORDINATOR': return '分布式两阶段主协调'
+    default: return route || '强制主节点 (Master)'
+  }
+}
+
+const openPolicyDialog = () => {
+  policyForm.value = { ...executionPolicy.value }
+  policyDialogVisible.value = true
+}
+
+const applyTemplate = (tpl: any) => {
+  policyForm.value.policyMode = tpl.policyMode
+  policyForm.value.policyName = tpl.policyName
+  policyForm.value.queryRoute = tpl.queryRoute
+  policyForm.value.executeRoute = tpl.executeRoute
+  policyForm.value.failoverEnabled = tpl.failoverEnabled
+  policyForm.value.maxLagSeconds = tpl.maxLagSeconds
+  policyForm.value.heavyQueryNode = tpl.heavyQueryNode
+  policyForm.value.description = tpl.description
+  ElMessage.info(`已套用模板: ${tpl.policyName}`)
+}
+
+const resetToDefaultPolicy = () => {
+  applyTemplate(presetTemplates[0])
+}
+
+const saveExecutionPolicy = async () => {
+  savingPolicy.value = true
+  try {
+    const res: any = await request.post('/v1/config/execution-policy', policyForm.value)
+    if (res.data) {
+      executionPolicy.value = res.data
+    } else {
+      executionPolicy.value = { ...policyForm.value }
+    }
+    ElMessage.success('集群执行策略已更新并即时全局生效！')
+    policyDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error('保存集群执行策略失败')
+  } finally {
+    savingPolicy.value = false
+  }
+}
+
 
 // 多机器节点集群管理数据
 const clusterNodes = ref<any[]>([
@@ -749,18 +1019,22 @@ const handleResize = () => {
 const loadStats = async () => {
   loading.value = true
   try {
-    const [statsRes, monitorRes]: any = await Promise.all([
+    const [statsRes, monitorRes, policyRes]: any = await Promise.all([
       request.get('/v1/dashboard/stats'),
-      request.get(`/v1/dashboard/monitor?nodeId=${activeNodeId.value}`)
+      request.get(`/v1/dashboard/monitor?nodeId=${activeNodeId.value}`),
+      request.get('/v1/config/execution-policy').catch(() => null)
     ])
-    if (statsRes.data) {
+    if (statsRes && statsRes.data) {
       stats.value = statsRes.data
       if (statsRes.data.clusterNodes && statsRes.data.clusterNodes.length > 0) {
         clusterNodes.value = statsRes.data.clusterNodes
       }
     }
-    if (monitorRes.data) {
+    if (monitorRes && monitorRes.data) {
       monitorStats.value = monitorRes.data
+    }
+    if (policyRes && policyRes.data) {
+      executionPolicy.value = policyRes.data
     }
 
     nextTick(() => {
@@ -1618,5 +1892,185 @@ onBeforeUnmount(() => {
   font-family: monospace;
   color: #0f172a;
   font-size: 12px;
+}
+
+/* 集群执行策略状态指示条与配置弹窗 */
+.cluster-policy-banner {
+  margin-top: 14px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 100%);
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cluster-policy-banner:hover {
+  border-color: #86efac;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+  transform: translateY(-1px);
+}
+
+.policy-banner-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.policy-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pulse-emerald-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  animation: pulseEmerald 2s infinite;
+}
+
+@keyframes pulseEmerald {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.policy-mode-title {
+  font-size: 13px;
+  color: #166534;
+}
+
+.policy-route-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.route-chip {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.route-chip.route-query {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.route-chip.route-exec {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.route-chip.route-failover {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.policy-banner-right {
+  flex-shrink: 0;
+}
+
+.policy-btn-hint {
+  font-size: 12px;
+  color: #059669;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+}
+
+.preset-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.preset-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+}
+
+.preset-card.active {
+  border-color: #2563eb;
+  background: #f0f7ff;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.preset-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.preset-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.preset-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 8px;
+  min-height: 36px;
+}
+
+.preset-routes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #334155;
+}
+
+.dialog-sub-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.form-tip-text {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  margin-top: 4px;
+}
+
+.dialog-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 </style>
