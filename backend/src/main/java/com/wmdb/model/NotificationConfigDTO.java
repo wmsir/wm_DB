@@ -34,6 +34,11 @@ public class NotificationConfigDTO {
     private FeishuConfig feishu;
 
     /**
+     * 📱 移动短信服务配置 (支持 阿里云、腾讯云、华为云、自建 HTTP 短信网关)
+     */
+    private SmsConfig sms;
+
+    /**
      * 📞 紧急电话语音外呼配置 (支持阿里云语音 / 腾讯云语音 / 自建 SIP 语音网关)
      */
     private VoiceCallConfig voiceCall;
@@ -89,6 +94,57 @@ public class NotificationConfigDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class SmsConfig {
+        /**
+         * 通道启用状态
+         */
+        private Boolean enabled;
+
+        /**
+         * 短信服务商: ALIYUN (阿里巴巴/阿里云短信), TENCENT (腾讯云短信), HUAWEI (华为云短信), CUSTOM_HTTP (自建网关)
+         */
+        private String provider;
+
+        /**
+         * 短信签名 (例如: wmDB云平台、企业数据治理)
+         */
+        private String signName;
+
+        /**
+         * 通用审批与催办通知模版 Code (如 阿里云 SMS_283910243 或 腾讯云 1892014)
+         */
+        private String templateCode;
+
+        // --- 阿里巴巴 (阿里云短信) 配置参数 ---
+        private String aliyunAccessKeyId;
+        private String aliyunAccessKeySecret;
+        private String aliyunRegionId; // 默认 cn-hangzhou
+
+        // --- 腾讯云短信 配置参数 ---
+        private String tencentSecretId;
+        private String tencentSecretKey;
+        private String tencentSdkAppId; // 短信 SDKAppID (如 1400xxxxxx)
+        private String tencentRegion;   // 默认 ap-guangzhou
+
+        // --- 华为云 / 自建 HTTP 短信网关 ---
+        private String customApiEndpoint; // 自建网关 API 端点 URL
+        private String customApiKey;      // 认证鉴权 Token / Header
+
+        /**
+         * 单人单日短信发送上限 (条/人/天，默认 20 条，防刷保护)
+         */
+        private Integer dailyLimitPerUser;
+
+        /**
+         * 失败自动重试次数 (默认 2)
+         */
+        private Integer retryTimes;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class VoiceCallConfig {
         private Boolean enabled;
         private String provider; // ALIYUN (阿里云语音), TENCENT (腾讯云), SIP_GATEWAY (自建SIP网关)
@@ -114,13 +170,24 @@ public class NotificationConfigDTO {
         private Boolean quietHoursEnabled; // 是否开启夜间静默期
         private String quietHoursStart; // 22:00
         private String quietHoursEnd; // 08:00
+
+        // --- 三大提醒方式分类场景使用策略矩阵 (Category Usage Matrix) ---
+        @Builder.Default
+        private Boolean dailyNotifyUseIm = true;      // 1. 日常工单通知走协作即时通讯 (企微/钉钉/飞书)
+        @Builder.Default
+        private Boolean urgeNotifyUseSms = true;      // 2. 加急催办/待办超时同步发送短信 (SMS)
+        @Builder.Default
+        private Boolean emergencyUseVoiceCall = true; // 3. P0 严重故障/实例宕机触发紧急电话语音直拨 (Voice Call)
+        @Builder.Default
+        private Boolean failedNotifyUseSms = false;   // 4. 工单执行失败/高危拦截同步发送短信 (SMS)
     }
 
     @Data
     public static class TestChannelRequest {
-        private String channel; // WECHAT, DINGTALK, FEISHU, VOICE_CALL
+        private String channel; // WECHAT, DINGTALK, FEISHU, SMS, VOICE_CALL
         private String target; // 接收人工号/ERP、手机号或群目标
         private String message; // 测试消息内容
+        private String provider; // 短信厂商 (针对 SMS: ALIYUN, TENCENT 等)
     }
 
     @Data

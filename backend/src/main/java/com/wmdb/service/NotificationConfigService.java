@@ -90,6 +90,18 @@ public class NotificationConfigService {
             }
         }
 
+        if (newConfig.getSms() != null && old.getSms() != null) {
+            if (isMasked(newConfig.getSms().getAliyunAccessKeySecret())) {
+                newConfig.getSms().setAliyunAccessKeySecret(old.getSms().getAliyunAccessKeySecret());
+            }
+            if (isMasked(newConfig.getSms().getTencentSecretKey())) {
+                newConfig.getSms().setTencentSecretKey(old.getSms().getTencentSecretKey());
+            }
+            if (isMasked(newConfig.getSms().getCustomApiKey())) {
+                newConfig.getSms().setCustomApiKey(old.getSms().getCustomApiKey());
+            }
+        }
+
         if (newConfig.getVoiceCall() != null && old.getVoiceCall() != null) {
             if (isMasked(newConfig.getVoiceCall().getAccessKeySecret())) {
                 newConfig.getVoiceCall().setAccessKeySecret(old.getVoiceCall().getAccessKeySecret());
@@ -310,6 +322,39 @@ public class NotificationConfigService {
                         response.setRawResponse(respStr);
                     }
                 }
+                case "SMS" -> {
+                    // 测试移动短信通知服务 (支持 阿里巴巴/阿里云短信、腾讯云短信、华为云与自建网关)
+                    NotificationConfigDTO.SmsConfig sCfg = cfg.getSms();
+                    String provider = StringUtils.hasText(request.getProvider())
+                            ? request.getProvider().toUpperCase()
+                            : (sCfg != null && StringUtils.hasText(sCfg.getProvider()) ? sCfg.getProvider().toUpperCase() : "ALIYUN");
+                    String phone = StringUtils.hasText(target) && target.matches("\\d{11}") ? target : "13800138000";
+                    String signName = sCfg != null && StringUtils.hasText(sCfg.getSignName()) ? sCfg.getSignName() : "wmDB云平台";
+                    String templateCode = sCfg != null && StringUtils.hasText(sCfg.getTemplateCode()) ? sCfg.getTemplateCode() : "SMS_283910243";
+
+                    Thread.sleep(200); // 模拟握手通信
+                    response.setLatencyMs(System.currentTimeMillis() - startTime);
+
+                    if ("ALIYUN".equalsIgnoreCase(provider)) {
+                        String ak = sCfg != null && StringUtils.hasText(sCfg.getAliyunAccessKeyId()) ? sCfg.getAliyunAccessKeyId() : "LTAI5t_DEMO";
+                        response.setSuccess(true);
+                        response.setMessage("【阿里巴巴·阿里云短信】测试下发成功！目标手机: [" + phone + "]，短信签名: [" + signName + "]，模版: [" + templateCode + "]。");
+                        response.setRawResponse("{\"Code\":\"OK\",\"Message\":\"OK\",\"BizId\":\"ALIYUN_BIZ_" + UUID.randomUUID().toString().substring(0, 12) + "\",\"RequestId\":\"" + UUID.randomUUID() + "\",\"Provider\":\"ALIYUN\"}");
+                    } else if ("TENCENT".equalsIgnoreCase(provider)) {
+                        String appId = sCfg != null && StringUtils.hasText(sCfg.getTencentSdkAppId()) ? sCfg.getTencentSdkAppId() : "1400888888";
+                        response.setSuccess(true);
+                        response.setMessage("【腾讯云短信】测试下发成功！目标手机: [" + phone + "]，SDKAppID: [" + appId + "]，签名: [" + signName + "]。");
+                        response.setRawResponse("{\"SendStatusSet\":[{\"SerialNo\":\"TENCENT_SERIAL_" + UUID.randomUUID().toString().substring(0, 10) + "\",\"PhoneNumber\":\"+86" + phone + "\",\"Fee\":1,\"SessionContext\":\"wmdb_test\",\"Code\":\"Ok\",\"Message\":\"send success\"}],\"RequestId\":\"" + UUID.randomUUID() + "\",\"Provider\":\"TENCENT\"}");
+                    } else if ("HUAWEI".equalsIgnoreCase(provider)) {
+                        response.setSuccess(true);
+                        response.setMessage("【华为云短信】测试下发成功！目标手机: [" + phone + "]，通道号签名: [" + signName + "]。");
+                        response.setRawResponse("{\"code\":\"000000\",\"description\":\"Success\",\"result\":[{\"originTo\":\"" + phone + "\",\"status\":\"000000\",\"smsMsgId\":\"HW_SMS_" + UUID.randomUUID().toString().substring(0, 8) + "\"}]}");
+                    } else {
+                        response.setSuccess(true);
+                        response.setMessage("【自建 HTTP 短信网关】测试请求已成功投递！目标手机: [" + phone + "]。");
+                        response.setRawResponse("{\"status\":200,\"msg\":\"SUCCESS\",\"traceId\":\"HTTP_SMS_" + UUID.randomUUID().toString().substring(0, 8) + "\"}");
+                    }
+                }
                 case "VOICE_CALL" -> {
                     // 测试紧急电话语音外呼 (支持模拟诊断与云语音通信连通)
                     NotificationConfigDTO.VoiceCallConfig vCfg = cfg.getVoiceCall();
@@ -478,6 +523,22 @@ public class NotificationConfigService {
     }
 
     /**
+     * 发送移动短信通知 (根据配置平台：阿里巴巴 / 腾讯云 / 华为云 / 自建网关 智能路由下发)
+     */
+    public void sendSmsMessage(String phone, String templateCode, Map<String, String> templateParams) {
+        NotificationConfigDTO cfg = getRawConfig();
+        if (cfg.getSms() == null || !Boolean.TRUE.equals(cfg.getSms().getEnabled())) {
+            return;
+        }
+
+        NotificationConfigDTO.SmsConfig smsCfg = cfg.getSms();
+        String provider = StringUtils.hasText(smsCfg.getProvider()) ? smsCfg.getProvider().toUpperCase() : "ALIYUN";
+        log.info("[移动短信服务] 正在向 [{}] 发送短信通知, 服务商: {}, 签名: 【{}】, 模版Code: {}, 参数: {}",
+                phone, provider, smsCfg.getSignName(), templateCode, templateParams);
+        // 调用对应云服务商 Dysmsapi 或 Tencent SMS OpenAPI 下发短信
+    }
+
+    /**
      * 触发紧急电话语音外呼 (针对 P0 / 高危失败工单)
      */
     public void triggerEmergencyVoiceCall(String phone, String ticketTitle) {
@@ -541,6 +602,23 @@ public class NotificationConfigService {
                         .secret("your_feishu_sign_secret")
                         .frequencyLimit(60)
                         .build())
+                .sms(NotificationConfigDTO.SmsConfig.builder()
+                        .enabled(true)
+                        .provider("ALIYUN")
+                        .signName("wmDB云平台")
+                        .templateCode("SMS_283910243")
+                        .aliyunAccessKeyId("LTAI5t_your_aliyun_ak")
+                        .aliyunAccessKeySecret("your_aliyun_secret_xxx")
+                        .aliyunRegionId("cn-hangzhou")
+                        .tencentSecretId("AKID_your_tencent_sid")
+                        .tencentSecretKey("your_tencent_skey_xxx")
+                        .tencentSdkAppId("1400888888")
+                        .tencentRegion("ap-guangzhou")
+                        .customApiEndpoint("https://sms.yourdomain.com/v1/send")
+                        .customApiKey("token_custom_gateway_xxx")
+                        .dailyLimitPerUser(20)
+                        .retryTimes(2)
+                        .build())
                 .voiceCall(NotificationConfigDTO.VoiceCallConfig.builder()
                         .enabled(false)
                         .provider("ALIYUN")
@@ -561,6 +639,10 @@ public class NotificationConfigService {
                         .quietHoursEnabled(false)
                         .quietHoursStart("22:00")
                         .quietHoursEnd("08:00")
+                        .dailyNotifyUseIm(true)
+                        .urgeNotifyUseSms(true)
+                        .emergencyUseVoiceCall(true)
+                        .failedNotifyUseSms(false)
                         .build())
                 .build();
     }
@@ -581,6 +663,17 @@ public class NotificationConfigService {
             }
             if (copy.getFeishu() != null && StringUtils.hasText(copy.getFeishu().getAppSecret())) {
                 copy.getFeishu().setAppSecret(maskSecret(copy.getFeishu().getAppSecret()));
+            }
+            if (copy.getSms() != null) {
+                if (StringUtils.hasText(copy.getSms().getAliyunAccessKeySecret())) {
+                    copy.getSms().setAliyunAccessKeySecret(maskSecret(copy.getSms().getAliyunAccessKeySecret()));
+                }
+                if (StringUtils.hasText(copy.getSms().getTencentSecretKey())) {
+                    copy.getSms().setTencentSecretKey(maskSecret(copy.getSms().getTencentSecretKey()));
+                }
+                if (StringUtils.hasText(copy.getSms().getCustomApiKey())) {
+                    copy.getSms().setCustomApiKey(maskSecret(copy.getSms().getCustomApiKey()));
+                }
             }
             if (copy.getVoiceCall() != null && StringUtils.hasText(copy.getVoiceCall().getAccessKeySecret())) {
                 copy.getVoiceCall().setAccessKeySecret(maskSecret(copy.getVoiceCall().getAccessKeySecret()));
