@@ -3,42 +3,639 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FWPT 服务平台 · 稳骥 PacerSQL 与 斑马 ZebraERP</title>
+  <title>FWPT 服务平台 · Future Workplace & Platform Technology · 稳骥 PacerSQL 与 斑马 ZebraERP</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/apple.css">
+  <style>
+/* ==========================================================================
+   FWPT.CN · Apple 官方极简轻奢视觉规范系统 (Apple Design System)
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --apple-bg: #fbfbfd;
+  --apple-white: #ffffff;
+  --apple-card-bg: #ffffff;
+  --apple-text-dark: #1d1d1f;
+  --apple-text-secondary: #6e6e73;
+  --apple-text-tertiary: #86868b;
+  --apple-blue: #0071e3;
+  --apple-blue-hover: #0077ed;
+  --apple-blue-soft: #f5f5f7;
+  --apple-border: rgba(0, 0, 0, 0.08);
+  --apple-border-light: rgba(0, 0, 0, 0.04);
+  --apple-radius-pill: 980px;
+  --apple-radius-card: 22px;
+  --apple-radius-sm: 12px;
+}
+
+body {
+  background-color: var(--apple-bg);
+  color: var(--apple-text-dark);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "PingFang SC", "Segoe UI", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   Apple 全局顶栏 (Global Nav - 44px)
+   ========================================================================== */
+.apple-global-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--apple-border);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+}
+.nav-container {
+  max-width: 1024px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-apple-logo {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--apple-text-dark);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.5px;
+}
+.nav-logo-badge {
+  background: var(--apple-text-dark);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.nav-menu-list {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+.nav-menu-item a {
+  text-decoration: none;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.8);
+  transition: color 0.2s ease;
+  letter-spacing: -0.01em;
+}
+.nav-menu-item a:hover,
+.nav-menu-item a.active {
+  color: var(--apple-blue);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.nav-search-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  padding: 4px;
+}
+.nav-search-btn:hover { color: var(--apple-blue); }
+
+/* ==========================================================================
+   Apple 产品副导航条 (Product Subnav - iPad Pro style)
+   ========================================================================== */
+.product-sticky-subnav {
+  position: sticky;
+  top: 44px;
+  left: 0;
+  right: 0;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid var(--apple-border);
+  z-index: 999;
+  display: flex;
+  align-items: center;
+}
+.subnav-container {
+  max-width: 1024px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.subnav-title {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--apple-text-dark);
+  letter-spacing: -0.02em;
+}
+.subnav-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.subnav-links a {
+  text-decoration: none;
+  font-size: 12px;
+  color: var(--apple-text-secondary);
+  transition: color 0.2s;
+}
+.subnav-links a:hover { color: var(--apple-text-dark); }
+.btn-subnav-cta {
+  background: var(--apple-blue);
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: var(--apple-radius-pill);
+  transition: background 0.2s, transform 0.2s;
+}
+.btn-subnav-cta:hover {
+  background: var(--apple-blue-hover);
+  transform: scale(1.02);
+}
+
+/* ==========================================================================
+   Apple 巨幅广告屏 (Full-bleed Billboard Hero)
+   ========================================================================== */
+.apple-billboard-hero {
+  padding-top: 100px;
+  padding-bottom: 70px;
+  text-align: center;
+  background: #ffffff;
+  border-bottom: 12px solid var(--apple-bg);
+  position: relative;
+  overflow: hidden;
+}
+.apple-billboard-hero.dark-hero {
+  background: #000000;
+  color: #f5f5f7;
+}
+
+.hero-super-tag {
+  font-size: 13px;
+  font-weight: 600;
+  color: #b33900;
+  letter-spacing: -0.01em;
+  margin-bottom: 10px;
+}
+.hero-super-tag.blue-tag { color: var(--apple-blue); }
+
+.hero-headline {
+  font-size: 56px;
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--apple-text-dark);
+  margin-bottom: 12px;
+}
+.dark-hero .hero-headline { color: #f5f5f7; }
+
+.hero-subhead {
+  font-size: 24px;
+  line-height: 1.33;
+  color: var(--apple-text-secondary);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  max-width: 720px;
+  margin: 0 auto 24px auto;
+}
+.dark-hero .hero-subhead { color: #a1a1a6; }
+
+.hero-cta-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+.btn-apple-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--apple-blue);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 22px;
+  border-radius: var(--apple-radius-pill);
+  transition: all 0.2s ease;
+}
+.btn-apple-primary:hover {
+  background: var(--apple-blue-hover);
+  transform: translateY(-1px);
+}
+.btn-apple-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--apple-blue);
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+.btn-apple-secondary:hover { text-decoration: underline; }
+
+/* 拟态大屏画幅 (Billboard Media Canvas) */
+.billboard-media-wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+.billboard-device-frame {
+  background: #ffffff;
+  border: 1px solid var(--apple-border);
+  border-radius: var(--apple-radius-card);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  text-align: left;
+}
+.dark-hero .billboard-device-frame {
+  background: #161617;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.device-top-bar {
+  background: #f5f5f7;
+  border-bottom: 1px solid var(--apple-border);
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dark-hero .device-top-bar {
+  background: #242426;
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.device-traffic-dots { display: flex; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot.red { background: #ff5f57; }
+.dot.yellow { background: #febc2e; }
+.dot.green { background: #28c840; }
+
+.device-url-pill {
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--apple-text-secondary);
+  background: #ffffff;
+  padding: 3px 18px;
+  border-radius: var(--apple-radius-pill);
+  border: 1px solid var(--apple-border);
+}
+.dark-hero .device-url-pill {
+  background: #161617;
+  color: #86868b;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.device-body { padding: 32px 28px; }
+
+/* ==========================================================================
+   Apple 2x2 营销推广网格 (Apple Promo Grid - apple.com 下方模块)
+   ========================================================================== */
+.apple-promo-grid-section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 12px 12px 30px 12px;
+}
+.promo-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.promo-card {
+  background: #ffffff;
+  border-radius: var(--apple-radius-card);
+  padding: 50px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  border: 1px solid var(--apple-border-light);
+  min-height: 480px;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s;
+}
+.promo-card:hover {
+  transform: scale(1.008);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+}
+.promo-card.dark-card {
+  background: #000000;
+  color: #f5f5f7;
+}
+
+.promo-title {
+  font-size: 38px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--apple-text-dark);
+  margin-bottom: 8px;
+}
+.dark-card .promo-title { color: #f5f5f7; }
+
+.promo-subhead {
+  font-size: 19px;
+  color: var(--apple-text-secondary);
+  margin-bottom: 16px;
+  max-width: 440px;
+}
+.dark-card .promo-subhead { color: #a1a1a6; }
+
+.promo-links-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+.promo-media-canvas {
+  margin-top: auto;
+  width: 100%;
+}
+
+/* ==========================================================================
+   产品专页特色模块 (iPad Pro style Deep-Dive)
+   ========================================================================== */
+.deep-dive-section {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 100px 24px 60px 24px;
+}
+.section-headline-xl {
+  font-size: 48px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--apple-text-dark);
+  margin-bottom: 18px;
+  text-align: center;
+}
+.section-subhead-lg {
+  font-size: 21px;
+  color: var(--apple-text-secondary);
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 60px auto;
+}
+
+/* Bento 特性阵列 */
+.apple-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 80px;
+}
+.bento-card {
+  background: #ffffff;
+  border-radius: var(--apple-radius-card);
+  padding: 36px 28px;
+  border: 1px solid var(--apple-border-light);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+}
+.bento-card.span-2 { grid-column: span 2; }
+.bento-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--apple-blue);
+  margin-bottom: 12px;
+}
+.bento-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--apple-text-dark);
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+.bento-desc {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--apple-text-secondary);
+  margin-bottom: 20px;
+  flex: 1;
+}
+.bento-stat-num {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--apple-text-dark);
+  letter-spacing: -0.02em;
+}
+.bento-stat-num small { font-size: 16px; color: var(--apple-blue); margin-left: 4px; }
+.bento-stat-label { font-size: 12px; color: var(--apple-text-tertiary); }
+
+/* 斑马专页核心条形码视觉 */
+.zebra-barcode-hero-box {
+  background: #ffffff;
+  border: 2px dashed #e2e8f0;
+  border-radius: 16px;
+  padding: 40px 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.laser-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #ff3b30;
+  box-shadow: 0 0 12px #ff3b30;
+  animation: scanLaser 2s ease-in-out infinite;
+}
+.barcode-bars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 70px;
+  margin-bottom: 10px;
+}
+.b-bar { background: #000; height: 100%; display: inline-block; }
+.b-bar.w-1 { width: 2px; }
+.b-bar.w-2 { width: 4px; }
+.b-bar.w-3 { width: 6px; }
+.b-bar.w-4 { width: 9px; }
+.barcode-num-text {
+  font-family: monospace;
+  font-weight: 700;
+  letter-spacing: 6px;
+  font-size: 16px;
+  color: #1d1d1f;
+}
+
+/* 规格参数对比表 (Tech Specs Table) */
+.specs-table-wrap {
+  background: #ffffff;
+  border-radius: var(--apple-radius-card);
+  padding: 40px;
+  border: 1px solid var(--apple-border-light);
+  margin-bottom: 80px;
+}
+.specs-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--apple-border-light);
+  font-size: 14px;
+}
+.specs-row:last-child { border-bottom: none; }
+.specs-label { font-weight: 600; color: var(--apple-text-dark); }
+.specs-value { color: var(--apple-text-secondary); line-height: 1.6; }
+
+/* ==========================================================================
+   Apple 官网纯净页脚 (Apple Footer)
+   ========================================================================== */
+.apple-global-footer {
+  background: #f5f5f7;
+  color: var(--apple-text-tertiary);
+  font-size: 12px;
+  line-height: 1.33;
+  padding: 34px 0 24px 0;
+  border-top: 1px solid var(--apple-border);
+}
+.footer-container {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 0 22px;
+}
+.footer-note-section {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--apple-border);
+  margin-bottom: 24px;
+}
+.footer-note-section p { margin-bottom: 8px; }
+
+.footer-nav-cols {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 30px;
+}
+.footer-col-title {
+  font-weight: 600;
+  color: var(--apple-text-dark);
+  margin-bottom: 10px;
+}
+.footer-col ul { list-style: none; }
+.footer-col li { margin-bottom: 8px; }
+.footer-col a {
+  color: var(--apple-text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.footer-col a:hover {
+  color: var(--apple-text-dark);
+  text-decoration: underline;
+}
+
+.footer-legal-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--apple-border);
+  color: var(--apple-text-tertiary);
+}
+.footer-legal-links {
+  display: flex;
+  gap: 14px;
+}
+.footer-legal-links a {
+  color: var(--apple-text-secondary);
+  text-decoration: none;
+}
+.footer-legal-links a:hover { text-decoration: underline; }
+
+/* 动效 */
+@keyframes scanLaser {
+  0% { top: 0; opacity: 0.8; }
+  50% { top: 96%; opacity: 1; }
+  100% { top: 0; opacity: 0.8; }
+}
+
+/* 响应式 */
+@media (max-width: 834px) {
+  .hero-headline { font-size: 42px; }
+  .hero-subhead { font-size: 20px; }
+  .promo-grid { grid-template-columns: 1fr; }
+  .apple-bento-grid { grid-template-columns: 1fr; }
+  .bento-card.span-2 { grid-column: span 1; }
+  .footer-nav-cols { grid-template-columns: repeat(2, 1fr); }
+  .nav-menu-list { display: none; }
+}
+
+  </style>
 </head>
 <body>
   <!-- Apple 风格极简全局顶栏 (44px) -->
   <header class="apple-global-nav">
     <div class="nav-container">
-      <a href="/" class="nav-apple-logo">
+      <a href="/" class="nav-apple-logo" data-file-href="index.html" title="Future Workplace & Platform Technology">
         <span class="nav-logo-badge">FWPT</span>
         <span>平台</span>
       </a>
 
       <ul class="nav-menu-list">
-        <li class="nav-menu-item"><a href="/pacer">稳骥 PacerSQL</a></li>
-        <li class="nav-menu-item"><a href="/zebra">斑马 ZebraERP</a></li>
-        <li class="nav-menu-item"><a href="#philosophy">平台理念</a></li>
+        <li class="nav-menu-item"><a href="/pacer" data-file-href="pacer.html">稳骥 PacerSQL</a></li>
+        <li class="nav-menu-item"><a href="/zebra" data-file-href="zebra.html">斑马 ZebraERP</a></li>
+        <li class="nav-menu-item"><a href="#philosophy">平台宗旨 & 理念</a></li>
         <li class="nav-menu-item"><a href="#architecture">高可用架构</a></li>
         <li class="nav-menu-item"><a href="javascript:;" onclick="jumpToPacer()">控制台</a></li>
       </ul>
 
       <div class="nav-actions">
-        <a href="javascript:;" onclick="jumpToPacer()" class="btn-apple-primary" style="padding: 4px 14px; font-size: 12px;">登录</a>
+        <a href="javascript:;" onclick="jumpToPacer()" class="btn-apple-primary" style="padding: 4px 14px; font-size: 12px;">登录平台</a>
       </div>
     </div>
   </header>
 
   <main>
+    <!-- 全局品牌宣传条 (Ribbon) -->
+    <div style="background: #f5f5f7; border-bottom: 1px solid rgba(0,0,0,0.06); padding: 10px 16px; text-align: center; font-size: 12px; color: #6e6e73;">
+      <strong style="color: #1d1d1f; letter-spacing: 0.5px;">FWPT</strong> · Future Workplace &amp; Platform Technology · 未来数字化工作协同与企业平台技术服务
+    </div>
+
     <!-- Billboard 1: 稳骥 PacerSQL (全幅大屏 Apple 广告板) -->
     <section class="apple-billboard-hero" id="pacerHero">
-      <div class="hero-super-tag blue-tag">旗舰数据基座 · 全新上线</div>
+      <div class="hero-super-tag blue-tag">旗舰数据自治基座 · 现已就绪</div>
       <h1 class="hero-headline">“骥”为千里良驹，“稳”压倒一切。</h1>
       <p class="hero-subhead">稳骥 PacerSQL · 企业级高可用数据库变更自治云平台</p>
       
       <div class="hero-cta-group">
-        <a href="/pacer" class="btn-apple-primary">进一步了解</a>
+        <a href="/pacer" data-file-href="pacer.html" class="btn-apple-primary">进一步了解</a>
         <a href="javascript:;" onclick="jumpToPacer()" class="btn-apple-secondary">去试用 (pacer.fwpt.cn) ›</a>
       </div>
 
@@ -72,7 +669,7 @@
 
             <div style="background: #f5f5f7; border-radius: 10px; padding: 14px 18px; font-size: 12px; color: #424245; line-height: 1.8;">
               <div><strong>[工单 #1024 实时流式执行中]</strong> 批次进度：82% (164,000 / 200,000 行) · 每批 2,000 行 · 锁等待时间 0.00ms</div>
-              <div style="color: #16a34a;">✔ SpEL 动态分流已就绪：核心写入事务直达主控中心，数据读取校验已分流至加速从节点</div>
+              <div style="color: #16a34a;">✔ SpEL 动态分流已就绪：核心写入事务直达主控中心，数据读取校验已分流至分布式加速节点</div>
             </div>
           </div>
         </div>
@@ -86,7 +683,7 @@
       <p class="hero-subhead">斑马 ZebraERP · 全场景商品条码与仓储一体化敏捷数字系统</p>
 
       <div class="hero-cta-group">
-        <a href="/zebra" class="btn-apple-primary" style="background: #09090b;">进一步了解</a>
+        <a href="/zebra" data-file-href="zebra.html" class="btn-apple-primary" style="background: #09090b;">进一步了解</a>
         <a href="javascript:;" onclick="jumpToZebra()" class="btn-apple-secondary" style="color: #09090b;">去试用 (zebra.fwpt.cn) ›</a>
       </div>
 
@@ -110,21 +707,8 @@
                 <span class="b-bar w-3"></span><span class="b-bar w-1"></span><span class="b-bar w-2"></span>
               </div>
               <div class="barcode-num-text">6 9 7 2 8 4 1 0 2 4 8 9 2</div>
-              <div style="font-size: 12px; color: #059669; font-weight: 600;">✔ 激光扫码枪毫秒核销 · 批次入库已完成</div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; text-align: center;">
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 14px; border-radius: 10px;">
-                <div style="font-size: 20px; font-weight: 800; color: #09090b;">0.2 秒</div>
-                <div style="font-size: 11px; color: #6e6e73;">PDA 扫码极速响应</div>
-              </div>
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 14px; border-radius: 10px;">
-                <div style="font-size: 20px; font-weight: 800; color: #09090b;">100%</div>
-                <div style="font-size: 11px; color: #6e6e73;">一物一码全链路追溯</div>
-              </div>
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 14px; border-radius: 10px;">
-                <div style="font-size: 20px; font-weight: 800; color: #09090b;">多仓互通</div>
-                <div style="font-size: 11px; color: #6e6e73;">实时动态库存调拨</div>
+              <div style="font-size: 12px; color: #52525b; margin-top: 10px; font-weight: 500;">
+                商品条形码 (Barcode) · 扫码枪快速核销 · WMS 仓储盘点
               </div>
             </div>
           </div>
@@ -141,7 +725,7 @@
           <h3 class="promo-title">Pacer 流式步态引擎</h3>
           <p class="promo-subhead">大表变更告别长事务锁表与主从延迟，如受训赛马般平稳推进。</p>
           <div class="promo-links-row">
-            <a href="/pacer" class="btn-apple-primary">进一步了解</a>
+            <a href="/pacer" data-file-href="pacer.html" class="btn-apple-primary">进一步了解</a>
             <a href="javascript:;" onclick="jumpToPacer()" class="btn-apple-secondary">去试用 ›</a>
           </div>
           <div class="promo-media-canvas">
@@ -158,7 +742,7 @@
           <h3 class="promo-title">天生自带条形码基因</h3>
           <p class="promo-subhead">黑白条纹直击 WMS 仓储、出入库核销与零售扫码购物。</p>
           <div class="promo-links-row">
-            <a href="/zebra" class="btn-apple-primary" style="background: #09090b;">进一步了解</a>
+            <a href="/zebra" data-file-href="zebra.html" class="btn-apple-primary" style="background: #09090b;">进一步了解</a>
             <a href="javascript:;" onclick="jumpToZebra()" class="btn-apple-secondary" style="color: #09090b;">去试用 ›</a>
           </div>
           <div class="promo-media-canvas">
@@ -175,7 +759,7 @@
           <h3 class="promo-title">AI 深度预检与脱敏</h3>
           <p class="promo-subhead">语法推演、慢查索引自动诊断、动态数字盲水印防止截屏泄密。</p>
           <div class="promo-links-row">
-            <a href="/pacer" class="btn-apple-primary">进一步了解</a>
+            <a href="/pacer" data-file-href="pacer.html" class="btn-apple-primary">进一步了解</a>
             <a href="javascript:;" onclick="jumpToPacer()" class="btn-apple-secondary">去试用 ›</a>
           </div>
           <div class="promo-media-canvas">
@@ -186,49 +770,108 @@
           </div>
         </div>
 
-        <!-- 格子 4: 平台哲学与愿景 -->
-        <div class="promo-card" id="philosophy">
-          <div class="hero-super-tag" style="color: #b33900;">平台理念</div>
-          <h3 class="promo-title">稳若赛马，敏如斑马</h3>
-          <p class="promo-subhead">底层数据库稳如泰山，上层业务流通敏捷高效，构筑数字中枢。</p>
+        <!-- 格子 4: 开放协同网络 -->
+        <div class="promo-card">
+          <div class="hero-super-tag" style="color: #7c3aed;">企业级扩展</div>
+          <h3 class="promo-title">泛域名与双核自治</h3>
+          <p class="promo-subhead">独立二级域名治理与单点接入，底层与业务紧密咬合。</p>
           <div class="promo-links-row">
-            <a href="#architecture" class="btn-apple-secondary">探索高可用架构 ›</a>
+            <a href="#philosophy" class="btn-apple-secondary">了解平台理念 ›</a>
           </div>
           <div class="promo-media-canvas">
             <div style="background: #f5f5f7; border-radius: 14px; padding: 20px; text-align: left; font-size: 13px; color: #424245;">
-              <div style="font-weight: 700; margin-bottom: 6px; color: #b33900;">🌐 FWPT 开放协同</div>
-              <div>统一二级域名集群治理，单点鉴权与分布式节点协同，打通数字化最后一公里。</div>
+              <div style="font-weight: 700; margin-bottom: 6px; color: #7c3aed;">🌐 平台协同治理</div>
+              <div>统一凭据调度，跨节点负载隔离，构筑未来数字化工作协同网络。</div>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 高可用架构说明 (删除所有具体IP和机房暴露信息) -->
-    <section id="architecture" style="background: #ffffff; padding: 80px 24px; border-top: 1px solid #e2e8f0;">
+    <!-- FWPT 品牌全称、平台理念与宗旨 (Future Workplace & Platform Technology) -->
+    <section id="philosophy" style="background: #ffffff; padding: 90px 24px; border-top: 1px solid #e2e8f0;">
+      <div style="max-width: 1080px; margin: 0 auto; text-align: center;">
+        <div class="hero-super-tag blue-tag" style="letter-spacing: 2px;">BRAND PHILOSOPHY &amp; MISSION</div>
+        <h2 style="font-size: 38px; font-weight: 800; color: #1d1d1f; margin-bottom: 12px; letter-spacing: -0.5px;">
+          Future Workplace &amp; Platform Technology
+        </h2>
+        <p style="font-size: 20px; font-weight: 600; color: #0071e3; margin-bottom: 16px;">
+          未来工作协同 · 企业级平台技术服务
+        </p>
+        <div style="max-width: 820px; margin: 0 auto 50px auto; font-size: 16px; color: #424245; line-height: 1.8;">
+          <strong>平台核心宗旨：</strong>以稳健自治的底层技术架构，驱动敏捷极速的企业工作协同与商业流通。<br>
+          FWPT 致力于打破底层数据治理与上层业务敏捷之间的藩篱，以“稳若赛马”的工程底蕴守护核心命脉，以“敏如斑马”的条码联想激活物流仓配，构筑面向未来的数字化工作基座。
+        </div>
+
+        <!-- 理念三大支柱 -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; text-align: left;">
+          <!-- 支柱 1 -->
+          <div style="background: #fbfbfd; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; display: flex; flex-direction: column;">
+            <div style="width: 52px; height: 52px; border-radius: 14px; background: #e0f2fe; display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 20px;">🐎</div>
+            <div style="font-size: 12px; font-weight: 700; color: #0071e3; text-transform: uppercase; margin-bottom: 6px;">PLATFORM PHILOSOPHY · 稳</div>
+            <h3 style="font-size: 20px; font-weight: 700; color: #1d1d1f; margin-bottom: 12px;">“骥”为千里，“稳”压倒一切</h3>
+            <p style="font-size: 14px; color: #6e6e73; line-height: 1.7; flex: 1;">
+              直击核心数据库变更与高可用痛点。如受过专业步态训练的良驹（Pacer），以定时与微批流式灰度节奏平稳下发变更，彻底根除锁表与抖动风险。
+            </p>
+            <div style="margin-top: 24px;">
+              <a href="/pacer" data-file-href="pacer.html" style="font-size: 14px; font-weight: 600; color: #0071e3; text-decoration: none;">了解 稳骥 PacerSQL ›</a>
+            </div>
+          </div>
+
+          <!-- 支柱 2 -->
+          <div style="background: #fbfbfd; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; display: flex; flex-direction: column;">
+            <div style="width: 52px; height: 52px; border-radius: 14px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 20px;">🦓</div>
+            <div style="font-size: 12px; font-weight: 700; color: #09090b; text-transform: uppercase; margin-bottom: 6px;">BUSINESS SYNERGY · 敏</div>
+            <h3 style="font-size: 20px; font-weight: 700; color: #1d1d1f; margin-bottom: 12px;">“斑马”条纹，天生条码联想</h3>
+            <p style="font-size: 14px; color: #6e6e73; line-height: 1.7; flex: 1;">
+              黑白相间的条纹天生自带商品条形码 (Barcode) 与扫码枪的视觉联想。极度贴合仓储出入库、盘点与 C 端扫码购物，打通线上线下一体化敏捷协同。
+            </p>
+            <div style="margin-top: 24px;">
+              <a href="/zebra" data-file-href="zebra.html" style="font-size: 14px; font-weight: 600; color: #09090b; text-decoration: none;">了解 斑马 ZebraERP ›</a>
+            </div>
+          </div>
+
+          <!-- 支柱 3 -->
+          <div style="background: #fbfbfd; border: 1px solid #e2e8f0; border-radius: 20px; padding: 32px; display: flex; flex-direction: column;">
+            <div style="width: 52px; height: 52px; border-radius: 14px; background: #f5f3ff; display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 20px;">🌐</div>
+            <div style="font-size: 12px; font-weight: 700; color: #7c3aed; text-transform: uppercase; margin-bottom: 6px;">PLATFORM PURPOSE · 宗旨</div>
+            <h3 style="font-size: 20px; font-weight: 700; color: #1d1d1f; margin-bottom: 12px;">未来工作协同与技术自治</h3>
+            <p style="font-size: 14px; color: #6e6e73; line-height: 1.7; flex: 1;">
+              打造面向未来的数字中枢（Future Workplace），提供高可用分布式读写路由、国密合规安全与毫秒级探活熔断，赋能组织在数字时代永续稳健前行。
+            </p>
+            <div style="margin-top: 24px;">
+              <a href="#architecture" style="font-size: 14px; font-weight: 600; color: #7c3aed; text-decoration: none;">查看分布式架构 ›</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 高可用架构说明 (0 IP 暴露，金融级架构) -->
+    <section id="architecture" style="background: #fbfbfd; padding: 80px 24px; border-top: 1px solid #e2e8f0;">
       <div style="max-width: 1024px; margin: 0 auto; text-align: center;">
         <div class="hero-super-tag blue-tag">ENTERPRISE INFRASTRUCTURE</div>
-        <h2 style="font-size: 38px; font-weight: 700; color: #1d1d1f; margin-bottom: 14px;">金融级分布式高可用网络</h2>
+        <h2 style="font-size: 36px; font-weight: 700; color: #1d1d1f; margin-bottom: 14px;">金融级分布式高可用网络</h2>
         <p style="font-size: 16px; color: #6e6e73; max-width: 680px; margin: 0 auto 50px auto;">
           多可用区协同、主从读写分离、秒级故障探活与弹性资源调度，保障关键业务 7x24 小时连续性。
         </p>
 
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; text-align: left;">
-          <div style="background: #fbfbfd; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px;">
             <div style="font-size: 28px; margin-bottom: 12px;">🏢</div>
             <h4 style="font-size: 17px; font-weight: 700; color: #1d1d1f; margin-bottom: 8px;">主控调度中心</h4>
             <p style="font-size: 13px; color: #6e6e73; line-height: 1.6;">承载核心工单审批、数据库元数据编排与写入事务排他下发，保障多系统全局一致性。</p>
             <div style="margin-top: 16px; font-size: 11px; color: #0071e3; font-weight: 600;">写入中心 · 核心编排调度</div>
           </div>
 
-          <div style="background: #fbfbfd; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px;">
             <div style="font-size: 28px; margin-bottom: 12px;">⚡</div>
             <h4 style="font-size: 17px; font-weight: 700; color: #1d1d1f; margin-bottom: 8px;">分布式计算与只读集群</h4>
             <p style="font-size: 13px; color: #6e6e73; line-height: 1.6;">承载复杂只读数据查询加速、AI 语法解析推演与高并发条码盘点，实现负载无缝分流。</p>
             <div style="margin-top: 16px; font-size: 11px; color: #059669; font-weight: 600;">只读分流 · 弹性计算加速</div>
           </div>
 
-          <div style="background: #fbfbfd; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 28px;">
             <div style="font-size: 28px; margin-bottom: 12px;">🌐</div>
             <h4 style="font-size: 17px; font-weight: 700; color: #1d1d1f; margin-bottom: 8px;">智能动态路由网关</h4>
             <p style="font-size: 13px; color: #6e6e73; line-height: 1.6;">内置 SpEL 表达式引擎，自动根据读写语义与节点健康度分流，毫秒级故障自动熔断降级。</p>
@@ -243,7 +886,7 @@
   <footer class="apple-global-footer">
     <div class="footer-container">
       <div class="footer-note-section">
-        <p>1. 稳骥 PacerSQL 与 斑马 ZebraERP 为 FWPT.CN 服务平台自主研发的数字化企业工具集。</p>
+        <p>1. 稳骥 PacerSQL 与 斑马 ZebraERP 为 FWPT.CN 服务平台（Future Workplace &amp; Platform Technology）自主研发的数字化企业工具集。</p>
         <p>2. 点击“去试用”可分别直达独立二级域名系统服务（pacer.fwpt.cn 与 zebra.fwpt.cn）。</p>
       </div>
 
@@ -251,9 +894,9 @@
         <div class="footer-col">
           <div class="footer-col-title">产品选型</div>
           <ul>
-            <li><a href="/pacer">稳骥 PacerSQL</a></li>
-            <li><a href="/zebra">斑马 ZebraERP</a></li>
-            <li><a href="/pacer#specs">技术参数对比</a></li>
+            <li><a href="/pacer" data-file-href="pacer.html">稳骥 PacerSQL</a></li>
+            <li><a href="/zebra" data-file-href="zebra.html">斑马 ZebraERP</a></li>
+            <li><a href="/pacer#specs" data-file-href="pacer.html#specs">技术参数对比</a></li>
           </ul>
         </div>
 
@@ -266,10 +909,11 @@
         </div>
 
         <div class="footer-col">
-          <div class="footer-col-title">平台理念</div>
+          <div class="footer-col-title">平台理念与宗旨</div>
           <ul>
             <li><a href="#philosophy">稳若赛马，敏如斑马</a></li>
-            <li><a href="#architecture">高可用多可用区架构</a></li>
+            <li><a href="#philosophy">Future Workplace 愿景</a></li>
+            <li><a href="#architecture">金融级高可用架构</a></li>
           </ul>
         </div>
 
@@ -277,13 +921,13 @@
           <div class="footer-col-title">关于与合规</div>
           <ul>
             <li><a href="javascript:;">国密 SM2/SM4 认证</a></li>
-            <li><a href="javascript:;">安全合规审计大盘</a></li>
+            <li><a href="javascript:;">全渠道消息告警通道</a></li>
           </ul>
         </div>
       </div>
 
       <div class="footer-legal-bar">
-        <div>Copyright © 2026 FWPT.CN · 稳骥 PacerSQL · 斑马 ZebraERP 版权所有</div>
+        <div>Copyright © 2026 FWPT.CN · Future Workplace &amp; Platform Technology 版权所有</div>
         <div class="footer-legal-links">
           <span>粤ICP备2025000000号-1</span>
           <span>·</span>
@@ -296,5 +940,27 @@
   </footer>
 
   <script src="js/apple.js"></script>
+  <script>
+
+function jumpToPacer() {
+  window.location.href = 'http://pacer.fwpt.cn/login';
+}
+
+function jumpToZebra() {
+  window.location.href = 'http://zebra.fwpt.cn';
+}
+
+// 自动兼容本地 file:/// 打开与线上 Web 服务器路由
+(function() {
+  if (window.location.protocol === 'file:') {
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('a[data-file-href]').forEach(function(a) {
+        a.href = a.getAttribute('data-file-href');
+      });
+    });
+  }
+})();
+
+  </script>
 </body>
 </html>
