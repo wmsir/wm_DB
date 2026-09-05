@@ -276,6 +276,16 @@
                     </span>
                     <span v-if="currentTab.result" class="meta-text">
                       目标库：<b>{{ currentTab.result.databaseName }}</b> | 返回：<b>{{ currentTab.result.totalRows }}</b> 行 | 耗时：<b>{{ currentTab.result.durationMs }}ms</b>
+                      <el-tag
+                        v-if="currentTab.result.routeNode"
+                        size="small"
+                        :type="currentTab.result.routeNode === 'SLAVE' ? 'success' : 'warning'"
+                        effect="light"
+                        style="margin-left: 8px; font-weight: 500;"
+                        :title="currentTab.result.routeDescription"
+                      >
+                        {{ currentTab.result.routeNode === 'SLAVE' ? '🟢 只读从库 (Slave)' : '🟡 核心主库 (Master)' }}
+                      </el-tag>
                     </span>
                     <span v-else class="meta-text">
                       点击左侧表名或在上方输入 SQL 点击【执行查询】

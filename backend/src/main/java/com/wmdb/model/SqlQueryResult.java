@@ -61,4 +61,14 @@ public class SqlQueryResult {
      * 错误信息（如有）
      */
     private String errorMessage;
+
+    /**
+     * 读写分离路由节点类型 (MASTER 主库 / SLAVE 只读从库)
+     */
+    private String routeNode;
+
+    /**
+     * 路由说明 (例如: 已自动路由至只读从库 (Slave) 执行，保护核心主库)
+     */
+    private String routeDescription;
 }

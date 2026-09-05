@@ -35,6 +35,11 @@ public class ReleaseController {
         return Result.success(releaseService.blueGreenDeployment(request.getTicketId(), request.getTargetEnv()));
     }
 
+    @org.springframework.web.bind.annotation.GetMapping("/topology")
+    public Result<Map<String, Object>> getTopology(@org.springframework.web.bind.annotation.RequestParam("instanceId") Long instanceId) {
+        return Result.success(releaseService.getReplicationTopology(instanceId));
+    }
+
     @PostMapping("/rollback")
     public Result<Map<String, Object>> rollback(@RequestBody ReleaseRequest request) {
         return Result.success(releaseService.rollbackRelease(request.getReleaseId()));

@@ -153,8 +153,13 @@ public class SqlQueryService {
 
         String password = dbInstanceService.resolvePassword(instance);
         String targetDb = (dbName != null && !dbName.trim().isEmpty()) ? dbName.trim() : "";
-        String jdbcUrl = buildJdbcUrlWithDatabase(instance.getJdbcUrl(), targetDb);
         String dbType = instance.getDbType() != null ? instance.getDbType().toLowerCase() : "mysql";
+
+        // 主从读写分离智能路由：若配置了只读从库，只读 DQL 查询优先路由至只读从库执行；若未配置或从库故障则平滑回退至主库
+        boolean hasSlave = instance.getReadOnlyJdbcUrl() != null && !instance.getReadOnlyJdbcUrl().trim().isEmpty();
+        boolean isRoutedToSlave = hasSlave;
+        String selectedRawUrl = hasSlave ? instance.getReadOnlyJdbcUrl().trim() : instance.getJdbcUrl();
+        String jdbcUrl = buildJdbcUrlWithDatabase(selectedRawUrl, targetDb);
 
         // 脱敏规则
         Map<String, DataMaskingRule> activeRules = dataMaskingRuleService.getActiveRulesMap(instanceId, targetDb);
@@ -169,13 +174,28 @@ public class SqlQueryService {
             Class.forName(dbInstanceService.getDriverClassName(dbType));
             DriverManager.setLoginTimeout(5);
 
-            try (Connection conn = DriverManager.getConnection(jdbcUrl, instance.getUsername(), password);
-                 Statement stmt = conn.createStatement()) {
+            Connection conn = null;
+            try {
+                conn = DriverManager.getConnection(jdbcUrl, instance.getUsername(), password);
+            } catch (Exception connEx) {
+                // 如果是从库连接失败，触发自动降级，切换到主库重试
+                if (hasSlave) {
+                    log.warn("只读从库连接异常 [{}]，触发高可用读写分离自动降级，切换至主库执行: {}", jdbcUrl, connEx.getMessage());
+                    isRoutedToSlave = false;
+                    jdbcUrl = buildJdbcUrlWithDatabase(instance.getJdbcUrl(), targetDb);
+                    conn = DriverManager.getConnection(jdbcUrl, instance.getUsername(), password);
+                } else {
+                    throw connEx;
+                }
+            }
+
+            try (Connection activeConn = conn;
+                 Statement stmt = activeConn.createStatement()) {
 
                 // 切换具体数据库
                 if (!targetDb.isEmpty()) {
                     try {
-                        conn.setCatalog(targetDb);
+                        activeConn.setCatalog(targetDb);
                     } catch (Exception ignored) {}
                     if ("mysql".equalsIgnoreCase(dbType) || "tidb".equalsIgnoreCase(dbType) || "oceanbase".equalsIgnoreCase(dbType)) {
                         try {
@@ -225,6 +245,9 @@ public class SqlQueryService {
                 }
 
                 long duration = System.currentTimeMillis() - startTime;
+                String routeNode = isRoutedToSlave ? "SLAVE" : "MASTER";
+                String routeDesc = isRoutedToSlave ? "已智能路由至只读从库 (Slave) 执行，分流主库负载" : "已路由至核心主库 (Master) 执行";
+
                 SqlQueryResult result = SqlQueryResult.builder()
                         .success(true)
                         .databaseName(targetDb.isEmpty() ? "default" : targetDb)
@@ -233,6 +256,8 @@ public class SqlQueryService {
                         .rows(rows)
                         .totalRows(rows.size())
                         .durationMs(duration)
+                        .routeNode(routeNode)
+                        .routeDescription(routeDesc)
                         .build();
 
                 recordAuditLogAsync(instance, targetDb, opType, trimmedSql, duration, rows.size(), "SUCCESS", null);
@@ -254,7 +279,8 @@ public class SqlQueryService {
                     .rows(new ArrayList<>())
                     .totalRows(0)
                     .durationMs(duration)
-                    .errorMessage(e.getMessage())
+                    .errorMessage(errorMsg)
+                    .routeNode(isRoutedToSlave ? "SLAVE" : "MASTER")
                     .build();
         }
     }

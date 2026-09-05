@@ -42,16 +42,27 @@ public class DashboardController {
     }
 
     /**
-     * 获取数据库实时监控指标数据
+     * 获取数据库实时监控指标数据（支持按指定节点或默认主节点）
      *
+     * @param nodeId 节点ID（如 node-101-35-100-169, node-39-97-158-22）
      * @return 监控数据
      */
     @GetMapping("/monitor")
-    public Result<Map<String, Object>> getMonitorStats() {
+    public Result<Map<String, Object>> getMonitorStats(@org.springframework.web.bind.annotation.RequestParam(value = "nodeId", required = false) String nodeId) {
         String currentIdCard = null;
         try {
             currentIdCard = (String) org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         } catch (Exception ignored) {}
-        return Result.success(dashboardService.getDatabaseMonitorStats(currentIdCard));
+        return Result.success(dashboardService.getDatabaseMonitorStats(nodeId, currentIdCard));
+    }
+
+    /**
+     * 获取服务部署集群多节点运行状态列表
+     *
+     * @return 节点列表
+     */
+    @GetMapping("/nodes")
+    public Result<java.util.List<Map<String, Object>>> getClusterNodes() {
+        return Result.success(dashboardService.getClusterNodes());
     }
 }

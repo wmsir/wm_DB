@@ -9,4 +9,4 @@ backend/target/
 *.log
 backend/scratch/
 *.zip
-
+*.tar.gz

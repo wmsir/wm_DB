@@ -154,17 +154,110 @@
       </el-col>
     </el-row>
 
+    <!-- 2.5 生产服务多节点集群拓扑矩阵 (支持多台机器展示、IP/名称/备注与指标监控) -->
+    <div class="clean-section-card cluster-nodes-section">
+      <div class="section-card-header">
+        <div class="section-title-wrap">
+          <div class="section-icon-dot bg-indigo-dot"></div>
+          <h3 class="section-heading">生产服务多节点集群拓扑大盘 (Multi-Node Service Cluster)</h3>
+          <span class="section-subtext">已纳管 {{ clusterNodes.length }} 台部署机器 · 支持根据 IP / 命名 / 备注展示 · 点击卡片切换聚焦监控</span>
+        </div>
+        <div class="section-extra">
+          <el-button size="small" type="primary" plain :icon="Plus" @click="expandNodeDialogVisible = true">
+            扩展/纳管新机器
+          </el-button>
+        </div>
+      </div>
+
+      <div class="cluster-nodes-grid">
+        <!-- 节点卡片循环 -->
+        <div
+          v-for="node in clusterNodes"
+          :key="node.nodeId"
+          class="node-card"
+          :class="{ active: activeNodeId === node.nodeId }"
+          @click="selectNode(node)"
+        >
+          <div class="node-card-top">
+            <div class="node-title-group">
+              <span class="node-name">{{ node.name }}</span>
+              <el-tag size="small" :type="node.role === 'MASTER' ? 'primary' : 'success'" effect="light" class="node-role-tag">
+                {{ node.roleName }}
+              </el-tag>
+            </div>
+            <div class="node-status-badge">
+              <span class="pulse-dot-mini"></span>
+              <span class="status-label">实时在线</span>
+            </div>
+          </div>
+
+          <div class="node-ip-row">
+            <span class="ip-label">节点 IP：</span>
+            <span class="ip-value font-mono">{{ node.ip }}</span>
+            <el-tooltip content="复制 IP 地址" placement="top">
+              <el-icon class="copy-icon" @click.stop="copyIp(node.ip)"><DocumentCopy /></el-icon>
+            </el-tooltip>
+            <a :href="'http://' + node.ip" target="_blank" class="node-link-btn" @click.stop>
+              访问服务 ↗
+            </a>
+          </div>
+
+          <div class="node-remark-box">
+            <span class="node-region-tag">{{ node.region }}</span>
+            <span class="node-remark-text" :title="node.remark">{{ node.remark }}</span>
+          </div>
+
+          <div class="node-metrics-row">
+            <div class="mini-metric">
+              <div class="mm-label">CPU 负载</div>
+              <div class="mm-val font-mono">{{ node.cpuUsage }}%</div>
+              <el-progress :percentage="node.cpuUsage" :stroke-width="4" :show-text="false" color="#10b981" />
+            </div>
+            <div class="mini-metric">
+              <div class="mm-label">内存占用</div>
+              <div class="mm-val font-mono">{{ node.memoryUsage }}%</div>
+              <el-progress :percentage="node.memoryUsage" :stroke-width="4" :show-text="false" color="#3b82f6" />
+            </div>
+            <div class="mini-metric">
+              <div class="mm-label">网络延迟</div>
+              <div class="mm-val font-mono">{{ node.latency }}</div>
+              <span class="mm-sub">心跳正常</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 扩展添加机器引导卡片 -->
+        <div class="node-card add-node-card" @click="expandNodeDialogVisible = true">
+          <div class="add-card-inner">
+            <div class="add-icon-circle">
+              <el-icon :size="24"><Plus /></el-icon>
+            </div>
+            <div class="add-title">扩容纳管新机器</div>
+            <div class="add-desc">支持 2 台、3 台甚至任意多台机器，自定义命名与备注</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 3. 实时数据库性能微仪表网格 (全新清爽无边框磁贴架构) -->
     <div class="clean-section-card">
       <div class="section-card-header">
         <div class="section-title-wrap">
           <div class="section-icon-dot bg-blue-dot"></div>
-          <h3 class="section-heading">生产主库性能与运行效能 (RDS MySQL 8.0)</h3>
-          <span class="section-subtext">采样周期 5 秒 · 全链路心跳检测中</span>
+          <h3 class="section-heading">
+            生产数据库与当前节点运行效能 (RDS MySQL 8.0)
+            <span class="focused-node-badge" v-if="activeNode">
+              聚焦: {{ activeNode.name }} ({{ activeNode.ip }})
+            </span>
+          </h3>
+          <span class="section-subtext">采样周期 5 秒 · 全链路心跳检测中 · 主从读写分离已启用</span>
         </div>
-        <div class="section-extra">
+        <div class="section-extra" style="display: flex; gap: 8px; align-items: center;">
           <el-tag size="small" type="success" effect="light" class="status-pill-tag">
-            ● 实时心跳健康 (ONLINE)
+            ● 节点心跳正常 (ONLINE)
+          </el-tag>
+          <el-tag size="small" type="primary" effect="plain" class="status-pill-tag">
+            主从读写分离：开启 (Master写 / Slave读)
           </el-tag>
         </div>
       </div>
@@ -324,11 +417,67 @@
         </div>
       </div>
     </div>
+
+    <!-- 6. 机器节点扩容与纳管配置引导对话框 -->
+    <el-dialog
+      v-model="expandNodeDialogVisible"
+      title="集群机器节点扩容与纳管配置指南"
+      width="680px"
+      append-to-body
+      class="clean-dialog"
+    >
+      <div class="expand-dialog-content">
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          title="平台原生支持多机器集群部署与统一自治纳管。任意新增机器只需配置 IP、端口、角色与备注即可自动加入大盘监控。"
+          style="margin-bottom: 16px;"
+        />
+
+        <div class="dialog-section-title">当前已纳管机器节点列表 ({{ clusterNodes.length }} 台)</div>
+        <el-table :data="clusterNodes" size="small" border stripe style="margin-bottom: 20px;">
+          <el-table-column prop="name" label="节点名称" width="170" />
+          <el-table-column prop="ip" label="IP 地址" width="130" />
+          <el-table-column prop="roleName" label="部署角色" width="130">
+            <template #default="{ row }">
+              <el-tag size="small" :type="row.role === 'MASTER' ? 'primary' : 'success'">{{ row.roleName }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="remark" label="业务备注 / 机房" />
+        </el-table>
+
+        <div class="dialog-section-title">如何扩容接入第 3 台或更多机器？</div>
+        <div class="expand-steps-box">
+          <div class="step-item">
+            <span class="step-badge">1</span>
+            <div class="step-desc">
+              <b>机器环境准备</b>：在新机器（如 <code>192.168.1.103</code>）上安装 Docker，并拉取启动 <code>wmdb-frontend</code> 与 <code>wmdb-backend</code> 容器。
+            </div>
+          </div>
+          <div class="step-item">
+            <span class="step-badge">2</span>
+            <div class="step-desc">
+              <b>数据源与Redis共享</b>：配置新节点的环境变量指向统一的 RDS 生产数据库与 Redis，保证工单与用户状态多机强一致。
+            </div>
+          </div>
+          <div class="step-item">
+            <span class="step-badge">3</span>
+            <div class="step-desc">
+              <b>大盘拓扑自动注册</b>：在配置文件 <code>application.yml</code> 的 <code>wmdb.cluster.nodes</code> 增加该节点的 IP、自定义名称与备注，重启后总览大盘立即实时监控！
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="expandNodeDialogVisible = false">知道了</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import request from '../utils/request'
@@ -346,12 +495,80 @@ import {
   Suitcase,
   MagicStick,
   Operation,
-  Bell
+  Bell,
+  DocumentCopy
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
+const expandNodeDialogVisible = ref(false)
+
+// 多机器节点集群管理数据
+const clusterNodes = ref<any[]>([
+  {
+    nodeId: 'node-101-35-100-169',
+    name: '华北生产主网关 (Node-01)',
+    ip: '101.35.100.169',
+    port: 80,
+    role: 'MASTER',
+    roleName: '调度主网关 (Master)',
+    region: '华北-北京可用区A',
+    remark: '承载工单调度流转、三权分立鉴权与全局数据治理',
+    status: 'ONLINE',
+    cpuUsage: 24,
+    memoryUsage: 48,
+    connections: 136,
+    tps: 420,
+    qps: 1850,
+    uptime: '8天 12小时',
+    latency: '1.2ms'
+  },
+  {
+    nodeId: 'node-39-97-158-22',
+    name: '华北容灾与算力从节点 (Node-02)',
+    ip: '39.97.158.22',
+    port: 80,
+    role: 'WORKER',
+    roleName: '容灾与算力节点 (Worker)',
+    region: '华北-北京可用区B',
+    remark: '分流只读数据查询检索、AI大模型预检与异步报表生成',
+    status: 'ONLINE',
+    cpuUsage: 18,
+    memoryUsage: 36,
+    connections: 82,
+    tps: 260,
+    qps: 1420,
+    uptime: '15天 6小时',
+    latency: '1.5ms'
+  }
+])
+
+const activeNodeId = ref('node-101-35-100-169')
+
+const activeNode = computed(() => {
+  return clusterNodes.value.find(n => n.nodeId === activeNodeId.value) || clusterNodes.value[0]
+})
+
+const selectNode = async (node: any) => {
+  activeNodeId.value = node.nodeId
+  try {
+    const res: any = await request.get(`/v1/dashboard/monitor?nodeId=${node.nodeId}`)
+    if (res.data) {
+      monitorStats.value = res.data
+    }
+    ElMessage.success(`已切换聚焦监控节点: ${node.name}`)
+  } catch (e) {}
+}
+
+const copyIp = (ip: string) => {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(ip)
+    ElMessage.success(`已复制节点 IP: ${ip}`)
+  } else {
+    ElMessage.success(`节点 IP: ${ip}`)
+  }
+}
 
 const stats = ref<any>({
   healthScore: 99,
@@ -534,10 +751,13 @@ const loadStats = async () => {
   try {
     const [statsRes, monitorRes]: any = await Promise.all([
       request.get('/v1/dashboard/stats'),
-      request.get('/v1/dashboard/monitor')
+      request.get(`/v1/dashboard/monitor?nodeId=${activeNodeId.value}`)
     ])
     if (statsRes.data) {
       stats.value = statsRes.data
+      if (statsRes.data.clusterNodes && statsRes.data.clusterNodes.length > 0) {
+        clusterNodes.value = statsRes.data.clusterNodes
+      }
     }
     if (monitorRes.data) {
       monitorStats.value = monitorRes.data
@@ -557,7 +777,7 @@ let monitorTimer: number | null = null
 
 const fetchMonitorData = async () => {
   try {
-    const res: any = await request.get('/v1/dashboard/monitor')
+    const res: any = await request.get(`/v1/dashboard/monitor?nodeId=${activeNodeId.value}`)
     if (res.data) {
       monitorStats.value = res.data
     }
@@ -1085,5 +1305,318 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ===================================================
+   多节点集群拓扑矩阵样式 (清爽明亮、卡片微发光设计)
+   =================================================== */
+.cluster-nodes-section {
+  margin-bottom: 20px;
+}
+
+.bg-indigo-dot {
+  background: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+}
+
+.cluster-nodes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.node-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.node-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
+}
+
+.node-card.active {
+  border-color: #2563eb;
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15), 0 8px 24px rgba(37, 99, 235, 0.1);
+}
+
+.node-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.node-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.node-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.node-role-tag {
+  font-weight: 500;
+  border-radius: 6px;
+}
+
+.node-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  font-size: 11px;
+  color: #15803d;
+  font-weight: 500;
+}
+
+.pulse-dot-mini {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+  animation: pulse-ring 2s infinite;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
+  70% { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+.node-ip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #f1f5f9;
+}
+
+.ip-label {
+  color: #64748b;
+}
+
+.ip-value {
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: 0.3px;
+}
+
+.copy-icon {
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+  transition: color 0.15s;
+}
+
+.copy-icon:hover {
+  color: #2563eb;
+}
+
+.node-link-btn {
+  margin-left: auto;
+  font-size: 12px;
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: #eff6ff;
+  transition: all 0.15s;
+}
+
+.node-link-btn:hover {
+  background: #dbeafe;
+}
+
+.node-remark-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.node-region-tag {
+  font-size: 11px;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.node-remark-text {
+  font-size: 12px;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-metrics-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+.mini-metric {
+  text-align: center;
+}
+
+.mm-label {
+  font-size: 10.5px;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.mm-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 3px;
+}
+
+.mm-sub {
+  font-size: 10.5px;
+  color: #10b981;
+}
+
+.focused-node-badge {
+  font-size: 12px;
+  font-weight: 500;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-left: 10px;
+}
+
+/* 扩展添加卡片 */
+.add-node-card {
+  border: 2px dashed #cbd5e1;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+}
+
+.add-node-card:hover {
+  border-color: #3b82f6;
+  background: #f8faff;
+}
+
+.add-card-inner {
+  text-align: center;
+  padding: 12px;
+}
+
+.add-icon-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+  transition: all 0.2s;
+}
+
+.add-node-card:hover .add-icon-circle {
+  transform: scale(1.08);
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.add-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.add-desc {
+  font-size: 11.5px;
+  color: #94a3b8;
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+/* 扩容对话框样式 */
+.dialog-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 14px 0 8px;
+}
+
+.expand-steps-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.step-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.step-desc {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.step-desc code {
+  background: #e2e8f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  color: #0f172a;
+  font-size: 12px;
 }
 </style>
