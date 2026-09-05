@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>斑马 ZebraERP · 全场景条码与智能云仓一体化系统 - FWPT.CN</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/apple.css">
+</head>
+<body>
+  <!-- Apple 全局顶栏 (44px) -->
+  <header class="apple-global-nav">
+    <div class="nav-container">
+      <a href="/" class="nav-apple-logo">
+        <span class="nav-logo-badge" style="background: #09090b;">ZEBRA</span>
+        <span>平台</span>
+      </a>
+      <ul class="nav-menu-list">
+        <li class="nav-menu-item"><a href="/pacer">稳骥 PacerSQL</a></li>
+        <li class="nav-menu-item"><a href="/zebra" class="active">斑马 ZebraERP</a></li>
+        <li class="nav-menu-item"><a href="/#philosophy">平台理念</a></li>
+        <li class="nav-menu-item"><a href="/#architecture">高可用架构</a></li>
+        <li class="nav-menu-item"><a href="javascript:;" onclick="jumpToZebra()">智能云仓</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="javascript:;" onclick="jumpToZebra()" class="btn-apple-primary" style="background: #09090b; padding: 4px 14px; font-size: 12px;">去试用</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- iPad Pro 风格吸顶副导航 (52px) -->
+  <div class="product-sticky-subnav">
+    <div class="subnav-container">
+      <div class="subnav-title">斑马 ZebraERP</div>
+      <div class="subnav-links">
+        <a href="#overview">概览</a>
+        <a href="#barcode">条码基因</a>
+        <a href="#wms">智能云仓</a>
+        <a href="#specs">技术规格</a>
+        <a href="javascript:;" onclick="jumpToZebra()" class="btn-subnav-cta" style="background: #09090b;">去试用 (zebra.fwpt.cn)</a>
+      </div>
+    </div>
+  </div>
+
+  <main>
+    <!-- Hero 视觉区 -->
+    <section class="deep-dive-section" id="overview" style="text-align: center; padding-top: 80px;">
+      <div class="hero-super-tag" style="color: #09090b;">新一代企业资源与云仓一体化系统</div>
+      <h1 class="section-headline-xl">斑马。自带条码基因。</h1>
+      <p class="section-subhead-lg">
+        黑白相间的条纹天生自带商品条形码 (Barcode) 与扫码枪的视觉联想。极客、现代、超高辨识度，专为智能仓储、进销存与新零售供应链而淬炼。
+      </p>
+
+      <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 50px;">
+        <button class="btn-apple-primary" onclick="jumpToZebra()" style="background: #09090b;">
+          <span>进入 斑马 ZebraERP 云平台 (zebra.fwpt.cn)</span>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+        <a href="#specs" class="btn-apple-secondary" style="font-size: 14px; color: #09090b;">查看规格参数 ›</a>
+      </div>
+
+      <!-- 斑马极客条码大屏拟态展示卡 -->
+      <div class="billboard-media-wrap">
+        <div class="billboard-device-frame" style="border-color: #e2e8f0;">
+          <div class="device-top-bar">
+            <div class="device-traffic-dots">
+              <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+            </div>
+            <div class="device-url-pill">http://zebra.fwpt.cn/wms/barcode-scanner</div>
+            <div style="font-size: 11px; color: #09090b; font-weight: 700;">ZEBRA BARCODE ENGINE</div>
+          </div>
+          <div class="device-body">
+            <div class="zebra-barcode-hero-box">
+              <div class="laser-beam"></div>
+              <div class="barcode-bars">
+                <span class="b-bar w-2"></span><span class="b-bar w-1"></span><span class="b-bar w-3"></span>
+                <span class="b-bar w-1"></span><span class="b-bar w-4"></span><span class="b-bar w-2"></span>
+                <span class="b-bar w-1"></span><span class="b-bar w-3"></span><span class="b-bar w-2"></span>
+                <span class="b-bar w-4"></span><span class="b-bar w-1"></span><span class="b-bar w-2"></span>
+                <span class="b-bar w-3"></span><span class="b-bar w-1"></span><span class="b-bar w-2"></span>
+              </div>
+              <div class="barcode-num-text">6 9 7 2 8 4 1 0 2 4 8 9 2</div>
+              <div style="display: inline-flex; align-items: center; gap: 8px; background: #ecfdf5; padding: 4px 14px; border-radius: 20px; font-size: 12px; color: #065f46; font-weight: 600;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+                <span>激光扫码枪精准对焦 · 批次入库耗时 18ms</span>
+              </div>
+            </div>
+
+            <!-- 模拟实时库存卡片 -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; text-align: left;">
+              <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 12px; color: #1e293b;">
+                <span>动态货位流转看板 (Real-time WMS)</span>
+                <span style="color: #059669;">● 多仓实时协同中</span>
+              </div>
+              <div style="font-size: 12px; color: #475569; line-height: 1.8;">
+                <div><strong>[入库单 #IN-20260906]</strong> 斑马智能条码终端 X1 (SKU: ZEBRA-PRO-88) · 入库数量：1,280 件 · 目标库位：A1-04-B</div>
+                <div style="color: #0284c7;">✔ 一物一码自动打印绑定完成：支持防伪溯源码批量热敏不干胶直连打印</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 斑马核心基因：条码与智能云仓 -->
+    <section class="deep-dive-section" id="barcode">
+      <div class="hero-super-tag" style="text-align: center; color: #09090b;">CORE ADVANTAGES</div>
+      <h2 class="section-headline-xl">天生为商品流转而生</h2>
+      <p class="section-subhead-lg">打通线上商城与线下仓储物流的每一道神经末梢。</p>
+
+      <div class="apple-bento-grid">
+        <div class="bento-card span-2">
+          <div class="bento-tag" style="color: #09090b;">BARCODE DNA</div>
+          <h3 class="bento-title">标准条形码与一物一码追溯体系</h3>
+          <p class="bento-desc">
+            全面支持 EAN-13、Code-128、GS1、QR-Code 等主流工业与商品条码体系。支持批量条码模板自定义与热敏不干胶标签打印机直连，商品从工厂下线起即具备全生命周期数字身份证。
+          </p>
+          <div style="display: flex; gap: 40px; margin-top: auto;">
+            <div><span class="bento-stat-num">0.2<small>s</small></span><span class="bento-stat-label">PDA扫码识别响应</span></div>
+            <div><span class="bento-stat-num">100<small>%</small></span><span class="bento-stat-label">全流程批次精准溯源</span></div>
+          </div>
+        </div>
+
+        <div class="bento-card">
+          <div class="bento-tag" style="color: #059669;">SCANNING WMS</div>
+          <h3 class="bento-title">扫码枪与 PDA 极速核销</h3>
+          <p class="bento-desc">支持专业无线激光扫码枪、PDA 与安卓/iOS 手机摄像头秒级扫码出库、入库、移库与波次拣选。</p>
+          <div class="bento-stat-num">0<small>误扫</small></div>
+          <div class="bento-stat-label">库位校验防呆纠错</div>
+        </div>
+
+        <div class="bento-card">
+          <div class="bento-tag" style="color: #ea580c;">MULTI-WAREHOUSE</div>
+          <h3 class="bento-title">多仓协同与智能动态平衡</h3>
+          <p class="bento-desc">总仓、区域分仓、门店前置仓实时库存镜像同步，爆品智能缺货预警，波次调拨路径最优化。</p>
+          <div class="bento-stat-num">40<small>%</small></div>
+          <div class="bento-stat-label">仓储面积周转率提升</div>
+        </div>
+
+        <div class="bento-card span-2">
+          <div class="bento-tag" style="color: #09090b;">COMMERCE INTEGRATION</div>
+          <h3 class="bento-title">全渠道进销存账务闭环</h3>
+          <p class="bento-desc">
+            从供应商采购、入库质检、库存盘点，到销售订单出库、对账开票，全业务链条数据闭环流转，消除账实不符。
+          </p>
+          <div style="display: flex; gap: 40px; margin-top: auto;">
+            <div><span class="bento-stat-num">100<small>%</small></span><span class="bento-stat-label">账实强一致性校验</span></div>
+            <div><span class="bento-stat-num">秒级<small>对账</small></span><span class="bento-stat-label">智能多维度财务核算</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 技术参数表 -->
+    <section class="deep-dive-section" id="specs">
+      <div class="hero-super-tag" style="text-align: center; color: #09090b;">SPECIFICATIONS</div>
+      <h2 class="section-headline-xl">斑马 ZebraERP 技术规格</h2>
+      <p class="section-subhead-lg">全场景硬件兼容性与企业级指标参数。</p>
+
+      <div class="specs-table-wrap">
+        <div class="specs-row">
+          <div class="specs-label">支持条形码标准</div>
+          <div class="specs-value">EAN-13、EAN-8、Code-128 (A/B/C)、Code-39、ITF-14、GS1-128、QR Code、Data Matrix</div>
+        </div>
+        <div class="specs-row">
+          <div class="specs-label">智能仓储能力 (WMS)</div>
+          <div class="specs-value">多仓多货位管理、批次保质期预警、PDA 引导式上架/拣选、动态盲盘与复盘、跨仓智能调拨</div>
+        </div>
+        <div class="specs-row">
+          <div class="specs-label">扫码硬件兼容</div>
+          <div class="specs-value">支持无线蓝牙激光扫码枪、工业级 PDA 手持终端、USB 桌面扫码平台、移动端摄像头扫码</div>
+        </div>
+        <div class="specs-row">
+          <div class="specs-label">条码标签打印支持</div>
+          <div class="specs-value">直连斑马 (Zebra)、佳博、得力等工业级热敏/热转印打印机，支持 TSPL/CPCL/ZPL 指令与自定义模版</div>
+        </div>
+        <div class="specs-row">
+          <div class="specs-label">商业流通适配</div>
+          <div class="specs-value">适合快消零售、电子轻制造、3C数码、生鲜商超、第三方仓储物流 (3PL) 与跨境供应链</div>
+        </div>
+        <div class="specs-row">
+          <div class="specs-label">部署网络形态</div>
+          <div class="specs-value">独立二级域名 zebra.fwpt.cn，支持高并发弹性扩展与异地多活灾备</div>
+        </div>
+      </div>
+
+      <!-- 底部直达 CTA -->
+      <div style="text-align: center; padding: 40px 0;">
+        <h3 style="font-size: 28px; font-weight: 700; margin-bottom: 16px;">准备好开启智能条码云仓了吗？</h3>
+        <button class="btn-apple-primary" onclick="jumpToZebra()" style="background: #09090b; padding: 14px 36px; font-size: 16px;">
+          <span>免费体验 斑马 ZebraERP (zebra.fwpt.cn)</span>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="apple-global-footer">
+    <div class="footer-container">
+      <div class="footer-legal-bar" style="border: none; padding-top: 0;">
+        <div>Copyright © 2026 FWPT.CN · 斑马 ZebraERP 版权所有 · 粤ICP备2025000000号-1</div>
+        <div class="footer-legal-links">
+          <a href="/">返回官网首页</a>
+          <span>·</span>
+          <a href="/pacer">了解 稳骥 PacerSQL</a>
+          <span>·</span>
+          <a href="javascript:;" onclick="jumpToZebra()">进入系统</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/apple.js"></script>
+</body>
+</html>

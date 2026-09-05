@@ -37,7 +37,7 @@ const platformCatalog = [
     name: '多机分布式集群总览与主从路由',
     brand: '稳骥 PacerSQL',
     category: '高可用拓扑',
-    desc: '101.35.100.169 (写) 与 39.97.158.22 (读) 多节点状态与 SpEL 路由',
+    desc: '主控调度中心 (写) 与分布式计算节点 (读) 多节点状态与动态路由',
     icon: '🖥️',
     colorBg: '#fffbeb',
     url: 'http://pacer.fwpt.cn/dashboard',
